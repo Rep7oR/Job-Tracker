@@ -1,22 +1,25 @@
 @echo off
-setlocal
+setlocal EnableExtensions
+title Job Tracker - GitHub Release
 
 cd /d "%~dp0"
 
-echo ============================================================
-echo Job Tracker - GitHub Release
-echo ============================================================
-echo.
+if not exist "%~dp0tools\GITRELEASE.ps1" (
+    echo ERROR: tools\GITRELEASE.ps1 was not found.
+    pause
+    exit /b 1
+)
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\GITRELEASE.ps1"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\GITRELEASE.ps1" %*
+set "RC=%ERRORLEVEL%"
 
-if errorlevel 1 (
+if not "%RC%"=="0" (
     echo.
     echo ============================================================
     echo RELEASE FAILED
     echo ============================================================
     pause
-    exit /b 1
+    exit /b %RC%
 )
 
 echo.

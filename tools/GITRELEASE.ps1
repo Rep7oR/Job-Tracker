@@ -7,161 +7,145 @@ $ErrorActionPreference = "Stop"
 
 $Tools = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Split-Path -Parent $Tools
-
-$VersionFile       = Join-Path $Root "VERSION.txt"
+$VersionFile = Join-Path $Root "VERSION.txt"
 $UpdateVersionFile = Join-Path $Root "UPDATE_VERSION.json"
-$ConfigFile        = Join-Path $Root "github\update-config.json"
-$ReleaseDir        = Join-Path $Root "releases"
+$ConfigFile = Join-Path $Root "github\update-config.json"
+$ReleaseDir = Join-Path $Root "releases"
 
-function Fail([string]$Message) {
-    throw $Message
-}
-
-function Invoke-NativeCommand {
-    param(
-        [Parameter(Mandatory)]
-        [string]$FilePath,
-
-        [Parameter(Mandatory)]
-        [string[]]$Arguments
-    )
-
-    $errorFile = Join-Path `
-        ([IO.Path]::GetTempPath()) `
-        ("JobTrackerNativeError_{0}.txt" -f $PID)
-
-    if (Test-Path -LiteralPath $errorFile) {
-        Remove-Item -LiteralPath $errorFile -Force -ErrorAction SilentlyContinue
-    }
-
-    try {
-        $output = & $FilePath @Arguments 2> $errorFile
-        $exitCode = $LASTEXITCODE
-
-        $stderr = ""
-        if (Test-Path -LiteralPath $errorFile) {
-            $stderr = [string]::Join(
-                "`n",
-                @(Get-Content -LiteralPath $errorFile -ErrorAction SilentlyContinue)
-            )
-        }
-
-        return [pscustomobject]@{
-            ExitCode = $exitCode
-            StdOut   = [string]::Join("`n", @($output))
-            StdErr   = $stderr
-        }
-    }
-    finally {
-        if (Test-Path -LiteralPath $errorFile) {
-            Remove-Item -LiteralPath $errorFile -Force -ErrorAction SilentlyContinue
-        }
-    }
-}
-
-function Run-Git {
-    param(
-        [Parameter(Mandatory)]
-        [string[]]$Arguments
-    )
-
-    $result = Invoke-NativeCommand `
-        -FilePath "git.exe" `
-        -Arguments $Arguments
-
-    if ($result.StdOut) {
-        Write-Host $result.StdOut.TrimEnd()
-    }
-
-    if ($result.ExitCode -ne 0) {
-        $details = $result.StdErr.Trim()
-
-        if (-not $details) {
-            $details = $result.StdOut.Trim()
-        }
-
-        throw "Git command failed:`n  git $($Arguments -join ' ')`n$details"
-    }
-
-    return $result.StdOut
-}
-
-function Run-Gh {
-    param(
-        [Parameter(Mandatory)]
-        [string[]]$Arguments
-    )
-
-    $result = Invoke-NativeCommand `
-        -FilePath "gh.exe" `
-        -Arguments $Arguments
-
-    if ($result.StdOut) {
-        Write-Host $result.StdOut.TrimEnd()
-    }
-
-    if ($result.ExitCode -ne 0) {
-        $details = $result.StdErr.Trim()
-
-        if (-not $details) {
-            $details = $result.StdOut.Trim()
-        }
-
-        throw "GitHub CLI command failed:`n  gh $($Arguments -join ' ')`n$details"
-    }
-
-    return $result.StdOut
-}
 function Normalize-Version([string]$Value) {
-    $Value = if ($null -eq $Value) { "" } else { ([string]$Value).Trim() }
+    if ($null -eq $Value) { $Value = "" }
+    $Value = ([string]$Value).Trim()
     $Value = $Value -replace '^[vV]\.?', ''
 
     if ($Value -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
-        Fail "Version must be exactly MAJOR.MINOR.PATCH, for example 1.3.1."
+        throw "Version must be exactly MAJOR.MINOR.PATCH, for example 1.3.1."
     }
 
     return $Value
 }
 
-# ------------------------------------------------------------
-# Validate repository
-# ------------------------------------------------------------
+function Quote-ProcessArgument([string]$Argument) {
+    if ($null -eq $Argument) { return '""' }
+    if ($Argument -notmatch '[\s"]') { return $Argument }
+
+    # All arguments used by this script contain simple paths/text.
+    # Escaping embedded quotes keeps Start-Process compatible with Windows PowerShell 5.1.
+    return '"' + $Argument.Replace('"', '\"') + '"'
+}
+
+function Invoke-NativeTool {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FilePath,
+
+        [Parameter(Mandatory)]
+        [string[]]$Arguments,
+
+        [switch]$AllowNonZero
+    )
+
+    $tempRoot = Join-Path $env:TEMP ("JobTrackerReleaseCmd_{0}" -f [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+
+    $stdoutFile = Join-Path $tempRoot "stdout.txt"
+    $stderrFile = Join-Path $tempRoot "stderr.txt"
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.Arguments = (($Arguments | ForEach-Object { Quote-ProcessArgument $_ }) -join " ")
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
+
+    try {
+        [void]$process.Start()
+
+        $stdout = $process.StandardOutput.ReadToEnd()
+        $stderr = $process.StandardError.ReadToEnd()
+
+        $process.WaitForExit()
+        $exitCode = $process.ExitCode
+
+        if ($stdout) {
+            Write-Host $stdout.TrimEnd()
+        }
+
+        if ($exitCode -ne 0 -and -not $AllowNonZero) {
+            $details = $stderr.Trim()
+            if (-not $details) { $details = $stdout.Trim() }
+
+            throw "$FilePath failed with exit code $exitCode.`n$details"
+        }
+
+        return [pscustomobject]@{
+            ExitCode = $exitCode
+            StdOut   = $stdout
+            StdErr   = $stderr
+        }
+    }
+    finally {
+        $process.Dispose()
+        Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Invoke-Git {
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Arguments,
+
+        [switch]$AllowNonZero
+    )
+
+    return Invoke-NativeTool -FilePath "git.exe" -Arguments $Arguments -AllowNonZero:$AllowNonZero
+}
+
+function Invoke-Gh {
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Arguments,
+
+        [switch]$AllowNonZero
+    )
+
+    return Invoke-NativeTool -FilePath "gh.exe" -Arguments $Arguments -AllowNonZero:$AllowNonZero
+}
 
 if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) {
-    Fail "git.exe was not found in PATH."
+    throw "git.exe was not found in PATH."
+}
+
+if (-not (Get-Command gh.exe -ErrorAction SilentlyContinue)) {
+    throw "GitHub CLI (gh.exe) was not found in PATH. Install GitHub CLI before creating a release."
 }
 
 if (-not (Test-Path -LiteralPath $VersionFile -PathType Leaf)) {
-    Fail "VERSION.txt was not found."
+    throw "VERSION.txt was not found."
 }
 
-$isRepo = Run-Git @("-C", $Root, "rev-parse", "--is-inside-work-tree")
-$isRepo = [string]$isRepo.Trim()
-
-if ($isRepo -ne "true") {
-    Fail "$Root is not a Git repository."
+$repoCheck = Invoke-Git @("-C", $Root, "rev-parse", "--is-inside-work-tree")
+if ($repoCheck.ExitCode -ne 0 -or $repoCheck.StdOut.Trim() -ne "true") {
+    throw "$Root is not a Git repository."
 }
 
-$remote = Run-Git @("-C", $Root, "remote", "get-url", "origin")
-$remote = [string]$remote.Trim()
+$remoteResult = Invoke-Git @("-C", $Root, "remote", "get-url", "origin")
+$remote = $remoteResult.StdOut.Trim()
 
 if ($remote -notmatch 'github\.com[:/](?<owner>[^/]+)/(?<repo>[^/]+?)(?:\.git)?$') {
-    Fail "origin is not a GitHub repository: $remote"
+    throw "origin is not a GitHub repository: $remote"
 }
 
 $owner = $Matches.owner
-$repo  = $Matches.repo
+$repo = $Matches.repo
 
-# ------------------------------------------------------------
-# Determine version
-# ------------------------------------------------------------
-
-$currentVersion = (Get-Content -LiteralPath $VersionFile -Raw)
-$currentVersion = [string]$currentVersion.Trim()
+$currentVersion = ([string](Get-Content -LiteralPath $VersionFile -Raw)).Trim()
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = Read-Host "Release version [$currentVersion]"
-
     if ([string]::IsNullOrWhiteSpace($Version)) {
         $Version = $currentVersion
     }
@@ -169,12 +153,8 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 
 $Version = Normalize-Version $Version
 $Tag = "v$Version"
-
 $PackageName = "Job-Tracker-v$Version.zip"
 $PackagePath = Join-Path $ReleaseDir $PackageName
-
-$StageParent = Join-Path ([IO.Path]::GetTempPath()) "JobTrackerRelease_$PID"
-$Stage = Join-Path $StageParent $PackageName.Replace(".zip","")
 
 Write-Host "============================================================"
 Write-Host "Job Tracker - GitHub Release"
@@ -185,47 +165,25 @@ Write-Host "Tag        : $Tag"
 Write-Host "ZIP        : $PackageName"
 Write-Host ""
 
-# ------------------------------------------------------------
-# Validate tag/release do not already exist
-# ------------------------------------------------------------
+# Require authentication before changing anything.
+Invoke-Gh @("auth", "status") | Out-Null
 
-$localTag = Run-Git @("-C", $Root, "tag", "-l", $Tag)
-$localTag = [string]$localTag.Trim()
-
+# Refuse duplicate local/remote tags.
+$localTag = (Invoke-Git @("-C", $Root, "tag", "-l", $Tag)).StdOut.Trim()
 if ($localTag) {
-    Fail "Git tag $Tag already exists locally. Choose a new version."
+    throw "Git tag $Tag already exists locally. Choose a new version."
 }
 
-$remoteTag = & git -C $Root ls-remote --tags origin "refs/tags/$Tag" 2>$null
-if ($LASTEXITCODE -eq 0 -and $remoteTag) {
-    Fail "Git tag $Tag already exists on origin. Choose a new version."
+$remoteTag = (Invoke-Git @("-C", $Root, "ls-remote", "--tags", "origin", "refs/tags/$Tag")).StdOut.Trim()
+if ($remoteTag) {
+    throw "Git tag $Tag already exists on origin. Choose a new version."
 }
 
-if (-not (Get-Command gh.exe -ErrorAction SilentlyContinue)) {
-    Fail "GitHub CLI (gh) is required to publish releases automatically."
-}
-
-& gh auth status | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    Fail "GitHub CLI is not authenticated. Run: gh auth login"
-}
-
-
-
-# ------------------------------------------------------------
-# Update version files
-# ------------------------------------------------------------
-
+# Update canonical version metadata.
 Set-Content -LiteralPath $VersionFile -Value $Version -Encoding UTF8
+@{ version = $Version } | ConvertTo-Json | Set-Content -LiteralPath $UpdateVersionFile -Encoding UTF8
 
-@{
-    version = $Version
-} | ConvertTo-Json | Set-Content -LiteralPath $UpdateVersionFile -Encoding UTF8
-
-# ------------------------------------------------------------
-# Sync updater repository configuration
-# ------------------------------------------------------------
-
+# Keep updater configuration synchronized with the repository remote.
 if (Test-Path -LiteralPath $ConfigFile -PathType Leaf) {
     try {
         $cfg = Get-Content -LiteralPath $ConfigFile -Raw | ConvertFrom-Json
@@ -240,182 +198,166 @@ else {
 
 $cfg | Add-Member -NotePropertyName github_owner -NotePropertyValue $owner -Force
 $cfg | Add-Member -NotePropertyName github_repo -NotePropertyValue $repo -Force
-
 if (-not $cfg.channel) {
     $cfg | Add-Member -NotePropertyName channel -NotePropertyValue "stable" -Force
 }
-
 if (-not $cfg.download_folder) {
     $cfg | Add-Member -NotePropertyName download_folder -NotePropertyValue "downloads" -Force
 }
 
-$cfg | ConvertTo-Json -Depth 10 |
-    Set-Content -LiteralPath $ConfigFile -Encoding UTF8
-
+$cfg | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $ConfigFile -Encoding UTF8
 Write-Host "Updater repository: $owner/$repo"
 
-# ------------------------------------------------------------
-# Remove development virtual environment
-# ------------------------------------------------------------
-
+# Remove development environment.
 $Venv = Join-Path $Root ".venv"
-
 if (Test-Path -LiteralPath $Venv) {
     Write-Host "Removing .venv ..."
     Remove-Item -LiteralPath $Venv -Recurse -Force
+    if (Test-Path -LiteralPath $Venv) {
+        throw "Could not remove .venv."
+    }
+}
+else {
+    Write-Host ".venv not present."
 }
 
-# ------------------------------------------------------------
-# Create clean staging tree
-# ------------------------------------------------------------
+# Build clean staging tree.
+$StageParent = Join-Path ([IO.Path]::GetTempPath()) ("JobTrackerRelease_{0}_{1}" -f $PID, [guid]::NewGuid().ToString("N"))
+$Stage = Join-Path $StageParent ("Job-Tracker-v$Version")
 
 if (Test-Path -LiteralPath $StageParent) {
     Remove-Item -LiteralPath $StageParent -Recurse -Force
 }
-
 New-Item -ItemType Directory -Path $Stage -Force | Out-Null
+New-Item -ItemType Directory -Path $ReleaseDir -Force | Out-Null
 
-$excludedDirectories = @(
-    ".git",
-    ".venv",
-    "data",
-    "uploads",
-    "output",
-    "releases",
-    "__pycache__"
+$excludeDirs = @(
+    (Join-Path $Root ".git"),
+    (Join-Path $Root ".venv"),
+    (Join-Path $Root "data"),
+    (Join-Path $Root "uploads"),
+    (Join-Path $Root "output"),
+    (Join-Path $Root "releases"),
+    (Join-Path $Root "github\downloads")
 )
 
-$excludedFiles = @(
-    ".env",
-    "last-update-check.json"
+$robocopyArgs = @(
+    $Root,
+    $Stage,
+    "/E",
+    "/NFL",
+    "/NDL",
+    "/NJH",
+    "/NJS",
+    "/NP"
 )
 
-Write-Host "Preparing clean release tree..."
-
-Get-ChildItem -LiteralPath $Root -Recurse -Force -File | ForEach-Object {
-
-    $fullPath = $_.FullName
-    $relative = $fullPath.Substring($Root.Length).TrimStart('\')
-
-    $parts = $relative -split '[\\/]'
-
-    $skipDirectory = $false
-
-    foreach ($directory in $excludedDirectories) {
-        if ($parts -contains $directory) {
-            $skipDirectory = $true
-            break
-        }
-    }
-
-    if ($skipDirectory) {
-        return
-    }
-
-    if ($excludedFiles -contains $_.Name) {
-        return
-    }
-
-    $destination = Join-Path $Stage $relative
-    $destinationDirectory = Split-Path -Parent $destination
-
-    New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
-    Copy-Item -LiteralPath $fullPath -Destination $destination -Force
+foreach ($d in $excludeDirs) {
+    $robocopyArgs += @("/XD", $d)
 }
 
-# Empty runtime directories expected by the application
+$robocopyArgs += @(
+    "/XF", ".env", "last-update-check.json"
+)
+
+$copyResult = Invoke-NativeTool -FilePath "robocopy.exe" -Arguments $robocopyArgs -AllowNonZero
+
+# Robocopy exit codes 0..7 are success/non-fatal.
+if ($copyResult.ExitCode -gt 7) {
+    throw "Could not build release staging tree. Robocopy exit code: $($copyResult.ExitCode)"
+}
+
+foreach ($runtimePath in @(
+    "config\google_oauth.json",
+    "github\last-update-check.json",
+    "github\downloads"
+)) {
+    $p = Join-Path $Stage $runtimePath
+    if (Test-Path -LiteralPath $p) {
+        Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+$userBlueprints = Join-Path $Stage "user_blueprints"
+if (Test-Path -LiteralPath $userBlueprints) {
+    Remove-Item -LiteralPath $userBlueprints -Recurse -Force
+}
+New-Item -ItemType Directory -Path $userBlueprints -Force | Out-Null
+
 @(
     "data",
-    "uploads",
-    "output"
+    "uploads\cv",
+    "uploads\coverletters",
+    "output\cv",
+    "output\coverletters"
 ) | ForEach-Object {
     New-Item -ItemType Directory -Path (Join-Path $Stage $_) -Force | Out-Null
 }
 
-# ------------------------------------------------------------
-# Create ZIP
-# ------------------------------------------------------------
+$required = @(
+    "VERSION.txt",
+    "UPDATE_VERSION.json",
+    "START_JOB_TRACKER.bat",
+    "program\app.py",
+    "github\updater.ps1",
+    "github\update-config.json",
+    "blueprint\cv_base.tex",
+    "blueprint\cover_letter_base.tex"
+)
 
-New-Item -ItemType Directory -Path $ReleaseDir -Force | Out-Null
+foreach ($relativePath in $required) {
+    $requiredPath = Join-Path $Stage $relativePath
+    if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+        throw "Required release file is missing: $relativePath"
+    }
+}
 
-if (Test-Path -LiteralPath $PackagePath) {
+$stageVersion = ([string](Get-Content -LiteralPath (Join-Path $Stage "VERSION.txt") -Raw)).Trim()
+if ($stageVersion -ne $Version) {
+    throw "Staged VERSION.txt is '$stageVersion' but expected '$Version'."
+}
+
+# Create ZIP with Job-Tracker-vX.Y.Z as the top-level folder.
+if (Test-Path -LiteralPath $PackagePath -PathType Leaf) {
     Remove-Item -LiteralPath $PackagePath -Force
 }
 
 Write-Host "Creating $PackageName ..."
-
-Compress-Archive `
-    -Path (Join-Path $Stage "*") `
-    -DestinationPath $PackagePath `
-    -CompressionLevel Optimal
+Compress-Archive -Path $Stage -DestinationPath $PackagePath -CompressionLevel Optimal -Force
 
 if (-not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) {
-    Fail "ZIP creation failed."
+    throw "ZIP was not created."
 }
 
-$sizeMB = [Math]::Round(
-    ((Get-Item -LiteralPath $PackagePath).Length / 1MB),
-    2
-)
-
+$sizeMB = [Math]::Round((Get-Item -LiteralPath $PackagePath).Length / 1MB, 2)
 Write-Host "ZIP ready: $PackagePath ($sizeMB MB)"
 
-# ------------------------------------------------------------
-# Commit release changes
-# ------------------------------------------------------------
-
-$status = Run-Git @("-C", $Root, "status", "--porcelain")
-$status = [string]$status
-
-if (-not [string]::IsNullOrWhiteSpace($status)) {
+# Commit version/config changes.
+$statusResult = Invoke-Git @("-C", $Root, "status", "--porcelain")
+if (-not [string]::IsNullOrWhiteSpace($statusResult.StdOut)) {
     Write-Host "Committing release changes..."
-
-    Run-Git @("-C", $Root, "add", "-A") | Out-Null
-    Run-Git @("-C", $Root, "commit", "-m", "Release $Tag") | Out-Null
-
+    Invoke-Git @("-C", $Root, "add", "-A") | Out-Null
+    Invoke-Git @("-C", $Root, "commit", "-m", "Release $Tag") | Out-Null
     Write-Host "Release commit created."
 }
 else {
     Write-Host "Working tree already clean."
 }
 
-# ------------------------------------------------------------
-# Push main
-# ------------------------------------------------------------
-
+# Push main first so the commit containing the final version exists remotely.
 Write-Host "Pushing main..."
+Invoke-Git @("-C", $Root, "push", "origin", "main") | Out-Null
 
-Run-Git @("-C", $Root, "push", "origin", "main") | Out-Null
-
-# ------------------------------------------------------------
-# Create and push tag
-# ------------------------------------------------------------
-
+# Create and push the immutable release tag.
 Write-Host "Creating Git tag $Tag..."
-
-Run-Git @(
-    "-C", $Root,
-    "tag",
-    "-a", $Tag,
-    "-m", "Job Tracker $Tag"
-) | Out-Null
+Invoke-Git @("-C", $Root, "tag", "-a", $Tag, "-m", "Job Tracker $Tag") | Out-Null
 
 Write-Host "Pushing tag $Tag..."
+Invoke-Git @("-C", $Root, "push", "origin", $Tag) | Out-Null
 
-Run-Git @(
-    "-C", $Root,
-    "push",
-    "origin",
-    $Tag
-) | Out-Null
-
-# ------------------------------------------------------------
-# Create GitHub Release + upload ZIP
-# ------------------------------------------------------------
-
-Write-Host "Creating GitHub Release $Tag..."
-
-Run-Gh @(
+# Create the published GitHub Release and upload the exact ZIP.
+Write-Host "Creating GitHub Release $Tag and uploading ZIP..."
+Invoke-Gh @(
     "release",
     "create",
     $Tag,
@@ -434,10 +376,6 @@ Write-Host "Tag     : $Tag"
 Write-Host "ZIP     : $PackagePath"
 Write-Host "GitHub  : https://github.com/$owner/$repo/releases/tag/$Tag"
 Write-Host "============================================================"
-
-# ------------------------------------------------------------
-# Cleanup staging tree
-# ------------------------------------------------------------
 
 try {
     if (Test-Path -LiteralPath $StageParent) {
