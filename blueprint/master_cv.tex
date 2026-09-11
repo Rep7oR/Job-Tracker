@@ -1,0 +1,156 @@
+\documentclass[a4paper,10pt]{article}
+
+% ---------- PAGE SETUP ----------
+\usepackage[
+    left=0.65in,
+    right=0.65in,
+    top=0.55in,
+    bottom=0.55in
+]{geometry}
+
+% ---------- PACKAGES ----------
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{ragged2e}
+
+% ---------- GENERAL FORMATTING ----------
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\setlength{\tabcolsep}{0pt}
+
+\renewcommand{\familydefault}{\sfdefault}
+
+% ---------- SECTION STYLE ----------
+\titleformat{\section}
+  {\large\bfseries}
+  {}
+  {0pt}
+  {}
+  [\vspace{-5pt}\rule{\textwidth}{0.5pt}]
+
+\titlespacing*{\section}
+  {0pt}{8pt}{5pt}
+
+% ---------- LIST STYLE ----------
+\setlist[itemize]{
+    leftmargin=14pt,
+    itemsep=2pt,
+    topsep=2pt,
+    parsep=0pt,
+    partopsep=0pt
+}
+
+% ---------- CUSTOM COMMANDS ----------
+\newcommand{\resumeSubheading}[4]{
+    \begin{tabularx}{\textwidth}{@{}X r@{}}
+        \textbf{#1} & #2 \\
+        \textit{#3} & \textit{#4}
+    \end{tabularx}
+    \vspace{2pt}
+}
+
+\newcommand{\resumeProject}[2]{
+    \begin{tabularx}{\textwidth}{@{}X r@{}}
+        \textbf{#1} & \textit{#2}
+    \end{tabularx}
+    \vspace{1pt}
+}
+
+\newcommand{\skillrow}[2]{
+    \textbf{#1} #2\\[2pt]
+}
+
+\begin{document}
+
+\begin{center}
+
+{\LARGE \textbf{Shine Sabeena Hubaid}}\\[4pt]
+Hannover, Germany
+\href{mailto:shineshubaid@gmail.com}{shineshubaid@gmail.com} | +49 15221090798\\[5pt]
+\textbf{Aeronautical Engineering | Aircraft MRO | Intelligent Manufacturing}
+
+\end{center}
+\vspace{-3pt}
+
+\section*{Profile}
+
+Aeronautical Engineer and M.Sc. Intelligent Manufacturing student with hands-on aircraft MRO experience supporting component repair planning, maintenance coordination, technical documentation, inspections, and continuing airworthiness activities. Experienced in working with MPD, AD, SB, AMM, and IPC requirements, supporting AME activities, tracking parts and work orders in SAP, and coordinating with engineering, workshop, and logistics teams. Additional engineering experience in data-driven condition monitoring, technical evaluation, troubleshooting, and preventive maintenance support. Interested in developing further as an MRO Engineer within a regulated aerospace environment.
+
+\section*{Technical Knowledge -- MRO Engineering}
+
+\skillrow{Aircraft MRO}{Maintenance Operations, Repair Planning, Maintenance Task Coordination, Component Inspection, Functional Testing, Serviceability Checks}
+\skillrow{Maintenance Documentation}{MPD, AD, SB, AMM, IPC, Maintenance Work Instructions, Technical Records, Component Traceability}
+\skillrow{Planning \& Coordination}{Material and Part Availability, Work Orders, Repair Tracking, Maintenance Turnaround, Engineering--Workshop--Logistics Coordination}
+\skillrow{Airworthiness \& Compliance}{CAMO Process Exposure, Continuing Airworthiness, Aviation Safety, Regulatory Compliance, MRO Practices, Part-145/Part-M Fundamentals}
+\skillrow{Engineering Problem Solving}{Technical Evaluation, Troubleshooting, Root Cause Analysis, Corrective Actions, Preventive Maintenance, Condition Monitoring}
+\skillrow{Manufacturing \& Engineering}{Production Systems, Maintenance Management, Quality Engineering, Technical Drawings, Mechanical Systems, Engineering Documentation}
+\skillrow{Tools \& Data}{SAP, Microsoft Excel, Microsoft Word, Basic SQL, Data Analysis, Sensor-Based Data Collection and Evaluation}
+
+\section*{Professional Experience}
+
+\resumeSubheading{Graduate Engineering Trainee -- Aircraft MRO}{}{Mar 2022 -- Sep 2022}{Air India Engineering Services Limited, India}
+\begin{itemize}
+\item Supported aircraft component repair planning and maintenance coordination with engineering, workshop, and logistics teams, aligning maintenance requirements, component status, materials, and repair activities.
+\item Reviewed MPD, AD, SB, and AMM documentation to understand applicable maintenance requirements, approved procedures, technical instructions, and task implementation.
+\item Supported AME activities through component inspections, functional testing, serviceability checks, and review of inspection results and technical documentation.
+\item Used SAP for material and part availability, work-order related activities, order creation, repair tracking, and monitoring maintenance progress against turnaround requirements.
+\item Maintained accurate and traceable maintenance records and supported activities in line with aviation quality, safety, regulatory, CAMO, and continuing-airworthiness practices.
+\end{itemize}
+
+\resumeSubheading{Engineering -- Data Evaluation, System Integration \& Assembly}{}{Dec 2022 -- Sep 2023}{Agrowtein Labs, India}
+\begin{itemize}
+\item Supported development of a sensor-based monitoring system for collecting and evaluating machine data to identify operational errors and support preventive maintenance decisions.
+\item Analysed collected data to identify abnormal operating behaviour, communicated findings with the engineering team, and supported practical workarounds to reduce operational issues.
+\item Worked with mechanical, electronic, and sensor components during system integration, using technical drawings and specifications to verify interfaces, configuration, alignment, and installation.
+\item Performed functional testing and troubleshooting following system modifications, evaluating results against technical requirements and supporting engineering decisions.
+\item Maintained technical information, component data, test results, and engineering changes to support traceability and effective communication within the team.
+\end{itemize}
+
+\newpage
+
+\section*{Engineering Project}
+
+\resumeProject{Condition Monitoring Concept for Preventive Maintenance}{}
+\begin{itemize}
+\item Developed and evaluated a sensor-based approach for collecting machine operating data and identifying abnormal conditions that could indicate maintenance needs.
+\item Analysed operational data to detect errors and support timely maintenance decisions, with emphasis on reducing avoidable operational issues.
+\item Connected data evaluation with practical engineering actions, communicating findings and supporting corrective or preventive measures.
+\end{itemize}
+
+\section*{Education}
+
+\begin{itemize}
+\item Technical University of Clausthal, Germany \hfill Oct 2023 -- Present\\
+Master of Science in Intelligent Manufacturing\\
+Relevant areas: Maintenance Management, Production Systems, Quality Engineering, Industrial Processes, Manufacturing Systems, Computer-Integrated Manufacturing (CIM)
+\item Hindustan Institute of Technology and Science, India \hfill Jun 2016 -- May 2020\\
+Bachelor of Technology in Aeronautical Engineering\\
+Relevant areas: Aircraft Structures, Materials \& Processes, Mechanical Systems, Aviation Safety and Maintenance
+\end{itemize}
+
+\section*{Certification}
+
+\begin{itemize}
+\item Google Data Analytics Professional Certificate \hfill Jul 2021 -- Jan 2022\\
+Google -- Coursera: Data Cleaning, Analysis and Visualization using Spreadsheets, SQL, and Structured Datasets
+\end{itemize}
+
+\section*{Languages}
+
+\begin{itemize}
+\item English: Fluent (C1) \hspace{20pt} German: A2 -- Currently improving
+\end{itemize}
+
+\section*{Additional Information}
+
+\begin{itemize}
+\item Strong interest in aircraft MRO, repair planning, maintenance management, continuing airworthiness, and engineering problem solving.
+\item Comfortable working across engineering, maintenance, workshop, logistics, and material-management interfaces.
+\item Willing to relocate within Germany, travel for maintenance-related assignments, and complete company-specific and regulatory training.
+\item Willing to work within regulated aerospace environments and complete required security-clearance processes.
+\end{itemize}
+
+\end{document}

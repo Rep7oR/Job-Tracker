@@ -1,0 +1,2 @@
+playwright>=1.50
+greenlet>=3.2.4

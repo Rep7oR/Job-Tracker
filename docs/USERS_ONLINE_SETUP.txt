@@ -1,0 +1,16 @@
+JobSync Users Online + Roles - v1.2.1(2)
+
+ONE-TIME SUPABASE SETUP
+1. Open Supabase SQL Editor for the JobSync project.
+2. Open supabase_presence.sql from this package.
+3. Run the entire SQL script.
+4. Start/restart JobSync and log in.
+5. The right-side Team Presence panel should show the logged-in user, role, online users and any locally known offline users.
+6. Start another JobSync installation using the same release/project to see both online users.
+
+The app uses the Supabase publishable key. Never replace it with a secret/service-role key.
+
+ROLE FOUNDATION
+The role registry is intentionally local in this version. The first account created on an installation is assigned the admin role. Admins can assign admin/moderator/member roles to emails in Settings; moderators can view the roster. The role badge is also sent with each user's presence record so the right-side panel can display the active role.
+
+Shared server-side role enforcement is left for the later admin-command phase. Until then, do not treat this local role registry as a security boundary.

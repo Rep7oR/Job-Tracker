@@ -1,0 +1,11 @@
+{
+  "installed": {
+    "client_id": "YOUR_APP_OAUTH_CLIENT_ID",
+    "client_secret": "YOUR_APP_OAUTH_CLIENT_SECRET",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "redirect_uris": [
+      "http://localhost"
+    ]
+  }
+}

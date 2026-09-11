@@ -1,0 +1,15 @@
+streamlit
+python-dotenv
+apify-client
+pymupdf
+python-docx
+XlsxWriter
+plotly
+
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+requests
+beautifulsoup4
+lxml
+
