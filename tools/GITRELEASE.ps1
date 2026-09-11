@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$Version = ""
 )
@@ -149,10 +149,7 @@ if ($LASTEXITCODE -ne 0) {
     Fail "GitHub CLI is not authenticated. Run: gh auth login"
 }
 
-& gh release view $Tag --repo "$owner/$repo" 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) {
-    Fail "GitHub Release $Tag already exists. Choose a new version."
-}
+
 
 # ------------------------------------------------------------
 # Update version files
