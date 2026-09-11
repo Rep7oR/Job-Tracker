@@ -18,3 +18,6 @@ data/*.log
 releases/
 github/last-update-check.json
 github/downloads/
+
+config/master_settings.json
+program/data/

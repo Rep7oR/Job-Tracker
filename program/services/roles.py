@@ -5,6 +5,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 ROLES_FILE = BASE_DIR / "data" / "roles.json"
+MASTER_SETTINGS_FILE = BASE_DIR / "config" / "master_settings.json"
 ROLE_OPTIONS = ("admin", "moderator", "member")
 ROLE_ACCESS = {"admin": 3, "moderator": 2, "member": 1}
 
@@ -22,6 +23,58 @@ def _load() -> dict:
 def _save(data: dict) -> None:
     ROLES_FILE.parent.mkdir(parents=True, exist_ok=True)
     ROLES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+
+
+def load_master_settings() -> dict:
+    if not MASTER_SETTINGS_FILE.exists():
+        return {}
+    try:
+        data = json.loads(MASTER_SETTINGS_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def get_master_admin_email() -> str:
+    settings = load_master_settings()
+    return str(settings.get("master_admin_email") or "").strip().lower()
+
+
+def role_for_new_user(email: str) -> str:
+    email = str(email or "").strip().lower()
+    master_email = get_master_admin_email()
+    return "admin" if master_email and email == master_email else "member"
+
+
+def ensure_authenticated_user(email: str, display_name: str = "") -> dict:
+    email = str(email or "").strip().lower()
+    if not email:
+        return {"email": "", "display_name": display_name or "User", "role": "member"}
+    data = _load()
+    record = data.get(email)
+    if not isinstance(record, dict):
+        record = {
+            "email": email,
+            "display_name": display_name or "User",
+            "role": role_for_new_user(email),
+            "last_seen": "",
+        }
+    else:
+        record["email"] = email
+        if display_name:
+            record["display_name"] = display_name
+    # The master email is always the designated bootstrap administrator.
+    # Other users keep their existing role so administrators can still
+    # promote/demote them after they join.
+    if get_master_admin_email() == email:
+        record["role"] = "admin"
+    else:
+        record["role"] = normalize_role(record.get("role", "member"))
+    data[email] = record
+    _save(data)
+    return record
 
 
 def normalize_role(role: str) -> str:

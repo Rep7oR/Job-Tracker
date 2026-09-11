@@ -31,7 +31,7 @@ from services.avatar import avatar_html
 from services.linkedin_browser import sync_linkedin_notifications, connect_linkedin
 from services.free_job_sources import FREE_SOURCE_NAMES
 from services.presence import heartbeat_presence, list_online_users, remove_presence
-from services.roles import ROLE_ACCESS, ROLE_OPTIONS, ensure_user, get_user_role, list_users, normalize_role, set_user_role, touch_user, update_user, remove_user, is_user_blocked
+from services.roles import ROLE_ACCESS, ROLE_OPTIONS, ensure_user, ensure_authenticated_user, get_master_admin_email, get_user_role, list_users, normalize_role, set_user_role, touch_user, update_user, remove_user, is_user_blocked
 
 PROGRAM_DIR = Path(__file__).resolve().parent
 PACKAGE_DIR = PROGRAM_DIR.parent.resolve()
@@ -1116,6 +1116,97 @@ st.markdown(
         [data-baseweb="tab"] { white-space: nowrap !important; padding: 0 .75rem !important; }
         body::after { display: none !important; }
     }
+    /* Final responsive scroll/navigation safety overrides */
+    html, body {
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+    [data-testid="stAppViewContainer"] {
+        height: 100dvh !important;
+        overflow: hidden !important;
+    }
+    [data-testid="stAppViewContainer"] > .main,
+    .stMain {
+        height: 100dvh !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-gutter: stable;
+    }
+    [data-testid="stAppViewContainer"] .block-container {
+        min-height: max-content !important;
+    }
+
+    /* Keep the desktop navigation in its own scrolling rail. */
+    section[data-testid="stSidebar"] {
+        max-height: 100dvh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Small windows/tablets/phones: navigation overlays the page instead of
+       stealing document width. Main content always keeps its own scroll. */
+    @media (max-width: 900px) {
+        section[data-testid="stSidebar"] {
+            position: fixed !important;
+            inset: 0 auto 0 0 !important;
+            width: min(300px, 88vw) !important;
+            min-width: min(300px, 88vw) !important;
+            max-width: min(300px, 88vw) !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+            z-index: 2147483000 !important;
+            box-sizing: border-box !important;
+        }
+        section[data-testid="stSidebar"] > div:first-child {
+            min-height: 100% !important;
+            height: auto !important;
+            overflow-y: visible !important;
+        }
+        [data-testid="stAppViewContainer"] > .main,
+        .stMain,
+        .main {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+            height: 100dvh !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+        }
+        .main .block-container,
+        [data-testid="stAppViewContainer"] .block-container {
+            width: auto !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding-left: .75rem !important;
+            padding-right: .75rem !important;
+        }
+        .jobsync-presence-panel {
+            position: relative !important;
+            inset: auto !important;
+            width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            margin-bottom: 1rem !important;
+            z-index: auto !important;
+        }
+    }
+
+    @media (max-width: 560px) {
+        section[data-testid="stSidebar"] {
+            width: min(290px, 91vw) !important;
+            min-width: min(290px, 91vw) !important;
+            max-width: min(290px, 91vw) !important;
+        }
+        .main .block-container,
+        [data-testid="stAppViewContainer"] .block-container {
+            padding-left: .55rem !important;
+            padding-right: .55rem !important;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1146,24 +1237,22 @@ def _role_badge(role: str) -> str:
 
 
 def ensure_local_admin() -> str:
-    """Ensure at least one local account is an admin so the role panel is reachable."""
+    """Return the authenticated user's current role.
+
+    New users are members unless their email matches the configured
+    master administrator email. The first account is never promoted
+    automatically.
+    """
     if not st.session_state.get("authenticated"):
         return "guest"
+
     email = str(st.session_state.get("auth_email") or account_email()).strip().lower()
     name = str(profile.get("name") or "User").strip() or "User"
     if not email:
         return "member"
-    users = list_users()
-    admins = [u for u in users if normalize_role(u.get("role")) == "admin"]
-    # A single-account local installation should always leave its owner with
-    # access to the administration panel. Older builds could have created that
-    # first account as member/moderator, so migrate the sole account to admin.
-    if not admins or (len(users) == 1 and users[0].get("email") == email):
-        record = ensure_user(email, name, default_role="admin")
-        if normalize_role(record.get("role")) != "admin":
-            set_user_role(email, "admin", name)
-        return "admin"
-    return get_user_role(email, default="member")
+
+    record = ensure_authenticated_user(email, name)
+    return normalize_role(record.get("role"))
 
 
 def render_online_users() -> None:
@@ -1938,8 +2027,7 @@ if page == "Login":
             elif verify_login(email, password):
                 st.session_state.authenticated = True
                 st.session_state.auth_email = email.strip().lower()
-                default_role = "admin" if not list_users() else "member"
-                ensure_user(st.session_state.auth_email, profile.get("name") or "User", default_role=default_role)
+                ensure_authenticated_user(st.session_state.auth_email, profile.get("name") or "User")
                 st.session_state.show_password_reset = False
                 st.session_state.nav = "Dashboard"
                 st.rerun()
@@ -2001,8 +2089,7 @@ elif page == "Sign Up":
                     st.session_state.authenticated = True
                     st.session_state.auth_email = email.strip().lower()
                     # The first local account owns this installation. Future accounts default to member.
-                    default_role = "admin" if not list_users() else "member"
-                    ensure_user(st.session_state.auth_email, profile.get("name") or "User", default_role=default_role)
+                    ensure_authenticated_user(st.session_state.auth_email, profile.get("name") or "User")
                     st.session_state.nav = "Profile"
                     st.rerun()
                 except Exception as exc:
@@ -2956,7 +3043,8 @@ elif page == "Folders":
 
     # Library summary + backup controls
     current_docs = sorted(cv_document_records(), key=lambda d: str(d.get("created_at") or ""), reverse=True)
-    latest_backup = Path(str(state.get("settings", {}).get("cv_last_backup_path") or ""))
+    latest_backup_value = str(state.get("settings", {}).get("cv_last_backup_path") or "").strip()
+    latest_backup = Path(latest_backup_value) if latest_backup_value else None
     summary_a, summary_b, summary_c = st.columns(3)
     with summary_a:
         st.metric("Saved CVs", len(current_docs))
@@ -2965,7 +3053,7 @@ elif page == "Folders":
     with summary_c:
         st.metric("Backups", int(state.get("settings", {}).get("cv_backup_count", 0)))
 
-    st.markdown(f'<div class="card" style="padding:14px 16px;margin:8px 0 16px"><div style="font-size:.68rem;color:#7f8a99;text-transform:uppercase;letter-spacing:.12em;font-weight:900">CV folder location</div><div style="margin-top:5px;color:#dce2e9;font-family:Consolas,monospace;font-size:.8rem;word-break:break-all">{html.escape(str(library_path.resolve()))}</div><div style="display:flex;gap:8px;align-items:center;margin-top:8px;color:#8f9aaa;font-size:.74rem">{html.escape("Latest backup: " + (str(latest_backup.resolve()) if latest_backup.exists() else "Not created yet"))}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="card" style="padding:14px 16px;margin:8px 0 16px"><div style="font-size:.68rem;color:#7f8a99;text-transform:uppercase;letter-spacing:.12em;font-weight:900">CV folder location</div><div style="margin-top:5px;color:#dce2e9;font-family:Consolas,monospace;font-size:.8rem;word-break:break-all">{html.escape(str(library_path.resolve()))}</div><div style="display:flex;gap:8px;align-items:center;margin-top:8px;color:#8f9aaa;font-size:.74rem">{html.escape("Latest backup: " + (str(latest_backup.resolve()) if latest_backup is not None and latest_backup.exists() else "Not created yet"))}</div></div>', unsafe_allow_html=True)
     backup_c1, backup_c2 = st.columns([1, 3])
     with backup_c1:
         if st.button("Create backup now", width="stretch", key="folders_backup_now"):
@@ -2976,7 +3064,7 @@ elif page == "Folders":
             except Exception as exc:
                 notify_error(f"Backup failed: {exc}")
     with backup_c2:
-        if latest_backup.exists():
+        if latest_backup is not None and latest_backup.exists():
             st.download_button("Download latest backup ZIP", latest_backup.read_bytes(), file_name=latest_backup.name, mime="application/zip", width="stretch", key="download_latest_cv_backup")
 
     st.markdown(f'<div style="display:flex;justify-content:space-between;align-items:end;margin:10px 0 8px"><div><div class="section-title" style="margin-bottom:0">CV library</div><div class="muted">{len(current_docs)} document(s) · edit the position and CV name directly below</div></div></div>', unsafe_allow_html=True)
@@ -3060,8 +3148,9 @@ elif page == "Folders":
 
     # Keep the backup information at the bottom as requested.
     st.markdown('<div class="card" style="padding:16px;margin-top:14px"><div class="section-title" style="margin-bottom:6px">Folder backup</div><div class="muted">The complete CV library and its metadata are backed up locally in a timestamped ZIP after uploads and metadata changes.</div></div>', unsafe_allow_html=True)
-    final_backup = Path(str(state.get("settings", {}).get("cv_last_backup_path") or ""))
-    if final_backup.exists():
+    final_backup_value = str(state.get("settings", {}).get("cv_last_backup_path") or "").strip()
+    final_backup = Path(final_backup_value) if final_backup_value else None
+    if final_backup is not None and final_backup.exists():
         st.code(str(final_backup.resolve()), language="text")
         st.caption(f"Last backup created: {state.get('settings', {}).get('cv_last_backup_at','')}")
     else:
@@ -3209,7 +3298,7 @@ elif page == "Admin Panel":
                     update_account_email(new_email)
                     update_user(old_email, display_name=account_name)
                     remove_user(old_email)
-                    ensure_user(new_email, account_name, default_role="admin")
+                    ensure_authenticated_user(new_email, account_name)
                     st.session_state.auth_email = new_email
                 else:
                     update_user(old_email, display_name=account_name)

@@ -11,6 +11,6 @@ ONE-TIME SUPABASE SETUP
 The app uses the Supabase publishable key. Never replace it with a secret/service-role key.
 
 ROLE FOUNDATION
-The role registry is intentionally local in this version. The first account created on an installation is assigned the admin role. Admins can assign admin/moderator/member roles to emails in Settings; moderators can view the roster. The role badge is also sent with each user's presence record so the right-side panel can display the active role.
+The role registry is intentionally local in this version. The master administrator is configured in config/master_settings.json using the master_admin_email value. New accounts are members by default; the configured master email is assigned the admin role. Admins can assign admin/moderator/member roles to emails in Settings; moderators can view the roster. The role badge is also sent with each user's presence record so the right-side panel can display the active role.
 
 Shared server-side role enforcement is left for the later admin-command phase. Until then, do not treat this local role registry as a security boundary.
