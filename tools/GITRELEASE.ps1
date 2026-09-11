@@ -17,21 +17,66 @@ function Fail([string]$Message) {
     throw $Message
 }
 
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FilePath,
+
+        [Parameter(Mandatory)]
+        [string[]]$Arguments
+    )
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.CreateNoWindow = $true
+
+    foreach ($argument in $Arguments) {
+        [void]$psi.ArgumentList.Add($argument)
+    }
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
+
+    [void]$process.Start()
+
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+
+    $process.WaitForExit()
+
+    return [pscustomobject]@{
+        ExitCode = $process.ExitCode
+        StdOut   = $stdout
+        StdErr   = $stderr
+    }
+}
+
 function Run-Git {
     param(
         [Parameter(Mandatory)]
         [string[]]$Arguments
     )
 
-    $output = & git @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
+    $result = Invoke-NativeCommand -FilePath "git.exe" -Arguments $Arguments
 
-    if ($exitCode -ne 0) {
-        $text = ($output | ForEach-Object { [string]$_ }) -join "`n"
-        throw "Git command failed:`n  git $($Arguments -join ' ')`n$text"
+    if ($result.StdOut) {
+        Write-Host $result.StdOut.TrimEnd()
     }
 
-    return (($output | ForEach-Object { [string]$_ }) -join "`n")
+    if ($result.ExitCode -ne 0) {
+        $details = $result.StdErr.Trim()
+
+        if (-not $details) {
+            $details = $result.StdOut.Trim()
+        }
+
+        throw "Git command failed:`n  git $($Arguments -join ' ')`n$details"
+    }
+
+    return $result.StdOut
 }
 
 function Run-Gh {
@@ -40,17 +85,24 @@ function Run-Gh {
         [string[]]$Arguments
     )
 
-    $output = & gh @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
+    $result = Invoke-NativeCommand -FilePath "gh.exe" -Arguments $Arguments
 
-    if ($exitCode -ne 0) {
-        $text = ($output | ForEach-Object { [string]$_ }) -join "`n"
-        throw "GitHub CLI command failed:`n  gh $($Arguments -join ' ')`n$text"
+    if ($result.StdOut) {
+        Write-Host $result.StdOut.TrimEnd()
     }
 
-    return (($output | ForEach-Object { [string]$_ }) -join "`n")
-}
+    if ($result.ExitCode -ne 0) {
+        $details = $result.StdErr.Trim()
 
+        if (-not $details) {
+            $details = $result.StdOut.Trim()
+        }
+
+        throw "GitHub CLI command failed:`n  gh $($Arguments -join ' ')`n$details"
+    }
+
+    return $result.StdOut
+}
 function Normalize-Version([string]$Value) {
     $Value = if ($null -eq $Value) { "" } else { ([string]$Value).Trim() }
     $Value = $Value -replace '^[vV]\.?', ''
