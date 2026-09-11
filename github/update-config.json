@@ -1,6 +1,6 @@
-{
-  "github_owner": "Rep7oR",
-  "github_repo": "Job-Tracker",
-  "channel": "stable",
-  "download_folder": "downloads"
+﻿{
+    "channel":  "stable",
+    "download_folder":  "downloads",
+    "github_owner":  "Rep7oR",
+    "github_repo":  "Job-Tracker"
 }
