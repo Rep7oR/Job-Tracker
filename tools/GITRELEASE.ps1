@@ -26,31 +26,36 @@ function Invoke-NativeCommand {
         [string[]]$Arguments
     )
 
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = $FilePath
-    $psi.UseShellExecute = $false
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.CreateNoWindow = $true
+    $errorFile = Join-Path `
+        ([IO.Path]::GetTempPath()) `
+        ("JobTrackerNativeError_{0}.txt" -f $PID)
 
-    foreach ($argument in $Arguments) {
-        [void]$psi.ArgumentList.Add($argument)
+    if (Test-Path -LiteralPath $errorFile) {
+        Remove-Item -LiteralPath $errorFile -Force -ErrorAction SilentlyContinue
     }
 
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $psi
+    try {
+        $output = & $FilePath @Arguments 2> $errorFile
+        $exitCode = $LASTEXITCODE
 
-    [void]$process.Start()
+        $stderr = ""
+        if (Test-Path -LiteralPath $errorFile) {
+            $stderr = [string]::Join(
+                "`n",
+                @(Get-Content -LiteralPath $errorFile -ErrorAction SilentlyContinue)
+            )
+        }
 
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $stderr = $process.StandardError.ReadToEnd()
-
-    $process.WaitForExit()
-
-    return [pscustomobject]@{
-        ExitCode = $process.ExitCode
-        StdOut   = $stdout
-        StdErr   = $stderr
+        return [pscustomobject]@{
+            ExitCode = $exitCode
+            StdOut   = [string]::Join("`n", @($output))
+            StdErr   = $stderr
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $errorFile) {
+            Remove-Item -LiteralPath $errorFile -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
@@ -60,7 +65,9 @@ function Run-Git {
         [string[]]$Arguments
     )
 
-    $result = Invoke-NativeCommand -FilePath "git.exe" -Arguments $Arguments
+    $result = Invoke-NativeCommand `
+        -FilePath "git.exe" `
+        -Arguments $Arguments
 
     if ($result.StdOut) {
         Write-Host $result.StdOut.TrimEnd()
@@ -85,7 +92,9 @@ function Run-Gh {
         [string[]]$Arguments
     )
 
-    $result = Invoke-NativeCommand -FilePath "gh.exe" -Arguments $Arguments
+    $result = Invoke-NativeCommand `
+        -FilePath "gh.exe" `
+        -Arguments $Arguments
 
     if ($result.StdOut) {
         Write-Host $result.StdOut.TrimEnd()
