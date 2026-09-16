@@ -17,6 +17,11 @@ import time
 from dataclasses import dataclass, field
 
 WAKE_WORDS = ("hey jobsync", "hey sync", "hello sync", "hey job sync")
+# Speech-to-text engines routinely mangle the made-up word "JobSync" into
+# near-homophones ("job sink", "job think", "jobsink", "jobsing", ...), so the
+# wake check below also accepts a wake greeting followed by any of these.
+WAKE_SOUND_ALIKES = ("sync", "sink", "think", "singh", "sing", "sinc")
+WAKE_GREETINGS = ("hey", "hello", "hi")
 STOP_WORDS = ("stop", "cancel", "never mind", "nevermind")
 
 NAV_ALIASES = {
@@ -86,7 +91,25 @@ def get_state() -> VoiceState:
 
 def _contains_wake_word(text: str) -> bool:
     text = text.lower()
-    return any(w in text for w in WAKE_WORDS)
+    if any(w in text for w in WAKE_WORDS):
+        return True
+    words = re.findall(r"[a-z']+", text)
+    for i, word in enumerate(words[:-1]):
+        if word in WAKE_GREETINGS and any(sound in words[i + 1] for sound in WAKE_SOUND_ALIKES):
+            return True
+    return False
+
+
+def _strip_wake_word(text: str) -> str:
+    """Remove the wake greeting + sound-alike from the start of an utterance."""
+    for w in WAKE_WORDS:
+        text = text.replace(w, "")
+    words = re.findall(r"[a-z']+", text)
+    for i, word in enumerate(words[:-1]):
+        if word in WAKE_GREETINGS and any(sound in words[i + 1] for sound in WAKE_SOUND_ALIKES):
+            remainder = " ".join(words[i + 2:])
+            return remainder.strip(" ,.")
+    return text.strip(" ,.")
 
 
 def _contains_stop_word(text: str) -> bool:
@@ -211,10 +234,7 @@ def _listen_loop() -> None:
 
         if not _STATE.snapshot()["awake"]:
             if _contains_wake_word(text):
-                remainder = text.lower()
-                for w in WAKE_WORDS:
-                    remainder = remainder.replace(w, "")
-                remainder = remainder.strip(" ,.")
+                remainder = _strip_wake_word(text.lower())
                 _STATE.update(awake=True, status="I'm listening…")
                 if remainder:
                     _handle_command(remainder)

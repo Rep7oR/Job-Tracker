@@ -3296,7 +3296,7 @@ def _local_ai_config(provider: str | None) -> dict:
 # rather download a model to this PC instead (large download, no key).
 HOSTED_AI_MODELS = {
     "Gemini 2.5 Flash": {"provider": "Gemini", "model": "gemini-2.5-flash", "tier": "Free", "note": "Free Google AI Studio key · fast"},
-    "Gemini 2.5 Pro": {"provider": "Gemini", "model": "gemini-2.5-pro", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
+    "Gemini 2.5 Pro": {"provider": "Gemini", "model": "gemini-2.5-pro", "tier": "Paid", "note": "Google AI Studio key with billing enabled · stronger reasoning (free-tier keys get a 404 on this model)"},
     "GPT-4o mini": {"provider": "ChatGPT", "model": "gpt-4o-mini", "tier": "Paid", "note": "OpenAI API key with billing · low cost"},
     "GPT-4o": {"provider": "ChatGPT", "model": "gpt-4o", "tier": "Paid", "note": "OpenAI API key with billing · premium quality"},
     "Claude Haiku 4.5": {"provider": "Claude", "model": "claude-haiku-4-5-20251001", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
@@ -4190,6 +4190,12 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
             headers={"Content-Type": "application/json"}, params={"key": key},
             json={"systemInstruction": {"parts": [{"text": system}]}, "contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}}, timeout=180,
         )
+        if response.status_code == 404:
+            raise RuntimeError(
+                f"Google rejected model '{model}' (404) for this API key. This usually means the key doesn't have "
+                "access to that model — e.g. a free AI Studio key on 'Gemini 2.5 Pro'. Try 'Gemini 2.5 Flash' instead, "
+                "or enable billing on this key."
+            )
         response.raise_for_status()
         data = response.json()
         parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
