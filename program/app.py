@@ -6351,6 +6351,8 @@ elif page == "CV & Cover Letter":
 
     elif not prompt_ready and wizard_step == 2:
         doc=st.session_state.get("cv_wizard_doc","CV")
+        if st.button("← Back", key=f"cvwiz_back2_{cv_cycle}"):
+            st.session_state["cv_wizard_step"] = 1; st.rerun()
         st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 2 OF 4</div><div class="cvwiz-question">Which AI should create your {html.escape(doc)}?</div><div class="cvwiz-copy">Generation runs online by default, so JobSync stays a small install. Free models cost nothing but still need a free API key; paid models need your own billed key. An offline/local option is also available below for advanced use.</div><div class="cvwiz-choice-grid">',unsafe_allow_html=True)
         selected_ai = st.session_state.get("cv_wizard_ai", AI_DEFAULT_PROVIDER)
 
@@ -6391,6 +6393,8 @@ elif page == "CV & Cover Letter":
 
     elif not prompt_ready and wizard_step == 3:
         provider=st.session_state.get("cv_wizard_ai",AI_DEFAULT_PROVIDER); doc=st.session_state.get("cv_wizard_doc","CV")
+        if st.button("← Back", key=f"cvwiz_back3_{cv_cycle}"):
+            st.session_state["cv_wizard_step"] = 2; st.rerun()
         st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 3 OF 4</div><div class="cvwiz-question">Which job should JobSync tailor it to?</div><div class="cvwiz-copy">Pick a saved vacancy or enter the missing details. JobSync auto-fills everything it already knows.</div>',unsafe_allow_html=True)
         jobs=state.get("search_results",[]) or []
         saved_jobs=[]
@@ -6450,6 +6454,8 @@ elif page == "CV & Cover Letter":
         # that only ever visually wrapped the first markdown call's own
         # fragment, so the uploader/button/errors always rendered as
         # separate, unstyled elements below an oversized, mostly-empty box.
+        if st.button("← Back", key=f"cvwiz_back4_{cv_cycle}"):
+            st.session_state["cv_wizard_step"] = 3; st.rerun()
         with st.container(key="cvwiz_step4_panel"):
             st.markdown(f'<div class="cvwiz-eyebrow">STEP 4 OF 4</div><div class="cvwiz-question">Ready to build your {html.escape(doc)}?</div><div class="cvwiz-copy">JobSync assembles the complete prompt, sends it to {html.escape(provider)}, validates the returned LaTeX, shows the source here, lets you copy it into Overleaf, and keeps the final PDF in the JobSync folder.</div><div class="cvwiz-ready"><b>{html.escape(job.get("title") or "Untitled role")}</b><span>{html.escape(job.get("company") or "Company not entered")} · {html.escape(job.get("location") or "Location not entered")}</span></div>',unsafe_allow_html=True)
             refs=st.file_uploader("Optional reference CV / cover letter",type=["pdf","tex","docx"],accept_multiple_files=True,key=f"cvwiz_refs_{cv_cycle}")
@@ -6711,11 +6717,22 @@ elif page == "CV & Cover Letter":
                   <div class="cvwiz-question">The document could not be completed</div>
                   <div class="cvwiz-copy">{html.escape(str(st.session_state.get("cv_generation_error") or "Unknown error"))}</div>
                 </div>''', unsafe_allow_html=True)
-            if st.button("Try generation again", key=f"cvwiz_retry_{cv_cycle}", type="primary", width="stretch"):
-                st.session_state["cv_generation_error"] = ""
-                st.session_state["cv_generation_status"] = "prompt_generated"
-                st.session_state["cv_generation_running"] = False
-                st.rerun()
+            retry_col, back_col = st.columns(2, gap="small")
+            with retry_col:
+                if st.button("Try generation again", key=f"cvwiz_retry_{cv_cycle}", type="primary", width="stretch"):
+                    st.session_state["cv_generation_error"] = ""
+                    st.session_state["cv_generation_status"] = "prompt_generated"
+                    st.session_state["cv_generation_running"] = False
+                    st.rerun()
+            with back_col:
+                if st.button("← Start over", key=f"cvwiz_error_back_{cv_cycle}", width="stretch"):
+                    st.session_state["cv_generation_error"] = ""
+                    st.session_state["cv_generation_status"] = "prompt_generated"
+                    st.session_state["cv_generation_running"] = False
+                    st.session_state["external_ai_prompt"] = ""
+                    st.session_state["cv_wizard_step"] = 1
+                    st.session_state["cv_studio_cycle"] = cv_cycle + 1
+                    st.rerun()
 
 elif page == "Folders":
     render_modern_page_header("Folders")

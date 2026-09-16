@@ -119,8 +119,14 @@ def _contains_wake_word(text: str) -> bool:
     if any(w in text for w in WAKE_WORDS):
         return True
     words = re.findall(r"[a-z']+", text)
-    for i, word in enumerate(words[:-1]):
-        if word in WAKE_GREETINGS and any(sound in words[i + 1] for sound in WAKE_SOUND_ALIKES):
+    # Look a couple of words past the greeting, not just the very next one, so
+    # "hey job sync" (STT splitting "JobSync" into "job" + "sync") still
+    # matches even though "sync" isn't immediately adjacent to "hey".
+    for i, word in enumerate(words):
+        if word not in WAKE_GREETINGS:
+            continue
+        window = words[i + 1:i + 3]
+        if any(sound in w for w in window for sound in WAKE_SOUND_ALIKES):
             return True
     return False
 
@@ -130,10 +136,14 @@ def _strip_wake_word(text: str) -> str:
     for w in WAKE_WORDS:
         text = text.replace(w, "")
     words = re.findall(r"[a-z']+", text)
-    for i, word in enumerate(words[:-1]):
-        if word in WAKE_GREETINGS and any(sound in words[i + 1] for sound in WAKE_SOUND_ALIKES):
-            remainder = " ".join(words[i + 2:])
-            return remainder.strip(" ,.")
+    for i, word in enumerate(words):
+        if word not in WAKE_GREETINGS:
+            continue
+        window = words[i + 1:i + 3]
+        for j, w2 in enumerate(window):
+            if any(sound in w2 for sound in WAKE_SOUND_ALIKES):
+                remainder = " ".join(words[i + 1 + j + 1:])
+                return remainder.strip(" ,.")
     return text.strip(" ,.")
 
 
@@ -273,6 +283,10 @@ def _listen_loop() -> None:
             _process_audio(recognizer, sr, audio)
 
 
+_LAST_FRAGMENT = {"text": "", "at": 0.0}
+_FRAGMENT_WINDOW_SECONDS = 4.0
+
+
 def _process_audio(recognizer, sr, audio) -> None:
     try:
         text = recognizer.recognize_google(audio)
@@ -286,8 +300,21 @@ def _process_audio(recognizer, sr, audio) -> None:
     _STATE.update(transcript=text)
 
     if not _STATE.snapshot()["awake"]:
-        if _contains_wake_word(text):
-            remainder = _strip_wake_word(text.lower())
+        # A short, noisy mic pause between "job" and "sync" can split "Hey
+        # JobSync" across two separate recognizer.listen() calls, so neither
+        # transcript alone ever contains the full wake phrase. Also check the
+        # last fragment glued to this one before giving up.
+        now = time.time()
+        candidates = [text]
+        if _LAST_FRAGMENT["text"] and (now - _LAST_FRAGMENT["at"]) <= _FRAGMENT_WINDOW_SECONDS:
+            candidates.append(f"{_LAST_FRAGMENT['text']} {text}")
+        _LAST_FRAGMENT["text"] = text
+        _LAST_FRAGMENT["at"] = now
+
+        matched = next((c for c in candidates if _contains_wake_word(c)), None)
+        if matched:
+            remainder = _strip_wake_word(matched.lower())
+            _LAST_FRAGMENT["text"] = ""
             _STATE.update(awake=True, status="I'm listening…")
             _speak("Yes?" if not remainder else "Yes, right away.")
             if remainder:
