@@ -1,0 +1,36 @@
+JobSync v2.4.0
+==============
+
+Fixed: CV generation crash on installed builds
+------------------------------------------------
+- "Build my document" failed with:
+    Could not build the document prompt: The AI CV generation instruction
+    file is missing: [Errno 2] No such file or directory: '...\program\
+    services\ai_cv_generation_prompt.txt'
+- Cause: the installer's staging script (tools/BUILD_INSTALLER.ps1) copies
+  program/services/ using an explicit file allow-list, and
+  ai_cv_generation_prompt.txt was never added to it, so every installed
+  build was missing a file the CV/cover letter generator requires at
+  runtime. Source checkouts were unaffected — only the packaged .exe.
+- Fixed by adding it to the allow-list. Rebuilding the installer now
+  includes this file.
+- If you already have JobSync installed and are hitting this error, you
+  can hotfix it immediately without reinstalling: copy
+  program\services\ai_cv_generation_prompt.txt from this repository into
+  your installed copy at the same relative path (typically
+  C:\Program Files\JobSync\program\services\), then try again.
+
+CV & Cover Letter Studio — fixed the empty "middle box"
+-----------------------------------------------------------
+- Every step of the CV/cover letter wizard (1-4) used a card panel with a
+  fixed 470px minimum height and vertically centered content. Short steps
+  (like "Ready to build your CV?") left a large empty gap above and below
+  their actual content, while the real controls (file upload, Build
+  button) and any error rendered as separate, unstyled elements below it.
+- The card now sizes to its actual content instead of forcing a fixed
+  height.
+- Step 4 specifically ("Ready to build your CV?") is rewritten to use a
+  single real container: the summary text, the reference-CV uploader, the
+  blueprint caption, the Build button, and any error now all render
+  inside one bordered panel, so the whole step reads as one place rather
+  than a mostly-empty box followed by disconnected controls.

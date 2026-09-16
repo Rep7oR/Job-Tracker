@@ -1961,7 +1961,7 @@ st.markdown(r"""
      scrolls internally. */
   .cvwiz { max-width:1120px !important; }
   .cvwiz-hero { min-height:122px !important; border-radius:20px !important; }
-  .cvwiz-card { min-height:520px !important; border-radius:20px !important; }
+  .cvwiz-card { min-height:0 !important; border-radius:20px !important; }
   .cvwiz-ready { width:min(760px,100%) !important; }
 
   /* Search result cards get a consistent viewport-friendly height. */
@@ -6212,7 +6212,12 @@ elif page == "CV & Cover Letter":
       .cvwiz-kicker { color:#8aa4ff; font-size:.55rem; font-weight:900; letter-spacing:.18em; }
       .cvwiz-title { margin-top:4px; color:#f8fafc; font-size:1.3rem; font-weight:900; letter-spacing:-.04em; }
       .cvwiz-sub { color:#8995a6; font-size:.65rem; margin-top:3px; }
-      .cvwiz-card { margin:12px auto 0; padding:28px 30px 22px; min-height:470px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,.075); border-radius:22px; background:linear-gradient(145deg,rgba(10,17,25,.97),rgba(13,10,28,.96)); box-shadow:0 20px 55px rgba(0,0,0,.20); }
+      /* min-height was 470px with justify-content:center — on the short
+         text-only steps (e.g. "Ready to build your CV?" + one ready-card)
+         that left a large dead gap above and below the content, which is
+         the empty middle box users were seeing. The card now hugs its
+         actual content and only grows if a step genuinely has more in it. */
+      .cvwiz-card { margin:12px auto 0; padding:22px 30px 20px; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; border:1px solid rgba(255,255,255,.075); border-radius:22px; background:linear-gradient(145deg,rgba(10,17,25,.97),rgba(13,10,28,.96)); box-shadow:0 20px 55px rgba(0,0,0,.20); }
       .cvwiz-eyebrow { color:#8798b0; font-size:.55rem; font-weight:900; letter-spacing:.16em; text-transform:uppercase; text-align:center; }
       .cvwiz-question { color:#f2f5f9; font-size:1.05rem; font-weight:850; margin-top:7px; text-align:center; letter-spacing:-.02em; }
       .cvwiz-copy { color:#718094; font-size:.64rem; line-height:1.5; text-align:center; margin-top:5px; max-width:700px; }
@@ -6263,6 +6268,15 @@ elif page == "CV & Cover Letter":
       @media (max-width:700px) { .jobsync-generation-dialog { padding:26px 22px 22px; } .jobsync-generation-brand b { display:none; } .jobsync-generation-footer { flex-direction:column; } }
       .cvwiz-card .stTextInput input, .cvwiz-card .stTextArea textarea { background:#090e15 !important; border:1px solid rgba(255,255,255,.08) !important; color:#e7edf5 !important; border-radius:12px !important; }
       .cvwiz-card .stTextInput, .cvwiz-card .stTextArea, .cvwiz-card .stFileUploader { width:100%; max-width:720px; }
+      /* STEP 4's real panel: a genuine st.container() (not a cross-call HTML
+         div) so the uploader, blueprint caption, Build button and any error
+         are actually inside the same bordered box as the summary text. */
+      .st-key-cvwiz_step4_panel { margin:12px auto 0; padding:22px 30px 20px; max-width:900px; display:flex; flex-direction:column; align-items:center; border:1px solid rgba(255,255,255,.075); border-radius:22px; background:linear-gradient(145deg,rgba(10,17,25,.97),rgba(13,10,28,.96)); box-shadow:0 20px 55px rgba(0,0,0,.20); }
+      .st-key-cvwiz_step4_panel .stFileUploader,
+      .st-key-cvwiz_step4_panel [data-testid="stCaptionContainer"],
+      .st-key-cvwiz_step4_panel .stButton,
+      .st-key-cvwiz_step4_panel [data-testid="stAlert"] { width:100%; max-width:720px; margin-top:14px; }
+      .st-key-cvwiz_step4_panel .stButton > button { min-height:52px !important; border-radius:14px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -6374,38 +6388,47 @@ elif page == "CV & Cover Letter":
 
     elif not prompt_ready and wizard_step == 4:
         provider=st.session_state.get("cv_wizard_ai",AI_DEFAULT_PROVIDER); doc=st.session_state.get("cv_wizard_doc","CV"); job=st.session_state.get("cv_wizard_job",{}) or {}
-        st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 4 OF 4</div><div class="cvwiz-question">Ready to build your {html.escape(doc)}?</div><div class="cvwiz-copy">JobSync assembles the complete prompt, sends it to {html.escape(provider)}, validates the returned LaTeX, shows the source here, lets you copy it into Overleaf, and keeps the final PDF in the JobSync folder.</div><div class="cvwiz-ready"><b>{html.escape(job.get("title") or "Untitled role")}</b><span>{html.escape(job.get("company") or "Company not entered")} · {html.escape(job.get("location") or "Location not entered")}</span></div>',unsafe_allow_html=True)
-        refs=st.file_uploader("Optional reference CV / cover letter",type=["pdf","tex","docx"],accept_multiple_files=True,key=f"cvwiz_refs_{cv_cycle}")
-        template=st.session_state.get("cv_wizard_template","")
-        st.caption(f"CV blueprint: {"cv_base.tex" if doc == 'CV' else "cover_letter_base.tex"}")
-        if st.button("Build my document →",key=f"cvwiz_build_{cv_cycle}",type="primary",width="stretch"):
-            try:
-                from services.cv_engine import load_builtin_template
-                evidence_refs=[]
-                latest=""
-                for uploaded in refs or []:
-                    try:
-                        raw=uploaded.getvalue(); suffix=Path(uploaded.name).suffix.lower()
-                        if suffix in {".txt",".tex"}: text=raw.decode("utf-8",errors="ignore")
-                        elif suffix in {".pdf",".docx"}:
-                            temp=UPLOAD_REFERENCES/f"__prompt_{safe_name(Path(uploaded.name).stem)}_{cv_cycle}{suffix}"; temp.write_bytes(raw); text=extract_text(temp); temp.unlink(missing_ok=True)
-                        else: text=""
-                        if text.strip(): evidence_refs.append({"name":uploaded.name,"text":text.strip()[:14000],"reference_type":"document"})
-                    except Exception as exc: notify_error(f"Could not read {uploaded.name}: {exc}")
-                evidence=build_reference_context(evidence_refs) if evidence_refs else ""
-                profile=state.get("profile",{}) or {}
-                if doc=="CV":
-                    template = load_builtin_template("CV") if not template else template
-                    blueprint_name = "cv_base.tex"
-                else:
-                    template = load_builtin_template("Cover Letter") if not template else template
-                    blueprint_name = "cover_letter_base.tex"
-                prompt=build_external_ai_prompt(job=job,references=evidence,profile=profile,template=template,document_type=doc,provider=provider)
-                st.session_state.update({"external_ai_prompt":prompt,"external_ai_provider":provider,"external_document_type_snapshot":doc,"external_job_snapshot":job,"external_template_snapshot":template,"cv_blueprint_name":blueprint_name,"cv_reference_names":[str(item.get("name")) for item in evidence_refs if item.get("name")],"cv_generation_status":"prompt_generated","cv_generation_running":False,"cv_generation_error":""})
-                st.rerun()
-            except Exception as exc:
-                st.error(f"Could not build the document prompt: {exc}")
-        st.markdown('</div>',unsafe_allow_html=True); dots(4,4)
+        # Everything for this step — the summary text, the uploader, the
+        # blueprint caption, the Build button, and any error — renders
+        # inside one real st.container() styled as a single panel (see the
+        # cvwiz-step4-marker rule below), instead of the old pattern of an
+        # HTML <div> opened in one st.markdown call and closed in another:
+        # that only ever visually wrapped the first markdown call's own
+        # fragment, so the uploader/button/errors always rendered as
+        # separate, unstyled elements below an oversized, mostly-empty box.
+        with st.container(key="cvwiz_step4_panel"):
+            st.markdown(f'<div class="cvwiz-eyebrow">STEP 4 OF 4</div><div class="cvwiz-question">Ready to build your {html.escape(doc)}?</div><div class="cvwiz-copy">JobSync assembles the complete prompt, sends it to {html.escape(provider)}, validates the returned LaTeX, shows the source here, lets you copy it into Overleaf, and keeps the final PDF in the JobSync folder.</div><div class="cvwiz-ready"><b>{html.escape(job.get("title") or "Untitled role")}</b><span>{html.escape(job.get("company") or "Company not entered")} · {html.escape(job.get("location") or "Location not entered")}</span></div>',unsafe_allow_html=True)
+            refs=st.file_uploader("Optional reference CV / cover letter",type=["pdf","tex","docx"],accept_multiple_files=True,key=f"cvwiz_refs_{cv_cycle}")
+            template=st.session_state.get("cv_wizard_template","")
+            st.caption(f"CV blueprint: {"cv_base.tex" if doc == 'CV' else "cover_letter_base.tex"}")
+            if st.button("Build my document →",key=f"cvwiz_build_{cv_cycle}",type="primary",width="stretch"):
+                try:
+                    from services.cv_engine import load_builtin_template
+                    evidence_refs=[]
+                    latest=""
+                    for uploaded in refs or []:
+                        try:
+                            raw=uploaded.getvalue(); suffix=Path(uploaded.name).suffix.lower()
+                            if suffix in {".txt",".tex"}: text=raw.decode("utf-8",errors="ignore")
+                            elif suffix in {".pdf",".docx"}:
+                                temp=UPLOAD_REFERENCES/f"__prompt_{safe_name(Path(uploaded.name).stem)}_{cv_cycle}{suffix}"; temp.write_bytes(raw); text=extract_text(temp); temp.unlink(missing_ok=True)
+                            else: text=""
+                            if text.strip(): evidence_refs.append({"name":uploaded.name,"text":text.strip()[:14000],"reference_type":"document"})
+                        except Exception as exc: notify_error(f"Could not read {uploaded.name}: {exc}")
+                    evidence=build_reference_context(evidence_refs) if evidence_refs else ""
+                    profile=state.get("profile",{}) or {}
+                    if doc=="CV":
+                        template = load_builtin_template("CV") if not template else template
+                        blueprint_name = "cv_base.tex"
+                    else:
+                        template = load_builtin_template("Cover Letter") if not template else template
+                        blueprint_name = "cover_letter_base.tex"
+                    prompt=build_external_ai_prompt(job=job,references=evidence,profile=profile,template=template,document_type=doc,provider=provider)
+                    st.session_state.update({"external_ai_prompt":prompt,"external_ai_provider":provider,"external_document_type_snapshot":doc,"external_job_snapshot":job,"external_template_snapshot":template,"cv_blueprint_name":blueprint_name,"cv_reference_names":[str(item.get("name")) for item in evidence_refs if item.get("name")],"cv_generation_status":"prompt_generated","cv_generation_running":False,"cv_generation_error":""})
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Could not build the document prompt: {exc}")
+        dots(4,4)
 
     else:
         saved_job = st.session_state.get("external_job_snapshot", {}) or {}
