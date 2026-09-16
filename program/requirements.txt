@@ -12,4 +12,5 @@ google-auth-oauthlib
 requests
 beautifulsoup4
 lxml
+pywebview>=5.4
 

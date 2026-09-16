@@ -1,0 +1,38 @@
+-- JobSync Online Presence
+-- Run this once in Supabase SQL Editor for project bldrwjsgrpbyiaowkpqs.
+-- This table contains presence metadata only: no passwords, emails, CVs, jobs, or profile data.
+
+create table if not exists public.jobsync_presence (
+    presence_id text primary key,
+    display_name text not null default 'User',
+    avatar_seed text not null default 'User',
+    last_seen timestamptz not null default now()
+);
+
+alter table public.jobsync_presence enable row level security;
+
+drop policy if exists "jobsync_presence_select" on public.jobsync_presence;
+drop policy if exists "jobsync_presence_insert" on public.jobsync_presence;
+drop policy if exists "jobsync_presence_update" on public.jobsync_presence;
+
+create policy "jobsync_presence_select"
+on public.jobsync_presence
+for select
+to anon, authenticated
+using (true);
+
+create policy "jobsync_presence_insert"
+on public.jobsync_presence
+for insert
+to anon, authenticated
+with check (true);
+
+create policy "jobsync_presence_update"
+on public.jobsync_presence
+for update
+to anon, authenticated
+using (true)
+with check (true);
+
+create index if not exists jobsync_presence_last_seen_idx
+on public.jobsync_presence (last_seen);

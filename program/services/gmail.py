@@ -9,9 +9,12 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
+from services.app_paths import BASE_DIR as _PACKAGED_BASE_DIR
+
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+_DEV_BASE = Path(__file__).resolve().parents[1]
+BASE_DIR = _PACKAGED_BASE_DIR if _PACKAGED_BASE_DIR else _DEV_BASE
 TOKEN_FILE = BASE_DIR / "data/gmail_token.json"
 OAUTH_CONFIG_FILE = BASE_DIR / "config/google_oauth.json"
 

@@ -1,6 +1,6 @@
-﻿{
-    "channel":  "stable",
-    "download_folder":  "downloads",
-    "github_owner":  "Rep7oR",
-    "github_repo":  "Job-Tracker"
+{
+  "github_owner": "Rep7oR",
+  "github_repo": "Job-Tracker",
+  "asset_name_regex": "(?i).*\\.exe$",
+  "download_folder": "updates"
 }

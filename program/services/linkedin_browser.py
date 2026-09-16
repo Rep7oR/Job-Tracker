@@ -6,7 +6,11 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import quote_plus
 
-PROFILE_DIR = Path(__file__).resolve().parents[1] / "data" / "linkedin_browser_profile"
+from services.app_paths import BASE_DIR as _PACKAGED_BASE_DIR
+
+_DEV_BASE = Path(__file__).resolve().parents[1]
+_BASE = _PACKAGED_BASE_DIR if _PACKAGED_BASE_DIR else _DEV_BASE
+PROFILE_DIR = _BASE / "data" / "linkedin_browser_profile"
 PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
 

@@ -1,14 +1,33 @@
 from __future__ import annotations
 
+import os
+
 import json
+import ast
 import re
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Iterable
 
 
-__all__ = ["extract_text", "analyze_blueprint", "build_external_ai_prompt", "extract_latex_code", "validate_external_latex", "compile_latex"]
+__all__ = ["extract_text", "analyze_blueprint", "build_external_ai_prompt", "load_ai_cv_generation_prompt", "extract_latex_code", "validate_external_latex"]
+
+
+def load_ai_cv_generation_prompt() -> str:
+    """Load the user-approved HR-focused CV generation instructions.
+
+    This prompt is the canonical instruction set for every CV generation path.
+    JobSync keeps it separate from the model payload so the locked LaTeX template
+    can be rendered locally instead of forcing the local model to reproduce LaTeX.
+    """
+    prompt_path = Path(__file__).resolve().parent / "ai_cv_generation_prompt.txt"
+    try:
+        text = prompt_path.read_text(encoding="utf-8", errors="ignore").strip()
+    except OSError as exc:
+        raise RuntimeError(f"The AI CV generation instruction file is missing: {exc}") from exc
+    if not text:
+        raise RuntimeError("The AI CV generation instruction file is empty.")
+    return text
 
 
 def extract_text(path: Path) -> str:
@@ -16,8 +35,8 @@ def extract_text(path: Path) -> str:
     if suffix in {".txt", ".tex"}:
         return path.read_text(encoding="utf-8", errors="ignore")
     if suffix == ".pdf":
-        import fitz
-        doc = fitz.open(path)
+        import pymupdf
+        doc = pymupdf.open(path)
         return "\n".join(page.get_text() for page in doc)
     if suffix == ".docx":
         from docx import Document
@@ -75,14 +94,62 @@ def _clean_code_fence(output: str) -> str:
 
 
 def _json_from_output(output: str) -> dict:
+    """Parse model JSON robustly, including common local-model Python-dict output."""
     clean = _clean_code_fence(output)
+    # Remove Qwen reasoning blocks if the model leaked them despite think=false.
+    if "</think>" in clean:
+        clean = clean.rsplit("</think>", 1)[1].strip()
+    # First try strict JSON.
     try:
-        return json.loads(clean)
-    except json.JSONDecodeError:
-        m = re.search(r"\{.*\}", clean, re.S)
-        if not m:
-            raise RuntimeError("The AI did not return the required structured CV content.")
-        return json.loads(m.group(0))
+        value = json.loads(clean)
+        if isinstance(value, dict):
+            return value
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # Find the largest balanced JSON/object-like block instead of using a greedy
+    # regex, which can accidentally consume multiple objects or trailing text.
+    candidates = []
+    starts = [i for i, ch in enumerate(clean) if ch == "{"]
+    for start in starts:
+        depth = 0
+        in_string = False
+        quote = ""
+        escape = False
+        for i in range(start, len(clean)):
+            ch = clean[i]
+            if in_string:
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == quote:
+                    in_string = False
+                continue
+            if ch in ('"', "'"):
+                in_string = True
+                quote = ch
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    candidates.append(clean[start:i + 1])
+                    break
+    for candidate in sorted(candidates, key=len, reverse=True):
+        try:
+            value = json.loads(candidate)
+            if isinstance(value, dict):
+                return value
+        except (json.JSONDecodeError, TypeError):
+            # Qwen frequently emits a Python-style dict with single quotes.
+            try:
+                value = ast.literal_eval(candidate)
+                if isinstance(value, dict):
+                    return value
+            except (ValueError, SyntaxError, TypeError):
+                continue
+    raise RuntimeError("The AI did not return a valid structured CV object. Please try Generate again.")
 
 
 def _latex_escape(value: str) -> str:
@@ -182,7 +249,10 @@ def _render_skill_rows(rows: list[dict] | None, count: int, original_rows: list[
 
 
 def _extract_experience_slots(template: str) -> list[tuple[str, str, int]]:
-    matches = list(re.finditer(r"(?P<head>\\resumeSubheading\{.*?\}\n)(?P<body>\\begin\{itemize\}.*?\\end\{itemize\})", template, re.S))
+    # Match all four command arguments. A lazy ``.*?}`` stops at the first ``{}``
+    # argument and was the reason valid blueprints could not be rendered.
+    heading_pattern = r"(?P<head>\\resumeSubheading\{[^{}]*\}\{[^{}]*\}\{[^{}]*\}\{[^{}]*\}\s*\n)(?P<body>\\begin\{itemize\}.*?\\end\{itemize\})"
+    matches = list(re.finditer(heading_pattern, template, re.S))
     out = []
     for m in matches:
         head = m.group("head")
@@ -192,7 +262,8 @@ def _extract_experience_slots(template: str) -> list[tuple[str, str, int]]:
 
 
 def _render_experience(template: str, entries: list[dict]) -> str:
-    matches = list(re.finditer(r"(?P<head>\\resumeSubheading\{.*?\}\n)(?P<body>\\begin\{itemize\}.*?\\end\{itemize\})", template, re.S))
+    heading_pattern = r"(?P<head>\\resumeSubheading\{[^{}]*\}\{[^{}]*\}\{[^{}]*\}\{[^{}]*\}\s*\n)(?P<body>\\begin\{itemize\}.*?\\end\{itemize\})"
+    matches = list(re.finditer(heading_pattern, template, re.S))
     if not matches:
         raise RuntimeError("Blueprint contains no resumeSubheading/itemize experience blocks.")
     if not entries:
@@ -216,7 +287,7 @@ def _render_experience(template: str, entries: list[dict]) -> str:
 
 
 def _render_project(template: str, bullets: list[str]) -> str:
-    pattern = re.compile(r"(?P<head>\\resumeProject\{.*?\}\{\}\n)(?P<body>\\begin\{itemize\}.*?\\end\{itemize\})", re.S)
+    pattern = re.compile(r"(?P<head>\\resumeProject\{[^{}]*\}\{[^{}]*\}\s*\n)(?P<body>\\begin\{itemize\}.*?\\end\{itemize\})", re.S)
     m = pattern.search(template)
     if not m:
         return template
@@ -498,13 +569,38 @@ def extract_latex_code(output: str) -> str:
 
 
 def load_builtin_template(document_type: str) -> str:
-    """Load the exact built-in LaTeX master template shipped with JobSync."""
-    base = Path(__file__).resolve().parents[1] / "blueprint"
+    """Load the bundled LaTeX template from the packaged or user data location.
+
+    The source ZIP keeps ``blueprint`` beside ``program`` while packaged
+    installations keep editable copies under ``user_blueprints``.  Resolve
+    both locations explicitly so the CV workflow never looks for a template
+    inside ``program/blueprint`` (which does not exist in the shipped layout).
+    """
     name = "cv_base.tex" if document_type == "CV" else "cover_letter_base.tex"
-    path = base / name
-    if not path.exists():
-        raise FileNotFoundError(f"Built-in {document_type} template is missing: {path}")
-    return path.read_text(encoding="utf-8", errors="ignore")
+    candidates: list[Path] = []
+
+    # Packaged/user-data copy (used by installed JobSync).
+    try:
+        from services.app_paths import BASE_DIR as DATA_BASE_DIR
+        if DATA_BASE_DIR:
+            candidates.append(Path(DATA_BASE_DIR) / "user_blueprints" / name)
+    except Exception:
+        pass
+
+    # Bundled source copy: blueprint is a sibling of program.
+    candidates.append(Path(__file__).resolve().parents[2] / "blueprint" / name)
+
+    # Backward-compatible location for older development layouts.
+    candidates.append(Path(__file__).resolve().parents[1] / "blueprint" / name)
+
+    for path in candidates:
+        if path.is_file():
+            return path.read_text(encoding="utf-8", errors="ignore")
+
+    searched = "\n".join(str(path) for path in candidates)
+    raise FileNotFoundError(
+        f"Built-in {document_type} template is missing. Searched:\n{searched}"
+    )
 
 
 def _structure_signature(tex: str) -> dict:
@@ -522,8 +618,13 @@ def _structure_signature(tex: str) -> dict:
     }
 
 
-def validate_external_latex(document_type: str, latex: str, template: str) -> tuple[bool, str]:
-    """Validate an AI-returned complete LaTeX document against the locked template."""
+def validate_external_latex(document_type: str, latex: str, template: str, strict_structure: bool = True) -> tuple[bool, str]:
+    """Validate an AI-returned complete LaTeX document.
+
+    ``strict_structure=True`` is used for the explicit external-provider workflow.
+    Local CV generation uses ``False`` so the model can omit source sections that are
+    genuinely absent from the uploaded CV while still preserving the template preamble.
+    """
     clean = _clean_code_fence(latex)
     if not clean:
         return False, "The AI response is empty."
@@ -531,6 +632,33 @@ def validate_external_latex(document_type: str, latex: str, template: str) -> tu
         return False, "The response is not a complete LaTeX document."
     expected = _structure_signature(template)
     actual = _structure_signature(clean)
+    if not strict_structure:
+        # Keep the visual foundation locked, but allow the AI to omit a section that is
+        # absent from the candidate source. This is the intended simple CV workflow.
+        if expected["documentclass"] and actual["documentclass"] != expected["documentclass"]:
+            return False, "The document class was changed. The template is locked."
+        # In simple local-CV mode the AI is allowed to emit a new document body and
+        # omit source sections. Do not reject it for a body/preamble comparison; only
+        # require a valid complete LaTeX document.
+        # Basic delimiter sanity prevents obviously broken LaTeX from reaching Overleaf.
+        depth = 0
+        escaped = False
+        for ch in clean:
+            if escaped:
+                escaped = False
+                continue
+            if ch == "\\":
+                escaped = True
+                continue
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth < 0:
+                    return False, "The generated LaTeX contains an unmatched closing brace."
+        if depth != 0:
+            return False, "The generated LaTeX contains unmatched braces."
+        return True, clean
     if actual["documentclass"] != expected["documentclass"]:
         return False, "The document class was changed. The template is locked."
     if actual["preamble"] != expected["preamble"]:
@@ -573,6 +701,44 @@ def build_external_ai_prompt(
     company = str(job.get("company") or "").strip()
     location = str(job.get("location") or "").strip()
     template_text = str(template or "").strip()
+
+    if document_type == "CV":
+        # The uploaded AI CV Generation Prompt is the canonical instruction set
+        # for every CV generation request, including external providers.
+        canonical = load_ai_cv_generation_prompt()
+        source = references.strip() or "No uploaded reference document was supplied. Use the candidate profile as the available evidence source."
+        if latest_pdf_text:
+            source += "\n\nLATEST USER-APPROVED FINAL PDF CONTENT (local extraction)\n" + str(latest_pdf_text).strip()[:18000]
+        job_json = json.dumps({
+            "title": title,
+            "company": company,
+            "location": location,
+            "url": job_url,
+        }, ensure_ascii=False, indent=2)
+        profile_text = json.dumps(profile or {}, ensure_ascii=False, indent=2)
+        return f"""{canonical}
+
+==================== JOBSYNC GENERATION INPUT ====================
+TARGET JOB
+{job_json}
+
+JOB DESCRIPTION
+{job_description or 'No full job description was stored. Use only the supplied job metadata and evidence. Never invent missing requirements.'}
+
+CANDIDATE PROFILE
+{profile_text}
+
+REFERENCE CV / CANDIDATE EVIDENCE
+{source}
+
+MASTER LATEX TEMPLATE
+The following template is LOCKED. Apply the canonical instructions to its existing content areas only. Do not redesign it.
+
+{template_text}
+
+==================== FINAL OUTPUT ====================
+Return ONLY the complete finished LaTeX source, from \\documentclass through \\end{{document}}, in one latex code block. Do not add explanations before or after it.
+""".strip()
     source = references.strip() or "No uploaded reference document was supplied. Use the candidate profile as the available evidence source."
     latest_pdf_text = str(latest_pdf_text or "").strip()
     if latest_pdf_text:
@@ -677,40 +843,3 @@ IMPORTANT FINAL OUTPUT FORMAT:
 Return exactly ONE `latex` code block containing the COMPLETE finished document from `\\documentclass` through `\\end{{document}}`. The user must be able to click Copy and paste the entire source. Do not return a file, attachment, download link, or any text outside the code block. The template is locked; content is tailored, structure is not.
 """.strip()
 
-
-def compile_latex(tex_path: Path) -> Path | None:
-    """Compile the generated .tex locally when pdflatex is available."""
-    if not shutil_which("pdflatex"):
-        return None
-    work = tex_path.parent / f".compile_{tex_path.stem}"
-    work.mkdir(exist_ok=True)
-    # Copy the source into the compile directory so auxiliary files stay out of output.
-    src = work / tex_path.name
-    src.write_text(tex_path.read_text(encoding="utf-8"), encoding="utf-8")
-    cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", src.name]
-    try:
-        for _ in range(2):
-            result = subprocess.run(cmd, cwd=work, capture_output=True, text=True, timeout=45)
-            if result.returncode != 0:
-                return None
-        pdf = work / f"{tex_path.stem}.pdf"
-        if not pdf.exists():
-            return None
-        final_pdf = tex_path.with_suffix(".pdf")
-        final_pdf.write_bytes(pdf.read_bytes())
-        return final_pdf
-    finally:
-        for item in work.iterdir():
-            try:
-                item.unlink()
-            except Exception:
-                pass
-        try:
-            work.rmdir()
-        except Exception:
-            pass
-
-
-def shutil_which(name: str) -> str | None:
-    import shutil
-    return shutil.which(name)

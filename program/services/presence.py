@@ -1,74 +1,59 @@
 from __future__ import annotations
 
-import json
 import os
-import secrets
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from typing import Any
 
 import requests
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-PRESENCE_ID_FILE = BASE_DIR / "data" / "presence_id.json"
-ONLINE_SECONDS = 90
-TIMEOUT = 8
+# Supabase publishable key is safe to ship in the desktop client.
+# Never put the Supabase secret/service-role key in this file or the installer.
+SUPABASE_REST_URL = (
+    os.getenv("JOBSYNC_SUPABASE_REST_URL", "https://bldrwjsgrpbyiaowkpqs.supabase.co/rest/v1")
+    .strip()
+    .rstrip("/")
+)
+SUPABASE_PUBLISHABLE_KEY = os.getenv(
+    "JOBSYNC_SUPABASE_PUBLISHABLE_KEY",
+    "sb_publishable_WshU8zZeKxnGWxJLjVYSHA_FZhvQHW-",
+).strip()
 
-# JobSync shared presence backend. This is a Supabase PUBLISHABLE key,
-# which is specifically designed to be shipped in desktop/client applications.
-# Access is controlled by the user_presence table's RLS policies.
-DEFAULT_SUPABASE_URL = "https://xmydytxgvkniyoboyayn.supabase.co"
-DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_4OrKeWLKR2WMCHAdnKuThw_uvI1T6OP"
-
-
-def _settings() -> tuple[str, str]:
-    url = (os.getenv("SUPABASE_URL", "").strip().rstrip("/") or DEFAULT_SUPABASE_URL)
-    key = (
-        os.getenv("SUPABASE_PUBLISHABLE_KEY", "").strip()
-        or os.getenv("SUPABASE_ANON_KEY", "").strip()
-        or DEFAULT_SUPABASE_PUBLISHABLE_KEY
-    )
-    return url, key
+TABLE = "jobsync_presence"
+ONLINE_SECONDS = 60
+TIMEOUT = 6
 
 
 def configured() -> bool:
-    url, key = _settings()
-    return bool(url and key)
-
-
-def _presence_id() -> str:
-    if PRESENCE_ID_FILE.exists():
-        try:
-            value = json.loads(PRESENCE_ID_FILE.read_text(encoding="utf-8"))
-            if isinstance(value, dict) and value.get("presence_id"):
-                return str(value["presence_id"])
-        except Exception:
-            pass
-    value = secrets.token_urlsafe(24)
-    PRESENCE_ID_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PRESENCE_ID_FILE.write_text(json.dumps({"presence_id": value}, indent=2), encoding="utf-8")
-    return value
+    return bool(SUPABASE_REST_URL and SUPABASE_PUBLISHABLE_KEY)
 
 
 def _headers() -> dict[str, str]:
-    _, key = _settings()
-    # New Supabase publishable keys are not JWTs. Send them via `apikey` only.
-    return {"apikey": key, "Content-Type": "application/json", "Accept": "application/json"}
+    return {
+        "apikey": SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_PUBLISHABLE_KEY}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
 
 
-def heartbeat_presence(display_name: str, avatar_seed: str, email: str = "", role: str = "member") -> bool:
-    url, key = _settings()
-    if not url or not key:
+def heartbeat_presence(
+    *,
+    user_id: str,
+    display_name: str,
+    avatar_seed: str = "",
+) -> bool:
+    if not configured() or not user_id:
         return False
+
     payload = {
-        "presence_id": _presence_id(),
-        "display_name": display_name[:120],
-        "avatar_seed": avatar_seed[:240],
-        "email": str(email or "").strip().lower()[:240],
-        "role": str(role or "member").strip().lower()[:40],
+        "presence_id": user_id[:120],
+        "display_name": (display_name or "User")[:120],
+        "avatar_seed": (avatar_seed or display_name or "User")[:240],
         "last_seen": datetime.now(timezone.utc).isoformat(),
     }
     response = requests.post(
-        f"{url}/rest/v1/user_presence?on_conflict=presence_id",
+        f"{SUPABASE_REST_URL}/{TABLE}",
+        params={"on_conflict": "presence_id"},
         headers={**_headers(), "Prefer": "resolution=merge-duplicates,return=minimal"},
         json=payload,
         timeout=TIMEOUT,
@@ -77,33 +62,21 @@ def heartbeat_presence(display_name: str, avatar_seed: str, email: str = "", rol
     return True
 
 
-def list_online_users() -> list[dict]:
-    url, key = _settings()
-    if not url or not key:
+def list_online_users() -> list[dict[str, Any]]:
+    if not configured():
         return []
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=ONLINE_SECONDS)
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(seconds=ONLINE_SECONDS)).isoformat()
     response = requests.get(
-        f"{url}/rest/v1/user_presence",
-        headers=_headers(),
+        f"{SUPABASE_REST_URL}/{TABLE}",
         params={
-            "select": "presence_id,display_name,avatar_seed,email,role,last_seen",
-            "last_seen": f"gt.{cutoff.isoformat()}",
+            "select": "presence_id,display_name,avatar_seed,last_seen",
+            "last_seen": f"gte.{cutoff}",
             "order": "display_name.asc",
         },
+        headers={**_headers(), "Cache-Control": "no-cache", "Pragma": "no-cache"},
         timeout=TIMEOUT,
     )
     response.raise_for_status()
     data = response.json()
     return data if isinstance(data, list) else []
-
-
-def remove_presence() -> None:
-    url, key = _settings()
-    if not url or not key:
-        return
-    requests.delete(
-        f"{url}/rest/v1/user_presence",
-        headers={**_headers(), "Prefer": "return=minimal"},
-        params={"presence_id": f"eq.{_presence_id()}"},
-        timeout=TIMEOUT,
-    )

@@ -7,11 +7,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from services.app_paths import BASE_DIR as _PACKAGED_BASE_DIR
 from services.jobs import search_jobs
 from services.notifications import desktop_notify
 from services.storage import load_state, save_state
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+_DEV_BASE = Path(__file__).resolve().parents[2]
+BASE_DIR = _PACKAGED_BASE_DIR if _PACKAGED_BASE_DIR else _DEV_BASE
 PROGRAM_DIR = BASE_DIR / "program"
 # Job Tracker root is the directory that contains program/, data/, uploads/, etc.
 ENV_FILE = BASE_DIR / ".env"
