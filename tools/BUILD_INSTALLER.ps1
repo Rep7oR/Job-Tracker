@@ -87,7 +87,7 @@ function Copy-Required([string]$RelativePath) {
 
 foreach ($f in @('START_JOB_TRACKER.bat','VERSION.txt','UPDATE_VERSION.json')) { Copy-Required $f }
 foreach ($f in @('cv_base.tex','cover_letter_base.tex','master_cv.tex')) { Copy-Required "blueprint\$f" }
-foreach ($f in @('app.py','requirements.txt','requirements-browser.txt')) { Copy-Required "program\$f" }
+foreach ($f in @('app.py','requirements.txt','requirements-browser.txt','requirements-voice.txt')) { Copy-Required "program\$f" }
 Copy-Required 'program\.streamlit\config.toml'
 foreach ($f in @('app_paths.py','cv_engine.py','cv_prompt.py','excel_export.py','free_job_sources.py','gmail.py','jobs.py','job_monitor.py','linkedin_browser.py','notifications.py','presence.py','storage.py','voice_assistant.py','ai_cv_generation_prompt.txt')) {
     Copy-Required "program\services\$f"
