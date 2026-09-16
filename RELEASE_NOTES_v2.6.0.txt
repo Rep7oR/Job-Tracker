@@ -1,0 +1,27 @@
+JobSync v2.6.0
+==============
+
+AI API key — connect once in Settings, not every time in CV Studio
+------------------------------------------------------------------
+- Previously, CV Studio asked for an AI provider's API key inline, every
+  time you reached the generation step, stored only in the browser
+  session. It was easy to paste the key and click Generate before the
+  value had actually synced, producing "Connect Gemini 2.0 Flash first..."
+  even right after pasting a key — a confusing, unreliable flow.
+- Settings now has an "AI generation — connect once, use everywhere"
+  section with a field for each provider (Gemini free, OpenAI paid,
+  Anthropic paid). Save it once and it's written to JobSync's local .env
+  file, so every CV/cover-letter generation from then on just works,
+  with no key prompt in CV Studio at all.
+- CV Studio's generation step no longer has an inline key field. If no
+  key is configured yet, it shows a clear one-line explanation and an
+  "Open Settings →" button instead, and the Generate button stays
+  disabled until a key exists — no more guessing why generation failed.
+- Fixed a real bug in Settings' "Save settings" handler: it was
+  rewriting the whole .env file with only the Apify token, silently
+  discarding any other environment variables. It now preserves and
+  writes all of them together.
+
+Verified end-to-end in a browser: saved a Gemini key in Settings, opened
+CV Studio, and reached the "Generate CV" step with no key prompt and no
+warning — it was ready immediately.

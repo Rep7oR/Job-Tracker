@@ -6519,23 +6519,18 @@ elif page == "CV & Cover Letter":
             if generation_running:
                 _run_generation_inline()
             else:
+                key_missing = False
                 if _is_local_ai_provider(provider):
                     cfg = _local_ai_config(provider)
                     st.info(f"Local AI: {_local_ai_key(provider)} ({cfg['model']}). No API key is required. JobSync automatically installs Ollama and downloads this model on first use.")
                 else:
-                    key = _ai_api_key(provider)
-                    if not key:
+                    key_missing = not _ai_api_key(provider)
+                    if key_missing:
                         resolved_provider, _ = _resolve_ai_selection(provider)
-                        hosted_cfg = HOSTED_AI_MODELS.get(provider)
-                        key_hint = {
-                            "Gemini": "Free at aistudio.google.com/apikey — no billing required.",
-                            "ChatGPT": "From platform.openai.com/api-keys — needs billing enabled.",
-                            "Claude": "From console.anthropic.com/settings/keys — needs billing enabled.",
-                        }.get(resolved_provider, "")
-                        tier_note = f" ({hosted_cfg['tier']})" if hosted_cfg else ""
-                        st.text_input(f"Connect {provider}{tier_note} — API key", type="password", key=f"cv_ai_key_{resolved_provider}", placeholder="Paste once for this session")
-                        st.caption(f"The key is kept only in this session and is not written to your JobSync documents. {key_hint}")
-                if st.button(f"Generate {doc} →", key=f"cvwiz_generate_{cv_cycle}", type="primary", width="stretch"):
+                        st.warning(f"{provider} isn't connected yet. Add its API key once in Settings → AI generation, and every CV/cover letter from then on will generate automatically — no more pasting a key here each time.")
+                        if st.button("Open Settings →", key=f"cvwiz_open_settings_{cv_cycle}", width="stretch"):
+                            go("Settings"); st.rerun()
+                if st.button(f"Generate {doc} →", key=f"cvwiz_generate_{cv_cycle}", type="primary", width="stretch", disabled=key_missing):
                     st.session_state["cv_generation_running"] = True
                     st.rerun()
 
@@ -7138,6 +7133,19 @@ elif page == "Settings":
             st.caption("No manual GitHub update check has been run yet.")
     st.markdown('</div>', unsafe_allow_html=True)
 
+    st.write("")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">AI generation — connect once, use everywhere</div>', unsafe_allow_html=True)
+    st.caption("Set your key here once and CV/cover-letter generation just works from now on — no more pasting a key into the CV Studio every time. Gemini is free (no billing); ChatGPT and Claude need your own billed key.")
+    gemini_key = st.text_input("Gemini API key (free)", value=os.getenv("GEMINI_API_KEY", ""), type="password", help="Free at aistudio.google.com/apikey — no billing required.")
+    ai_col1, ai_col2 = st.columns(2)
+    with ai_col1:
+        openai_key = st.text_input("OpenAI API key (paid)", value=os.getenv("OPENAI_API_KEY", ""), type="password", help="From platform.openai.com/api-keys — needs billing enabled.")
+    with ai_col2:
+        anthropic_key = st.text_input("Anthropic API key (paid)", value=os.getenv("ANTHROPIC_API_KEY", ""), type="password", help="From console.anthropic.com/settings/keys — needs billing enabled.")
+    st.caption("Keys are saved locally to JobSync's own .env file on this computer only — never uploaded anywhere else.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
     if st.button("Save settings", type="primary", width="stretch"):
         settings = state.setdefault("settings", {})
         settings["linkedin_profile_url"] = linkedin_profile_url.strip()
@@ -7149,16 +7157,24 @@ elif page == "Settings":
         settings["monitor_interval_hours"] = 24
         content = "\n".join([
             f"APIFY_TOKEN={apify_token}",
+            f"GEMINI_API_KEY={gemini_key.strip()}",
+            f"OPENAI_API_KEY={openai_key.strip()}",
+            f"ANTHROPIC_API_KEY={anthropic_key.strip()}",
             "",
         ])
         ENV_FILE.write_text(content, encoding="utf-8")
         load_dotenv(ENV_FILE, override=True)
+        # Session-only keys pasted directly in CV Studio (the old per-generation
+        # flow) are superseded once a key is saved here — drop them so
+        # _ai_api_key() always prefers the persisted, one-time value.
+        for _provider_name in ("Gemini", "ChatGPT", "Claude"):
+            st.session_state.pop(f"cv_ai_key_{_provider_name}", None)
         save_state(state)
         notify_success("Settings saved locally.")
         st.rerun()
 
     st.write("")
-    st.caption("CV and cover-letter generation uses the local open-source AI bundled/configured for JobSync. No user AI API key is required.")
+    st.caption("CV and cover-letter generation uses the online AI model you connected above (or a local model if you chose that instead in CV Studio's advanced option).")
     st.caption(f"Generated CV folder: {OUTPUT_CV}")
     st.caption(f"Local AI model storage: {OLLAMA_MODELS_DIR}")
     st.caption(f"Generated cover-letter folder: {OUTPUT_CL}")
