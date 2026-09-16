@@ -84,9 +84,34 @@ _THREAD: threading.Thread | None = None
 _STOP_EVENT = threading.Event()
 _ABORT_CURRENT = threading.Event()
 
+_TTS_ENGINE = None
+_TTS_LOCK = threading.Lock()
+
 
 def get_state() -> VoiceState:
     return _STATE
+
+
+def _speak(text: str) -> None:
+    """Speak a line out loud (offline, via the OS voice) — best-effort only."""
+    if not text:
+        return
+    global _TTS_ENGINE
+    try:
+        import pyttsx3
+    except ImportError:
+        return
+    with _TTS_LOCK:
+        try:
+            if _TTS_ENGINE is None:
+                _TTS_ENGINE = pyttsx3.init()
+                _TTS_ENGINE.setProperty("rate", 178)
+            if _ABORT_CURRENT.is_set():
+                return
+            _TTS_ENGINE.say(text)
+            _TTS_ENGINE.runAndWait()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def _contains_wake_word(text: str) -> bool:
@@ -160,6 +185,7 @@ def _handle_command(command: str) -> None:
     if _contains_stop_word(command):
         _ABORT_CURRENT.set()
         _STATE.update(status="Stopped. Say “Hey JobSync” to start again.", awake=False, busy=False)
+        _speak("Stopped.")
         return
 
     _STATE.update(busy=True, last_command=command, status=f"Working on: “{command}”", error=None)
@@ -168,22 +194,37 @@ def _handle_command(command: str) -> None:
         nav_target = _parse_navigation(command)
         search_parsed = _parse_job_search(command)
         if search_parsed and ("job" in command.lower() or "opening" in command.lower() or "position" in command.lower() or "search" in command.lower()):
-            _STATE.update(status=f"Searching for {search_parsed['field'] or 'jobs'} in {search_parsed['location'] or 'anywhere'}…")
+            field_label = search_parsed["field"] or "jobs"
+            location_label = search_parsed["location"] or "anywhere"
+            _STATE.update(status=f"Searching for {field_label} in {location_label}…")
+            _speak(f"Searching for {field_label} jobs in {location_label}. One moment.")
             jobs = _run_job_search(search_parsed)
             if _ABORT_CURRENT.is_set():
                 _STATE.update(status="Stopped.", busy=False)
                 return
             _STATE.update(
                 results=jobs,
-                status=f"Found {len(jobs)} result(s) for {search_parsed['field'] or 'jobs'} in {search_parsed['location'] or 'anywhere'}.",
+                status=f"Found {len(jobs)} result(s) for {field_label} in {location_label}.",
                 busy=False,
             )
+            if jobs:
+                top = jobs[0]
+                _speak(
+                    f"Found {len(jobs)} openings for {field_label} in {location_label}. "
+                    f"Top result: {top.get('title') or 'a role'} at {top.get('company') or 'an unnamed company'}. "
+                    "The full list is in your assistant panel."
+                )
+            else:
+                _speak(f"I didn't find any openings for {field_label} in {location_label}.")
         elif nav_target:
             _STATE.update(status=f"Opening {nav_target}…", navigate_to=nav_target, busy=False)
+            _speak(f"Opening {nav_target}.")
         else:
             _STATE.update(status="Sorry, I didn't catch a job search or page to open. Try again after the wake word.", busy=False)
+            _speak("Sorry, I didn't catch that. Try again after the wake word.")
     except Exception as exc:  # noqa: BLE001
         _STATE.update(error=str(exc), status="Something went wrong with that request.", busy=False)
+        _speak("Something went wrong with that request.")
     finally:
         _STATE.update(awake=False)
 
@@ -248,6 +289,7 @@ def _process_audio(recognizer, sr, audio) -> None:
         if _contains_wake_word(text):
             remainder = _strip_wake_word(text.lower())
             _STATE.update(awake=True, status="I'm listening…")
+            _speak("Yes?" if not remainder else "Yes, right away.")
             if remainder:
                 _handle_command(remainder)
     else:

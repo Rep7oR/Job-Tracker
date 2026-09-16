@@ -6969,7 +6969,7 @@ elif page == "Settings":
     if voice_assistant is None:
         st.caption("Voice assistant module is not installed in this build.")
     else:
-        st.caption("Say “Hey JobSync” (or “Hey Sync” / “Hello Sync”), then a command like “search for manufacturing jobs in Germany” or “open dashboard”. Say “stop” to cancel. Requires a local microphone (desktop app), not available on hosted sessions.")
+        st.caption("Say “Hey JobSync” (or “Hey Sync” / “Hello Sync”), then a command like “search for manufacturing jobs in Germany” or “open dashboard”. It talks back out loud (offline OS voice), the same way it shows status in the floating panel. Say “stop” to cancel. Requires a local microphone (desktop app), not available on hosted sessions.")
         voice_enabled = st.toggle(
             "Enable voice assistant",
             value=st.session_state.get("voice_assistant_enabled", True),

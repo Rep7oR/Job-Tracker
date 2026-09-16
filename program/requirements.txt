@@ -15,5 +15,6 @@ lxml
 pywebview>=5.4
 SpeechRecognition
 PyAudio
+pyttsx3
 streamlit-autorefresh
 
