@@ -1,0 +1,31 @@
+JobSync v2.0.0
+==============
+
+Sidebar navigation — full redesign
+-----------------------------------
+- Replaced the three separate, breakpoint-driven navigation systems that had
+  accumulated across earlier versions (a static 248px sidebar above 1200px,
+  a "compact rail" between 760-1200px, and a "final narrow mode" overlay
+  below that, plus older 900px/560px leftovers) with a single, consistent
+  auto-hide navigation rail used at every window width.
+- The sidebar now rests collapsed to icons only and smoothly expands on
+  hover or keyboard focus, overlaying the page instead of reflowing it, then
+  collapses again the moment the pointer leaves.
+- Fixed the icon rendering bug in the old compact rail: it hid nav labels
+  via font-size:0 plus a CSS ::first-letter reveal, but ::first-letter
+  selects the first *letter* of a string, not its first character — for a
+  label like "<icon>   text" where the icon is a symbol or emoji (e.g. Home
+  or Sign out), it skipped the icon entirely and tried to reveal the word's
+  first letter instead, which stayed invisible. Replaced with reliable
+  left-aligned clipping, so the icon is always what stays visible.
+- Fixed Streamlit's native sidebar-collapse arrow reappearing over the rail
+  in some window sizes.
+- This is the underlying cause of the previously reported "black bar" and
+  inconsistent/non-responsive sidebar behavior when resizing the window.
+
+Repository housekeeping
+------------------------
+- Synced the tracked source with the real, currently running v1.7.0 build.
+  Git history had stalled at v1.3.1 while GitHub Releases had advanced to
+  v1.9.0 on repeated re-tags of that same stale commit; the actual app code
+  had continued evolving outside version control.
