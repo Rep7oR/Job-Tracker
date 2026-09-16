@@ -420,7 +420,8 @@ st.markdown(
     div[data-testid="stSidebarCollapsedControl"],
     div[data-testid*="SidebarCollapsedControl"],
     button[aria-label="Close sidebar"],
-    button[aria-label="Open sidebar"] {
+    button[aria-label="Open sidebar"],
+    button[data-testid="stBaseButton-headerNoPadding"] {
         display:none !important;
         visibility:hidden !important;
     }
@@ -2069,72 +2070,11 @@ if "cv_studio_cycle" not in st.session_state:
 if "folder_upload_cycle" not in st.session_state:
     st.session_state.folder_upload_cycle = 0
 
-# Deterministic JobSync sidebar state. This intentionally overrides Streamlit's
-# remembered browser sidebar state so the application always starts with a usable menu.
-if st.session_state.sidebar_collapsed:
-    st.markdown("""
-    <style>
-      section[data-testid="stSidebar"] {
-        width:0 !important; min-width:0 !important; max-width:0 !important;
-        flex:0 0 0 !important;
-        overflow:hidden !important;
-        transform:none !important;
-        visibility:visible !important;
-        opacity:1 !important;
-      }
-      section[data-testid="stSidebar"] > div:first-child {
-        width:280px !important;
-        min-width:280px !important;
-        max-width:280px !important;
-        opacity:0 !important;
-        pointer-events:none !important;
-      }
-      div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] {
-        position:fixed !important;
-        left:0 !important;
-        top:50% !important;
-        transform:translateY(-50%) !important;
-        z-index:2147483647 !important;
-        width:58px !important;
-      }
-      div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] button {
-        min-width:58px !important;
-        width:58px !important;
-        height:82px !important;
-        border-radius:0 14px 14px 0 !important;
-        border:1px solid rgba(255,255,255,.15) !important;
-        border-left:0 !important;
-        background:linear-gradient(180deg,rgba(255,77,91,.34),rgba(34,197,94,.20)) !important;
-        color:#fff !important;
-        font-size:1.65rem !important;
-        box-shadow:8px 0 30px rgba(0,0,0,.38) !important;
-      }
-      div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] button:hover {
-        border-color:#22c55e !important;
-        box-shadow:8px 0 34px rgba(34,197,94,.16) !important;
-      }
-      .main .block-container {
-        margin-left:0 !important;
-      }
-    </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <style>
-      section[data-testid="stSidebar"] {
-        display:block !important;
-        width:280px !important; min-width:280px !important; max-width:280px !important;
-        flex:0 0 280px !important;
-        transform:none !important;
-        visibility:visible !important;
-        opacity:1 !important;
-        overflow:visible !important;
-      }
-      section[data-testid="stSidebar"] > div:first-child {
-        opacity:1 !important; pointer-events:auto !important;
-      }
-    </style>
-    """, unsafe_allow_html=True)
+# Sidebar sizing/behavior lives entirely in the single JOBSYNC NAV RAIL skin
+# rendered inside `with st.sidebar:` below — this used to be a separate
+# always-on 280px-forcing block left over from an older click-to-toggle
+# design (`sidebar_collapsed` is hardcoded False above, so its collapsed
+# branch never ran, and the 280px branch fought the rail on every render).
 
 # Responsive layout overrides. Keep the desktop navigation, but switch to an overlay
 # sidebar and full-width content on smaller windows/tablets/phones. Streamlit's
@@ -4566,207 +4506,214 @@ if st.session_state.get("_update_banner"):
     )
 
 with st.sidebar:
-    # v1.3.66 — readable adaptive sidebar: icon + text when open, hamburger toggle to hide/show.
+    # JOBSYNC NAV RAIL — auto-hide, hover-expand sidebar.
+    #
+    # Replaces the earlier stack of three separate, width-breakpoint-driven nav
+    # systems (a static 248px sidebar above 1200px, a "compact rail" between
+    # 760-1200px that faked icon-only via font-size:0 + ::first-letter, and a
+    # "final narrow mode" fixed-overlay variant below that) which fought each
+    # other for section[data-testid="stSidebar"]'s width/position on every
+    # resize — the actual cause of the reported unsynced layout and stray
+    # black bar. There is now a single rail, at every window width: it rests
+    # collapsed to an icon-only strip and expands on hover/keyboard-focus,
+    # overlaying the page rather than reflowing it, then collapses again the
+    # moment the pointer leaves.
+    #
+    # Note on the ::first-letter icon trick it replaces: for a label typed as
+    # "<icon>   <text>" (e.g. "⌂   Home"), CSS ::first-letter selects the
+    # first *letter*, not the first character — for a symbol/emoji icon like
+    # ⌂ or ↪ it skips straight to "H" or the sign-out label's first letter,
+    # so the icon was invisible in the old compact rail. Simple left-aligned
+    # overflow clipping has no such problem: the icon is always first in
+    # reading order, so it is always the part that stays visible when the
+    # rail is narrow.
     st.markdown("""
     <style>
-      section[data-testid="stSidebar"] { width: 248px !important; min-width: 248px !important; max-width: 248px !important; }
-      section[data-testid="stSidebar"] > div:first-child { padding: .9rem .8rem !important; }
-      section[data-testid="stSidebar"] .stButton { margin: .20rem 0 !important; }
+      :root {
+        --jsync-nav-collapsed: 76px;
+        --jsync-nav-expanded: min(258px, 90vw);
+      }
+
+      /* NOTE ON SPECIFICITY: Streamlit does not place a component's <style>
+         tags in the document in Python call order — this block, although the
+         last sidebar-related markdown the script emits, actually lands
+         *earlier* in the DOM than several older width/position rules further
+         up this file (an leftover "small windows/tablets/phones" overlay
+         system at ~900px that predates this rail). Source order alone would
+         let those older, narrower-breakpoint rules win below 900px width. The
+         selectors below repeat the same attribute match
+         ([data-testid="stSidebar"][data-testid="stSidebar"]) purely to add
+         one extra attribute-selector's worth of specificity — a harmless,
+         valid CSS way to make sure the rail's own sizing always wins,
+         independent of where either rule happens to land in the DOM. */
+      section[data-testid="stSidebar"][data-testid="stSidebar"] {
+        position: fixed !important;
+        left: 0 !important; top: 0 !important; bottom: 0 !important;
+        height: 100dvh !important;
+        width: var(--jsync-nav-collapsed) !important;
+        min-width: var(--jsync-nav-collapsed) !important;
+        max-width: var(--jsync-nav-collapsed) !important;
+        flex: 0 0 var(--jsync-nav-collapsed) !important;
+        z-index: 999999 !important;
+        overflow: hidden !important;
+        background: linear-gradient(180deg, rgba(6,12,25,.97), rgba(4,7,14,.98)) !important;
+        border-right: 1px solid rgba(120,151,201,.12) !important;
+        box-shadow: none !important;
+        transition: width .28s cubic-bezier(.22,.9,.32,1), box-shadow .28s ease !important;
+      }
+      section[data-testid="stSidebar"][data-testid="stSidebar"]:hover,
+      section[data-testid="stSidebar"][data-testid="stSidebar"]:focus-within {
+        width: var(--jsync-nav-expanded) !important;
+        min-width: var(--jsync-nav-expanded) !important;
+        max-width: var(--jsync-nav-expanded) !important;
+        overflow-y: auto !important; overflow-x: hidden !important;
+        box-shadow: 20px 0 60px rgba(0,0,0,.5), 0 0 40px rgba(75,216,255,.05) !important;
+      }
+      /* The inner content wrapper must track the section's own width at all
+         times — if it jumped straight to the expanded width while the
+         section stayed clipped to the collapsed width, every button would
+         lay out off-screen and no icon would be visible at all. */
+      section[data-testid="stSidebar"][data-testid="stSidebar"] > div:first-child {
+        width: var(--jsync-nav-collapsed) !important;
+        min-width: var(--jsync-nav-collapsed) !important;
+        padding: .75rem .4rem !important;
+        transition: width .28s cubic-bezier(.22,.9,.32,1), padding .28s ease !important;
+      }
+      section[data-testid="stSidebar"][data-testid="stSidebar"]:hover > div:first-child,
+      section[data-testid="stSidebar"][data-testid="stSidebar"]:focus-within > div:first-child {
+        width: var(--jsync-nav-expanded) !important;
+        min-width: var(--jsync-nav-expanded) !important;
+        padding: .9rem .8rem !important;
+      }
+      /* Content always reserves only the collapsed width — the expanded
+         rail floats above it as an overlay so hovering never reflows it. */
+      div[data-testid="stAppViewContainer"] > .main,
+      .stMain {
+        margin-left: var(--jsync-nav-collapsed) !important;
+      }
+
+      /* Brand row: logo mark stays put, wordmark fades/slides in on expand. */
+      section[data-testid="stSidebar"] .jobsync-brand-row {
+        justify-content: center !important; margin: .25rem 0 .85rem !important;
+      }
+      section[data-testid="stSidebar"]:hover .jobsync-brand-row,
+      section[data-testid="stSidebar"]:focus-within .jobsync-brand-row {
+        justify-content: flex-start !important; margin: .35rem 0 1rem !important;
+      }
+      section[data-testid="stSidebar"] .jobsync-logo-mark {
+        width: 42px !important; height: 42px !important; flex: 0 0 42px !important;
+        transition: width .22s ease, height .22s ease, flex-basis .22s ease !important;
+      }
+      section[data-testid="stSidebar"]:hover .jobsync-logo-mark,
+      section[data-testid="stSidebar"]:focus-within .jobsync-logo-mark {
+        width: 46px !important; height: 46px !important; flex: 0 0 46px !important;
+      }
+      section[data-testid="stSidebar"] .brand-copy { display: none !important; }
+      section[data-testid="stSidebar"]:hover .brand-copy,
+      section[data-testid="stSidebar"]:focus-within .brand-copy { display: block !important; }
+      section[data-testid="stSidebar"] .brand-copy .brand-sub {
+        font-family: "Arial Rounded MT Bold", "Trebuchet MS", Inter, system-ui, sans-serif !important;
+        font-size: .61rem !important; font-weight: 700 !important; letter-spacing: -.01em !important;
+      }
+
+      /* Category labels + spacing: only meaningful once the rail is expanded. */
+      section[data-testid="stSidebar"] .nav-category-label { display: none !important; }
+      section[data-testid="stSidebar"]:hover .nav-category-label,
+      section[data-testid="stSidebar"]:focus-within .nav-category-label {
+        display: block !important; margin: 2px 6px 7px; color: #5f718b;
+        font-size: .50rem; font-weight: 950; letter-spacing: .18em; text-transform: uppercase;
+      }
+      section[data-testid="stSidebar"] .nav-category-gap { height: 9px; transition: height .22s ease; }
+      section[data-testid="stSidebar"] .nav-divider-space { height: 5px; transition: height .22s ease; }
+      section[data-testid="stSidebar"]:hover .nav-category-gap,
+      section[data-testid="stSidebar"]:focus-within .nav-category-gap { height: 18px; }
+      section[data-testid="stSidebar"]:hover .nav-divider-space,
+      section[data-testid="stSidebar"]:focus-within .nav-divider-space { height: 8px; }
+
+      /* Nav buttons */
+      section[data-testid="stSidebar"] .stButton { margin: .16rem 0 !important; transition: margin .22s ease !important; }
+      section[data-testid="stSidebar"]:hover .stButton,
+      section[data-testid="stSidebar"]:focus-within .stButton { margin: .20rem 0 !important; }
       section[data-testid="stSidebar"] .stButton > button {
-        position:relative !important; overflow:hidden !important;
-        min-height: 50px !important; height: 50px !important; padding: 0 15px !important;
-        border-radius: 14px !important; display:flex !important; align-items:center !important;
-        justify-content:flex-start !important; gap:12px !important;
+        position: relative !important; overflow: hidden !important;
+        width: 100% !important;
+        min-height: 50px !important; height: 50px !important;
+        padding: 0 0 0 1.05rem !important;
+        border-radius: 14px !important; display: flex !important; align-items: center !important;
+        justify-content: flex-start !important; gap: 12px !important;
+        white-space: nowrap !important;
         font-family: "Arial Rounded MT Bold", "Trebuchet MS", Inter, system-ui, -apple-system, sans-serif !important;
-        font-size: .94rem !important; font-weight: 900 !important; letter-spacing:-.032em !important;
-        line-height:1 !important; text-rendering:geometricPrecision !important;
-        color:#f0f5ff !important; background:linear-gradient(135deg,rgba(13,24,46,.92),rgba(10,18,35,.94)) !important;
-        border:1px solid rgba(132,156,197,.15) !important;
+        font-size: .94rem !important; font-weight: 900 !important; letter-spacing: -.032em !important;
+        line-height: 1 !important; text-rendering: geometricPrecision !important;
+        color: #f0f5ff !important; background: linear-gradient(135deg,rgba(13,24,46,.92),rgba(10,18,35,.94)) !important;
+        border: 1px solid rgba(132,156,197,.15) !important;
         box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 7px 18px rgba(0,0,0,.10) !important;
-        transition: transform .22s cubic-bezier(.22,.8,.26,1), border-color .22s ease, box-shadow .22s ease, background .22s ease !important;
+        transition: transform .22s cubic-bezier(.22,.8,.26,1), border-color .22s ease,
+                    box-shadow .22s ease, background .22s ease, padding .22s ease !important;
+      }
+      section[data-testid="stSidebar"]:hover .stButton > button,
+      section[data-testid="stSidebar"]:focus-within .stButton > button {
+        padding: 0 15px !important;
       }
       section[data-testid="stSidebar"] .stButton > button::before {
-        content:""; position:absolute; inset:0; pointer-events:none;
-        background:linear-gradient(115deg,transparent 0%,rgba(255,255,255,.04) 45%,transparent 60%);
-        transform:translateX(-120%); transition:transform .55s ease;
+        content: ""; position: absolute; inset: 0; pointer-events: none;
+        background: linear-gradient(115deg,transparent 0%,rgba(255,255,255,.04) 45%,transparent 60%);
+        transform: translateX(-120%); transition: transform .55s ease;
       }
-      section[data-testid="stSidebar"] .stButton > button:hover::before { transform:translateX(120%); }
+      section[data-testid="stSidebar"] .stButton > button:hover::before { transform: translateX(120%); }
       section[data-testid="stSidebar"] .stButton > button p {
         font-family: "Arial Rounded MT Bold", "Trebuchet MS", Inter, system-ui, -apple-system, sans-serif !important;
-        font-size: .94rem !important; line-height:1 !important; margin:0 !important;
-        font-weight:900 !important; letter-spacing:-.032em !important; color:#f0f5ff !important;
-        text-rendering:geometricPrecision !important;
+        font-size: .94rem !important; line-height: 1 !important; margin: 0 !important;
+        font-weight: 900 !important; letter-spacing: -.032em !important; color: #f0f5ff !important;
+        text-rendering: geometricPrecision !important;
+        white-space: nowrap !important; overflow: hidden !important; text-align: left !important;
       }
       section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background:linear-gradient(135deg,rgba(35,194,255,.16),rgba(108,72,255,.22) 58%,rgba(227,78,211,.12)) !important;
-        border-color:rgba(170,103,255,.72) !important;
-        box-shadow:0 0 18px rgba(103,76,255,.14), inset 3px 0 0 #c44dff, inset 0 1px 0 rgba(255,255,255,.06) !important;
-        animation:jobsyncNavActive 2.8s ease-in-out infinite !important;
+        background: linear-gradient(135deg,rgba(35,194,255,.16),rgba(108,72,255,.22) 58%,rgba(227,78,211,.12)) !important;
+        border-color: rgba(170,103,255,.72) !important;
+        box-shadow: 0 0 18px rgba(103,76,255,.14), inset 3px 0 0 #c44dff, inset 0 1px 0 rgba(255,255,255,.06) !important;
+        animation: jobsyncNavActive 2.8s ease-in-out infinite !important;
       }
       section[data-testid="stSidebar"] .stButton > button:hover {
-        transform:translateX(3px) scale(1.008) !important; border-color:rgba(67,213,255,.72) !important;
-        box-shadow:0 0 20px rgba(55,190,255,.14), inset 0 1px 0 rgba(255,255,255,.05) !important;
+        transform: translateX(3px) scale(1.008) !important; border-color: rgba(67,213,255,.72) !important;
+        box-shadow: 0 0 20px rgba(55,190,255,.14), inset 0 1px 0 rgba(255,255,255,.05) !important;
       }
-      section[data-testid="stSidebar"] .stButton > button:active { transform:translateX(1px) scale(.995) !important; }
-      section[data-testid="stSidebar"] .stButton > button p:first-letter { font-size:1.18em !important; font-weight:900 !important; }
+      section[data-testid="stSidebar"] .stButton > button:active { transform: translateX(1px) scale(.995) !important; }
       @keyframes jobsyncNavActive {
-        0%,100% { box-shadow:0 0 14px rgba(103,76,255,.12), inset 3px 0 0 #c44dff, inset 0 1px 0 rgba(255,255,255,.04); }
-        50% { box-shadow:0 0 24px rgba(64,205,255,.15), inset 3px 0 0 #43d5ff, inset 0 1px 0 rgba(255,255,255,.06); }
+        0%,100% { box-shadow: 0 0 14px rgba(103,76,255,.12), inset 3px 0 0 #c44dff, inset 0 1px 0 rgba(255,255,255,.04); }
+        50% { box-shadow: 0 0 24px rgba(64,205,255,.15), inset 3px 0 0 #43d5ff, inset 0 1px 0 rgba(255,255,255,.06); }
       }
-      @media (prefers-reduced-motion: reduce) { section[data-testid="stSidebar"] .stButton > button, section[data-testid="stSidebar"] .stButton > button::before { animation:none !important; transition:none !important; } }
-      section[data-testid="stSidebar"] .jobsync-brand-row { justify-content:flex-start !important; margin:.35rem 0 1rem !important; }
-      section[data-testid="stSidebar"] .brand-copy .brand-sub { font-family: "Arial Rounded MT Bold", "Trebuchet MS", Inter, system-ui, sans-serif !important; font-size:.61rem !important; font-weight:700 !important; letter-spacing:-.01em !important; }
-      section[data-testid="stSidebar"] .jobsync-logo-mark { width:46px !important; height:46px !important; }
-      section[data-testid="stSidebar"] .brand-copy { display:block !important; }
-      section[data-testid="stSidebar"] .sidebar-userbar { margin:1rem 0 .25rem !important; }
-      section[data-testid="stSidebar"] .nav-divider-space { height:8px; }
-      section[data-testid="stSidebar"] .nav-category-gap { height:18px; }
-      section[data-testid="stSidebar"] .nav-category-label { margin:2px 6px 7px; color:#5f718b; font-size:.50rem; font-weight:950; letter-spacing:.18em; text-transform:uppercase; }
-      section[data-testid="stSidebar"] .stButton[key="jobsync_sidebar_toggle_open"] > button{width:38px!important;min-width:38px!important;height:36px!important;min-height:36px!important;padding:0!important;border-radius:10px!important;margin:0 0 12px auto!important;justify-content:center!important;font-size:1.2rem!important;color:#dbe8ff!important;background:rgba(24,37,59,.86)!important;border-color:rgba(120,151,201,.14)!important;box-shadow:none!important;}
-      section[data-testid="stSidebar"] .stButton[key="jobsync_sidebar_toggle_open"] > button:hover{transform:scale(1.04)!important;border-color:rgba(75,216,255,.4)!important;}
-      section[data-testid="stSidebar"] .jobsync-sidebar-toggle-marker + div[data-testid="stHorizontalBlock"]{margin:0 0 12px!important;padding:0!important;}
-      section[data-testid="stSidebar"] .jobsync-sidebar-toggle-marker + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{padding:0!important;}
-      section[data-testid="stSidebar"] .jobsync-sidebar-toggle-marker + div[data-testid="stHorizontalBlock"] .stButton > button{width:38px!important;min-width:38px!important;height:36px!important;min-height:36px!important;padding:0!important;border-radius:10px!important;justify-content:center!important;font-size:1.2rem!important;color:#dbe8ff!important;background:rgba(24,37,59,.86)!important;border-color:rgba(120,151,201,.14)!important;box-shadow:none!important;margin-left:auto!important;}
-      section[data-testid="stSidebar"] .jobsync-sidebar-toggle-marker + div[data-testid="stHorizontalBlock"] .stButton > button:hover{transform:scale(1.04)!important;border-color:rgba(75,216,255,.4)!important;}
-
-      /* Compact-window mode: turn the navigation into a slim icon rail so it
-         never covers/overlaps the workspace when the Windows app is narrow.
-         Labels remain in the DOM for accessibility, but are visually hidden. */
-      /* v1.7.0 responsive rail: at laptop/window widths the sidebar becomes a
-         true icon rail. The earlier 900px breakpoint was too narrow for the
-         Windows desktop/webview, leaving the full navigation column visible. */
-      @media (max-width: 1200px) {
-        section[data-testid="stSidebar"] {
-          width:78px !important; min-width:78px !important; max-width:78px !important;
-          background:rgba(4,10,21,.82) !important;
-          border-right:1px solid rgba(99,126,173,.14) !important;
-          box-shadow:10px 0 34px rgba(0,0,0,.16) !important;
-        }
-        section[data-testid="stSidebar"] > div:first-child {
-          width:78px !important; min-width:78px !important; max-width:78px !important;
-          padding: .75rem .40rem !important;
-          background:transparent !important;
-        }
-        section[data-testid="stSidebar"] .jobsync-brand-row {
-          justify-content:center !important; margin:.25rem 0 .85rem !important;
-        }
-        section[data-testid="stSidebar"] .jobsync-logo-mark {
-          width:42px !important; height:42px !important; flex:0 0 42px !important;
-        }
-        section[data-testid="stSidebar"] .brand-copy,
-        section[data-testid="stSidebar"] .sidebar-usercopy,
-        section[data-testid="stSidebar"] .sidebar-userbar .sidebar-role,
-        section[data-testid="stSidebar"] .nav-category-label {
-          display:none !important;
-        }
-        section[data-testid="stSidebar"] .sidebar-userbar {
-          justify-content:center !important; padding:.55rem !important; margin:.65rem 0 !important;
-          min-height:46px !important;
-        }
-        section[data-testid="stSidebar"] .sidebar-userbar .jobsync-user-avatar {
-          margin:0 !important;
-        }
-        section[data-testid="stSidebar"] .nav-category-gap { height:9px !important; }
-        section[data-testid="stSidebar"] .nav-divider-space { height:5px !important; }
-        section[data-testid="stSidebar"] .stButton { margin:.16rem 0 !important; }
-        section[data-testid="stSidebar"] .stButton > button {
-          width:68px !important; min-width:68px !important; max-width:68px !important;
-          height:50px !important; min-height:50px !important; padding:0 !important;
-          justify-content:center !important; gap:0 !important;
-          font-size:0 !important; letter-spacing:0 !important;
-        }
-        section[data-testid="stSidebar"] .stButton > button p,
-        section[data-testid="stSidebar"] .stButton > button span,
-        section[data-testid="stSidebar"] .stButton > button div {
-          font-size:0 !important; line-height:1 !important; margin:0 !important;
-          width:100% !important; max-width:100% !important;
-          text-align:center !important; white-space:nowrap !important;
-          overflow:hidden !important;
-        }
-        /* Preserve the first character (the navigation icon) while hiding the label. */
-        section[data-testid="stSidebar"] .stButton > button p:first-letter {
-          font-size:1.35rem !important; font-weight:900 !important;
-        }
-        /* Sign-out must remain a single centered icon in compact mode.
-           Streamlit can render button text in an inner element that ignores
-           the generic first-letter rule, which previously caused "Sign out"
-           to wrap vertically. */
-        section[data-testid="stSidebar"] .stButton[key="sidebar_sign_out"] > button {
-          position:relative !important;
-          color:transparent !important;
-          font-size:0 !important;
-          line-height:1 !important;
-          overflow:hidden !important;
-        }
-        section[data-testid="stSidebar"] .stButton[key="sidebar_sign_out"] > button p,
-        section[data-testid="stSidebar"] .stButton[key="sidebar_sign_out"] > button span {
-          color:transparent !important;
-          font-size:0 !important;
-          line-height:0 !important;
-          width:0 !important;
-          max-width:0 !important;
-          overflow:hidden !important;
-        }
-        section[data-testid="stSidebar"] .stButton[key="sidebar_sign_out"] > button::after {
-          content:"↪" !important;
-          display:flex !important;
-          align-items:center !important;
-          justify-content:center !important;
-          width:100% !important;
-          height:100% !important;
-          color:#dbe8ff !important;
-          font-size:1.35rem !important;
-          font-weight:900 !important;
-          line-height:1 !important;
-        }
-        section[data-testid="stSidebar"] .sidebar-useremail { display:none !important; }
-        section[data-testid="stSidebar"] .stButton[key="jobsync_sidebar_toggle_open"] > button {
-          width:42px !important; min-width:42px !important; margin:0 auto 10px !important;
-        }
-        /* The compact rail must never inherit the desktop button text layout. */
-        section[data-testid="stSidebar"] .nav-category-gap { height:7px !important; }
-        section[data-testid="stSidebar"] .nav-divider-space { height:7px !important; }
-        section[data-testid="stSidebar"] .stButton > button {
-          white-space:nowrap !important; overflow:hidden !important;
-          text-overflow:clip !important;
-        }
+      @media (prefers-reduced-motion: reduce) {
+        section[data-testid="stSidebar"] .stButton > button,
+        section[data-testid="stSidebar"] .stButton > button::before { animation: none !important; transition: none !important; }
       }
 
-      /* v1.7.0 FINAL NARROW MODE: remove Streamlit's reserved sidebar surface.
-         The navigation becomes a floating icon rail instead of a black column. */
-      @media (max-width:1200px) {
-        section[data-testid="stSidebar"] {
-          width:0 !important; min-width:0 !important; max-width:0 !important;
-          flex:0 0 0 !important; flex-basis:0 !important;
-          background:transparent !important; border-right:0 !important;
-          box-shadow:none !important; overflow:visible !important;
-          position:relative !important; z-index:100 !important;
-        }
-        section[data-testid="stSidebar"] > div:first-child {
-          position:fixed !important; left:0 !important; top:0 !important; bottom:0 !important;
-          width:78px !important; min-width:78px !important; max-width:78px !important;
-          padding:.7rem .4rem !important;
-          overflow-y:auto !important; overflow-x:hidden !important;
-          background:linear-gradient(180deg,rgba(6,12,25,.82),rgba(5,9,19,.72)) !important;
-          border-right:1px solid rgba(99,126,173,.10) !important;
-          box-shadow:8px 0 28px rgba(0,0,0,.10) !important;
-          backdrop-filter:blur(14px) !important;
-        }
-        section[data-testid="stSidebar"] .stButton > button {
-          width:68px !important; min-width:68px !important; max-width:68px !important;
-        }
+      /* User card */
+      section[data-testid="stSidebar"] .sidebar-userbar {
+        display: flex !important; align-items: center !important;
+        justify-content: center !important; gap: 0 !important;
+        padding: .55rem !important; margin: .65rem 0 !important; min-height: 46px !important;
+        transition: justify-content 0s, gap .22s ease, padding .22s ease, margin .22s ease !important;
       }
-      @media (max-width:760px) {
-        section[data-testid="stSidebar"] > div:first-child {
-          width:68px !important; min-width:68px !important; max-width:68px !important;
-          padding-left:.28rem !important; padding-right:.28rem !important;
-          background:transparent !important; border-right:0 !important;
-          box-shadow:none !important; backdrop-filter:none !important;
-        }
-        section[data-testid="stSidebar"] .stButton > button {
-          width:60px !important; min-width:60px !important; max-width:60px !important;
-          height:50px !important; min-height:50px !important; border-radius:13px !important;
-        }
+      section[data-testid="stSidebar"]:hover .sidebar-userbar,
+      section[data-testid="stSidebar"]:focus-within .sidebar-userbar {
+        justify-content: flex-start !important; gap: .6rem !important;
+        padding: .7rem !important; margin: 1rem 0 .25rem !important;
+      }
+      section[data-testid="stSidebar"] .sidebar-userbar .jobsync-user-avatar { margin: 0 !important; }
+      section[data-testid="stSidebar"] .sidebar-usercopy,
+      section[data-testid="stSidebar"] .sidebar-userbar .sidebar-role { display: none !important; }
+      section[data-testid="stSidebar"]:hover .sidebar-usercopy,
+      section[data-testid="stSidebar"]:focus-within .sidebar-usercopy,
+      section[data-testid="stSidebar"]:hover .sidebar-userbar .sidebar-role,
+      section[data-testid="stSidebar"]:focus-within .sidebar-userbar .sidebar-role { display: block !important; }
+      section[data-testid="stSidebar"] .sidebar-useremail { display: none !important; }
+      section[data-testid="stSidebar"]:hover .sidebar-useremail,
+      section[data-testid="stSidebar"]:focus-within .sidebar-useremail { display: block !important; }
+
+      @media (max-width: 560px) {
+        :root { --jsync-nav-collapsed: 62px; }
+        section[data-testid="stSidebar"] .stButton > button { min-height: 46px !important; height: 46px !important; }
       }
     </style>
     """, unsafe_allow_html=True)
