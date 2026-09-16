@@ -49,6 +49,10 @@ from services.gmail import get_gmail_service, disconnect_gmail, sync_gmail
 from services.linkedin_browser import sync_linkedin_notifications, connect_linkedin
 from services.free_job_sources import FREE_SOURCE_NAMES
 from services.notifications import desktop_notify
+try:
+    from services import voice_assistant
+except ImportError:
+    voice_assistant = None
 from services.presence import (
     configured as presence_configured,
     heartbeat_presence,
@@ -3291,14 +3295,14 @@ def _local_ai_config(provider: str | None) -> dict:
 # Offline/local models further below remain available for anyone who'd
 # rather download a model to this PC instead (large download, no key).
 HOSTED_AI_MODELS = {
-    "Gemini 2.0 Flash": {"provider": "Gemini", "model": "gemini-2.0-flash", "tier": "Free", "note": "Free Google AI Studio key · fast"},
-    "Gemini 1.5 Pro": {"provider": "Gemini", "model": "gemini-1.5-pro", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
+    "Gemini 2.5 Flash": {"provider": "Gemini", "model": "gemini-2.5-flash", "tier": "Free", "note": "Free Google AI Studio key · fast"},
+    "Gemini 2.5 Pro": {"provider": "Gemini", "model": "gemini-2.5-pro", "tier": "Paid", "note": "Google AI Studio key with billing enabled · stronger reasoning (free-tier keys get a 404 on this model)"},
     "GPT-4o mini": {"provider": "ChatGPT", "model": "gpt-4o-mini", "tier": "Paid", "note": "OpenAI API key with billing · low cost"},
     "GPT-4o": {"provider": "ChatGPT", "model": "gpt-4o", "tier": "Paid", "note": "OpenAI API key with billing · premium quality"},
-    "Claude 3.5 Haiku": {"provider": "Claude", "model": "claude-3-5-haiku-20241022", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
-    "Claude Sonnet 4": {"provider": "Claude", "model": "claude-sonnet-4-20250514", "tier": "Paid", "note": "Anthropic API key with billing · premium quality"},
+    "Claude Haiku 4.5": {"provider": "Claude", "model": "claude-haiku-4-5-20251001", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
+    "Claude Sonnet 5": {"provider": "Claude", "model": "claude-sonnet-5", "tier": "Paid", "note": "Anthropic API key with billing · premium quality"},
 }
-AI_DEFAULT_PROVIDER = "Gemini 2.0 Flash"
+AI_DEFAULT_PROVIDER = "Gemini 2.5 Flash"
 
 
 def _resolve_ai_selection(selection: str | None) -> tuple[str, str | None]:
@@ -4169,7 +4173,7 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
         return "\n".join(parts)
 
     if resolved_provider == "Claude":
-        model = model_override or os.getenv("JOBSYNC_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+        model = model_override or os.getenv("JOBSYNC_ANTHROPIC_MODEL", "claude-sonnet-5")
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={"x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
@@ -4180,12 +4184,18 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
         return "\n".join(str(x.get("text", "")) for x in data.get("content", []) if isinstance(x, dict))
 
     if resolved_provider == "Gemini":
-        model = model_override or os.getenv("JOBSYNC_GEMINI_MODEL", "gemini-2.0-flash")
+        model = model_override or os.getenv("JOBSYNC_GEMINI_MODEL", "gemini-2.5-flash")
         response = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
             headers={"Content-Type": "application/json"}, params={"key": key},
             json={"systemInstruction": {"parts": [{"text": system}]}, "contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}}, timeout=180,
         )
+        if response.status_code == 404:
+            raise RuntimeError(
+                f"Google rejected model '{model}' (404) for this API key. This usually means the key doesn't have "
+                "access to that model — e.g. a free AI Studio key on 'Gemini 2.5 Pro'. Try 'Gemini 2.5 Flash' instead, "
+                "or enable billing on this key."
+            )
         response.raise_for_status()
         data = response.json()
         parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
@@ -4857,6 +4867,81 @@ if page in {"Gmail Updates", "LinkedIn Updates"}:
     st.session_state.nav = "Updates"
 
 
+# ---------------- VOICE ASSISTANT ("Hey JobSync") ----------------
+def render_voice_assistant_panel() -> None:
+    """Floating assistant panel: starts the background wake-word listener
+    (local desktop use only) and shows what it's doing / found."""
+    if voice_assistant is None:
+        return
+    if page == "Login" or not st.session_state.get("_authed"):
+        return
+    if not st.session_state.get("voice_assistant_enabled", True):
+        return
+
+    voice_assistant.ensure_started()
+
+    try:
+        from streamlit_autorefresh import st_autorefresh
+        st_autorefresh(interval=1500, key="voice_assistant_poll")
+    except ImportError:
+        pass
+
+    snap = voice_assistant.get_state().snapshot()
+
+    nav_target = voice_assistant.get_state().consume_navigation()
+    if nav_target and nav_target in PAGES:
+        st.session_state.nav = nav_target
+        st.rerun()
+
+    st.markdown(
+        """
+        <style>
+        .voice-assistant-panel{position:fixed;right:18px;bottom:18px;width:320px;max-height:70vh;overflow-y:auto;
+          background:rgba(16,19,26,.92);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.09);
+          border-radius:16px;padding:14px 15px;z-index:9999;box-shadow:0 10px 30px rgba(0,0,0,.45);}
+        .voice-assistant-title{font-size:.72rem;font-weight:900;letter-spacing:.04em;color:#eef3f9;
+          display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+        .voice-assistant-dot{width:8px;height:8px;border-radius:50%;background:#4b5563;}
+        .voice-assistant-dot.awake{background:#22c55e;box-shadow:0 0 8px #22c55e;}
+        .voice-assistant-status{font-size:.66rem;color:#9aa5b3;line-height:1.5;margin-bottom:8px;}
+        .voice-assistant-transcript{font-size:.6rem;color:#657085;font-style:italic;margin-bottom:8px;}
+        .voice-result-card{padding:8px 9px;border-radius:10px;background:rgba(255,255,255,.04);
+          border:1px solid rgba(255,255,255,.06);margin-bottom:7px;}
+        .voice-result-title{font-size:.68rem;font-weight:800;color:#eef3f9;}
+        .voice-result-meta{font-size:.6rem;color:#8e99a7;margin-top:2px;}
+        .voice-result-link{font-size:.6rem;color:#6cddff;text-decoration:none;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    dot_cls = "voice-assistant-dot awake" if snap["awake"] or snap["busy"] else "voice-assistant-dot"
+    panel_html = [f'<div class="voice-assistant-panel">']
+    panel_html.append(f'<div class="voice-assistant-title"><span class="{dot_cls}"></span>JobSync Assistant</div>')
+    panel_html.append(f'<div class="voice-assistant-status">{html.escape(snap["status"])}</div>')
+    if snap["transcript"]:
+        panel_html.append(f'<div class="voice-assistant-transcript">heard: “{html.escape(snap["transcript"])}”</div>')
+    if snap["error"] == "missing-dependency":
+        panel_html.append('<div class="voice-assistant-status">Install SpeechRecognition + PyAudio locally to enable the mic.</div>')
+    for job in snap["results"][:10]:
+        title = html.escape(str(job.get("title") or "Untitled role"))
+        company = html.escape(str(job.get("company") or ""))
+        location = html.escape(str(job.get("location") or ""))
+        url = html.escape(str(job.get("url") or ""), quote=True)
+        panel_html.append(
+            '<div class="voice-result-card">'
+            f'<div class="voice-result-title">{title}</div>'
+            f'<div class="voice-result-meta">{company} · {location}</div>'
+            + (f'<a class="voice-result-link" href="{url}" target="_blank">Proceed →</a>' if url else '')
+            + '</div>'
+        )
+    panel_html.append("</div>")
+    st.markdown("".join(panel_html), unsafe_allow_html=True)
+
+
+render_voice_assistant_panel()
+
+
 def master_reset() -> None:
     """Reset all JobSync user data while preserving job-source and Google OAuth application settings."""
     # Clear user-uploaded and generated documents.
@@ -5332,6 +5417,11 @@ if page == "Home":
             </div>
             """, unsafe_allow_html=True,
         )
+        _login_col1, _login_col2, _login_col3 = st.columns([1, 1, 1])
+        with _login_col2:
+            if st.button("Log In / Sign Up →", key="public_landing_login", width="stretch", type="primary"):
+                st.session_state.nav = "Login"
+                st.rerun()
         st.stop()
 
     _render_home_authenticated()
@@ -6879,6 +6969,21 @@ elif page == "Profile":
 
 elif page == "Settings":
     render_modern_page_header("Settings")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🎙️ Voice assistant</div>', unsafe_allow_html=True)
+    if voice_assistant is None:
+        st.caption("Voice assistant module is not installed in this build.")
+    else:
+        st.caption("Say “Hey JobSync” (or “Hey Sync” / “Hello Sync”), then a command like “search for manufacturing jobs in Germany” or “open dashboard”. It talks back out loud (offline OS voice), the same way it shows status in the floating panel. Say “stop” to cancel. Requires a local microphone (desktop app), not available on hosted sessions.")
+        voice_enabled = st.toggle(
+            "Enable voice assistant",
+            value=st.session_state.get("voice_assistant_enabled", True),
+            key="voice_assistant_enabled",
+        )
+        if not voice_enabled:
+            voice_assistant.stop_assistant()
+    st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">🔐 Account security</div>', unsafe_allow_html=True)
     account_email = str(st.session_state.get("local_user_email") or profile.get("email") or "").strip().lower()
