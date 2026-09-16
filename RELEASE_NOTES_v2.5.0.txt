@@ -1,0 +1,22 @@
+JobSync v2.5.0
+==============
+
+Home — new Apple-glass design, focused on purpose + presence
+----------------------------------------------------------------
+- Home is redesigned from scratch around a "Liquid Glass" aesthetic:
+  translucent, blurred panels (backdrop-filter blur + saturation) with a
+  soft inner highlight, gentle depth and smooth cubic-bezier hover
+  transitions — replacing the previous neural-network hub/sector-grid
+  visual.
+- A new "What this is" glass panel states plainly what JobSync is for
+  (a private job-search command center) with three feature tiles —
+  Discover, Create, Track — each with a one-line explanation.
+- A live "Online now" glass panel shows who else is using JobSync right
+  now: an overlapping avatar stack (Apple-presence style, up to 6 plus a
+  "+N" bubble), a pulsing live indicator, and the full name list below it
+  with its own small internal scroll if there are a lot of people online.
+- Quick action shortcuts (Find Jobs, Create CV, Write Cover Letter, Track
+  Applications) are kept, restyled as the same frosted-glass material.
+- Still fits one viewport with no page scrollbar at typical window
+  heights (verified at 900px and 1000px) — continuing the v2.3.0 "Home
+  fits one look" work, now on the new design.

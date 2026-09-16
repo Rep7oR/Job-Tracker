@@ -1497,83 +1497,73 @@ st.markdown(
         .block-container { padding-right:305px !important; }
     }
 
-    /* v1.7.0 Neural Home — Home-only visual system. */
-    /* Home is compacted with vh-based sizing so the whole layout scales down
-       on shorter windows and fits one viewport at typical laptop/desktop
-       heights without a page scrollbar. Padding is trimmed rather than the
-       page being hard-clipped (overflow:hidden) — on an unusually short
-       window it degrades to a small scroll instead of silently hiding
-       content. Only the "Online now" list keeps its own small internal
-       scroll (see .jobsync-home-online-list), since it's the one genuinely
-       unbounded list on this page. */
+    /* v2.5.0 Apple Glass Home — Home-only visual system.
+       Frosted "Liquid Glass" panels (blurred translucent surfaces, soft inner
+       highlight, gentle depth on hover) replace the old neural-network
+       visual. The page still fits one viewport without a page scrollbar at
+       typical window heights (padding trimmed, not hard-clipped — an
+       unusually short window degrades to a small scroll instead of hiding
+       content), and only the "Online now" list keeps its own small internal
+       scroll, since it's the one genuinely unbounded list on this page. */
     body:has(.jobsync-home-shell) [data-testid="stAppViewContainer"] .block-container {
-        padding-top: .25vh !important;
-        padding-bottom: .25vh !important;
+        padding-top: .6vh !important;
+        padding-bottom: .6vh !important;
     }
-    .jobsync-home-shell{width:100%;max-width:1280px;margin:0 auto;padding:0;}
-                    .jobsync-home-greeting-top{text-align:left;margin:0 0 .5vh;padding:0 2px;}
-    .jobsync-home-greeting-kicker{font-size:.58rem;font-weight:950;letter-spacing:.2em;color:#54ddff;margin-bottom:3px}.jobsync-home-greeting-title{font-size:clamp(1.35rem,2.6vw,2.4rem);line-height:1.05;font-weight:950;letter-spacing:-.05em;background:linear-gradient(90deg,#dff7ff 0%,#8fdcff 38%,#b99cff 72%,#d47cff 100%);-webkit-background-clip:text;background-clip:text;color:transparent;animation:jobsync-home-fade .7s ease both}.jobsync-home-greeting-subtitle{margin-top:3px;color:#8795aa;font-size:clamp(.68rem,1vw,.82rem);animation:jobsync-home-fade .7s ease .08s both;}
-    .jobsync-home-command-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:10px;align-items:start;}
-    .jobsync-home-rail{max-height:44vh;}
-    .jobsync-neural-card{position:relative;min-height:320px;overflow:hidden;border:1px solid rgba(91,139,236,.2);border-radius:28px;background:radial-gradient(circle at 50% 48%,rgba(40,83,155,.18),transparent 30%),linear-gradient(145deg,rgba(5,13,27,.98),rgba(9,14,31,.96) 55%,rgba(20,10,43,.98));box-shadow:0 25px 70px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.025);}
-    .jobsync-neural-card:before{content:"";position:absolute;inset:-20%;background:radial-gradient(circle at 50% 50%,rgba(42,212,255,.07),transparent 20%),radial-gradient(circle at 30% 30%,rgba(163,72,255,.06),transparent 22%);animation:jobsync-neural-breathe 7s ease-in-out infinite;pointer-events:none;}
-    .jobsync-neural-head{position:absolute;top:14px;left:18px;z-index:8}.jobsync-neural-kicker{font-size:.54rem;font-weight:950;letter-spacing:.16em;color:#6f819c}.jobsync-neural-title{font-size:.86rem;font-weight:850;color:#eaf2ff;margin-top:3px}.jobsync-neural-sub{font-size:.56rem;color:#697991;margin-top:2px;}
-    .jobsync-network{position:absolute;inset:52px 14px 10px;min-height:110px;}
-    .jobsync-network svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.jobsync-network path{fill:none;stroke:rgba(79,196,255,.34);stroke-width:1.3;stroke-dasharray:8 12;animation:jobsync-flow 5s linear infinite;filter:drop-shadow(0 0 4px rgba(74,190,255,.25));}.jobsync-network path.p2{stroke:rgba(177,91,255,.32);animation-duration:6.2s}.jobsync-network path.p3{stroke:rgba(55,230,175,.3);animation-duration:5.7s}.jobsync-network circle{fill:#58e5ff;filter:drop-shadow(0 0 7px rgba(88,229,255,.9));animation:jobsync-node-pulse 2.8s ease-in-out infinite}.jobsync-network circle.c2{fill:#b66cff;animation-delay:.7s}.jobsync-network circle.c3{fill:#42e8b0;animation-delay:1.1s}
-    .jobsync-neural-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;width:96px;height:96px;border-radius:50%;display:grid;place-items:center;text-align:center;background:radial-gradient(circle at 50% 35%,rgba(72,153,255,.34),rgba(9,18,42,.98) 62%);border:1px solid rgba(78,220,255,.55);box-shadow:0 0 0 8px rgba(75,137,255,.035),0 0 40px rgba(67,170,255,.25),inset 0 0 25px rgba(80,93,255,.18);animation:jobsync-core-glow 4s ease-in-out infinite;}
-    .jobsync-logo-mark{width:57px;height:57px;display:flex;align-items:flex-end;justify-content:center;gap:4px;margin:auto auto 5px;filter:drop-shadow(0 0 15px rgba(65,205,255,.42));}.jobsync-logo-mark i{display:block;width:9px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#4be9ff,#4d7bff);animation:jobsync-bar 2.4s ease-in-out infinite}.jobsync-logo-mark i:nth-child(1){height:28px}.jobsync-logo-mark i:nth-child(2){height:42px;background:linear-gradient(180deg,#39e8ff,#7b5dff);animation-delay:.15s}.jobsync-logo-mark i:nth-child(3){height:35px;background:linear-gradient(180deg,#7f7bff,#c14eff);animation-delay:.3s}.jobsync-logo-mark i:nth-child(4){height:24px;background:linear-gradient(180deg,#f36cff,#ff5b9e);animation-delay:.45s}.jobsync-core-name{color:#fff;font-size:.76rem;font-weight:950;letter-spacing:-.03em}.jobsync-core-sub{color:#8ea5c4;font-size:.44rem;margin-top:1px;}
-    /* Real, clickable sector nodes (Streamlit buttons) replacing the old
-       non-interactive <details> cards — see jobsync-sector-grid-marker below. */
-    div:has(>.jobsync-sector-grid-marker){border:1px solid rgba(91,139,236,.18);border-radius:16px;padding:9px;margin:8px 0 0;background:linear-gradient(145deg,rgba(9,17,34,.95),rgba(12,15,36,.95));box-shadow:0 12px 30px rgba(0,0,0,.2);}
-    div:has(>.jobsync-sector-grid-marker) [data-testid="stHorizontalBlock"]{gap:10px !important;}
-    div:has(>.jobsync-sector-grid-marker) [data-testid="stHorizontalBlock"] + [data-testid="stHorizontalBlock"]{margin-top:10px;}
-    div:has(>.jobsync-sector-grid-marker) .stButton > button{position:relative;overflow:hidden;min-height:58px;width:100%;padding:7px 10px 6px;border-radius:12px;background:rgba(8,16,33,.9);border:1px solid rgba(95,151,255,.25);box-shadow:0 8px 20px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.035);transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;white-space:pre-line;text-align:left;line-height:1.15;}
-    div:has(>.jobsync-sector-grid-marker) .stButton > button:hover{transform:translateY(-3px) scale(1.015);border-color:rgba(80,213,255,.55);box-shadow:0 18px 35px rgba(0,0,0,.35),0 0 22px rgba(61,180,255,.1)}
-    div:has(>.jobsync-sector-grid-marker) .stButton > button:after{content:"";position:absolute;right:10px;top:10px;width:5px;height:5px;border-radius:50%;background:#4ee8ff;box-shadow:0 0 9px rgba(78,232,255,.8);opacity:.7;animation:jobsync-node-pulse 2.8s ease-in-out infinite;}
-    div:has(>.jobsync-sector-grid-marker) .stButton > button p{margin:0;color:#94a8c4;font-size:.51rem;font-weight:600;white-space:pre-line;line-height:1.35;}
-    div:has(>.jobsync-sector-grid-marker) .stButton > button p:first-line{color:#edf5ff;font-size:.64rem;font-weight:850;}
-    div:has(>.jobsync-sector-grid-marker) [data-testid="stHorizontalBlock"]{gap:6px !important;}
-    div:has(>.jobsync-sector-grid-marker) [data-testid="stHorizontalBlock"] + [data-testid="stHorizontalBlock"]{margin-top:6px;}
-    div:has(>.jobsync-sector-grid-marker) .stButton{margin:0 !important;}
-    .jobsync-sector-grid-head{color:#6e7e95;font-size:.58rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;}
-    .jobsync-home-rail{display:flex;flex-direction:column;gap:8px;min-height:0;overflow-y:auto;}.jobsync-home-panel{border:1px solid rgba(91,139,236,.18);border-radius:16px;background:linear-gradient(145deg,rgba(9,17,34,.95),rgba(12,15,36,.95));box-shadow:0 12px 30px rgba(0,0,0,.2);overflow:hidden;flex:0 0 auto;}.jobsync-panel-head{padding:9px 12px 7px;border-bottom:1px solid rgba(255,255,255,.055)}.jobsync-panel-title{font-size:.72rem;font-weight:850;color:#edf4ff}.jobsync-panel-sub{font-size:.51rem;color:#6e7e95;margin-top:2px}.jobsync-progress{padding:6px 12px 8px}.jobsync-progress-row{display:grid;grid-template-columns:20px 1fr auto;gap:7px;align-items:center;padding:4px 0}.jobsync-progress-dot{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:.5rem;font-weight:900;border:1px solid rgba(130,150,190,.28);color:#8392aa}.jobsync-progress-row.done .jobsync-progress-dot{color:#06170f;background:linear-gradient(145deg,#66f0b0,#35d88e);border-color:#54e7a1;box-shadow:0 0 10px rgba(56,230,145,.2)}.jobsync-progress-label{color:#e5edf8;font-size:.58rem;font-weight:800}.jobsync-progress-state{color:#718199;font-size:.48rem;margin-top:1px}.jobsync-progress-value{color:#9edfff;font-size:.5rem;font-weight:800}.jobsync-insights{padding:4px 12px 8px}.jobsync-insight{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.045)}.jobsync-insight:last-child{border-bottom:0}.jobsync-insight-icon{width:22px;height:22px;border-radius:8px;display:grid;place-items:center;background:rgba(72,170,255,.1);color:#6ee7ff;font-size:.66rem}.jobsync-insight b{display:block;color:#edf4ff;font-size:.58rem}.jobsync-insight span{display:block;color:#718198;font-size:.47rem;margin-top:1px}.jobsync-insight strong{margin-left:auto;color:#7cebb4;font-size:.54rem}
-    .jobsync-home-actions{margin-top:8px;border:1px solid rgba(91,139,236,.18);border-radius:16px;padding:9px;background:rgba(7,14,29,.72);}.jobsync-home-actions-title{color:#edf4ff;font-size:.72rem;font-weight:850}.jobsync-home-actions-sub{color:#6e7e95;font-size:.51rem;margin-top:2px}.jobsync-home-action-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:7px}.jobsync-action-card{padding:7px;border:1px solid rgba(94,139,255,.16);border-radius:11px;background:linear-gradient(145deg,rgba(18,30,56,.8),rgba(12,17,34,.9));transition:.2s ease}.jobsync-action-card:hover{transform:translateY(-2px);border-color:rgba(77,211,255,.4);box-shadow:0 10px 25px rgba(0,0,0,.2)}.jobsync-action-icon{font-size:.82rem;color:#61dcff}.jobsync-action-title{color:#edf4ff;font-size:.58rem;font-weight:850;margin-top:4px}.jobsync-action-sub{color:#718199;font-size:.45rem;margin-top:1px}.jobsync-home-online-inline{margin-bottom:0}
-    @keyframes jobsync-flow{to{stroke-dashoffset:-120}}@keyframes jobsync-node-pulse{0%,100%{opacity:.45;r:2.2px}50%{opacity:1;r:4px}}@keyframes jobsync-core-glow{0%,100%{box-shadow:0 0 0 10px rgba(75,137,255,.035),0 0 55px rgba(67,170,255,.22),inset 0 0 35px rgba(80,93,255,.18)}50%{box-shadow:0 0 0 16px rgba(75,137,255,.025),0 0 75px rgba(67,170,255,.34),inset 0 0 45px rgba(80,93,255,.22)}}@keyframes jobsync-bar{0%,100%{transform:scaleY(.92)}50%{transform:scaleY(1.06)}}@keyframes jobsync-neural-breathe{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.04);opacity:1}}@keyframes jobsync-home-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    @media(prefers-reduced-motion:reduce){.jobsync-neural-card:before,.jobsync-network path,.jobsync-network circle,.jobsync-neural-core,.jobsync-logo-mark i,.jobsync-home-greeting-title,.jobsync-home-greeting-subtitle{animation:none!important}div:has(>.jobsync-sector-grid-marker) .stButton > button:hover,.jobsync-action-card:hover{transform:none}}
-    @media(max-width:1100px){.jobsync-home-command-grid{grid-template-columns:minmax(0,1fr) 300px}.jobsync-home-action-grid{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:850px){.jobsync-home-shell{padding-top:4px}.jobsync-home-user-top{justify-content:flex-start}.jobsync-home-command-grid{grid-template-columns:1fr}.jobsync-home-rail{display:grid;grid-template-columns:1fr 1fr}}
-    @media(max-width:560px){.jobsync-home-greeting-title{font-size:2.25rem}.jobsync-neural-card{border-radius:20px}.jobsync-network{inset:70px 8px 15px}.jobsync-neural-core{width:112px;height:112px}.jobsync-logo-mark{transform:scale(.82)}.jobsync-home-rail{grid-template-columns:1fr}.jobsync-home-action-grid{grid-template-columns:1fr 1fr}.jobsync-home-actions{padding:12px}div:has(>.jobsync-sector-grid-marker) [data-testid="stHorizontalBlock"]{flex-wrap:wrap !important;}div:has(>.jobsync-sector-grid-marker) [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]{min-width:calc(50% - 6px) !important;flex:1 1 calc(50% - 6px) !important;}}
-    /* v1.7.0 Home refinement: premium neural detail + responsive workspace sizing. */
-    .jobsync-neural-card{min-height:clamp(100px,12.5vh,140px);}
-    .jobsync-neural-card:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 50%,transparent 0 18%,rgba(62,170,255,.035) 24%,transparent 39%),linear-gradient(115deg,transparent 0%,rgba(255,255,255,.018) 48%,transparent 53%);mix-blend-mode:screen;}
-    .jobsync-network:before,.jobsync-network:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:1px solid rgba(75,210,255,.10);border-radius:50%;pointer-events:none;}
-    .jobsync-network:before{width:280px;height:280px;box-shadow:0 0 70px rgba(62,180,255,.045);}
-    .jobsync-network:after{width:430px;height:430px;border-color:rgba(170,91,255,.065);}
-    .jobsync-network svg{z-index:1;}
-    .jobsync-network path{stroke-width:1.15;stroke-dasharray:5 10;opacity:.8;}
-    .jobsync-neural-core{width:96px;height:96px;z-index:8;background:radial-gradient(circle at 50% 30%,rgba(73,174,255,.40),rgba(8,17,39,.97) 58%,rgba(10,10,30,.99));}
-    .jobsync-neural-core:before{content:"";position:absolute;inset:8px;border:1px solid rgba(86,223,255,.18);border-radius:50%;box-shadow:inset 0 0 22px rgba(77,122,255,.12);}
-    .jobsync-logo-mark{position:relative;z-index:2;width:38px;height:34px;gap:3px;}
-    .jobsync-logo-mark i{width:6px;border-radius:7px 7px 3px 3px;box-shadow:0 0 7px rgba(65,210,255,.12);transform-origin:bottom center;}
-    .jobsync-core-name,.jobsync-core-sub{position:relative;z-index:2;}
-    .jobsync-home-online-list{max-height:260px;overflow:auto;scrollbar-width:thin;}
-    .jobsync-home-online-row{display:flex!important;align-items:center!important;gap:10px!important;padding:11px 18px!important;border-bottom:1px solid rgba(255,255,255,.045)!important;}
-    .jobsync-home-online-row:last-child{border-bottom:0!important;}
-    .jobsync-home-online-row .jobsync-user-avatar{width:36px!important;height:36px!important;flex:0 0 36px!important;border-radius:11px!important;display:grid!important;place-items:center!important;background:linear-gradient(145deg,#3edfff,#6b62ff 55%,#bb52ff)!important;color:#fff!important;font-weight:900!important;}
-    .jobsync-home-online-row .jobsync-user-copy{min-width:0!important;flex:1!important;}
-    .jobsync-home-online-row .jobsync-user-name{color:#edf4ff!important;font-size:.68rem!important;font-weight:850!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
-    .jobsync-home-online-row .jobsync-user-meta{display:flex!important;justify-content:flex-end!important;margin-top:-12px!important;}
-    .jobsync-home-online-row .jobsync-user-status{width:7px!important;height:7px!important;border-radius:50%!important;background:#43e59b!important;box-shadow:0 0 10px rgba(67,229,155,.8)!important;}
-    .jobsync-home-online-count{min-width:28px!important;height:28px!important;padding:0 8px!important;border-radius:999px!important;display:grid!important;place-items:center!important;background:rgba(52,224,166,.08)!important;color:#72f1b7!important;border:1px solid rgba(52,224,166,.12)!important;font-weight:900!important;font-size:.62rem!important;}
-    .jobsync-home-rail{min-width:0;}
-    .jobsync-home-panel{min-width:0;}
-    .jobsync-home-actions{position:relative;}
-    .jobsync-home-action-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
-    @media (min-width:1500px){.jobsync-home-shell{max-width:1480px}.jobsync-home-command-grid{grid-template-columns:minmax(0,1fr) 390px}}
-    @media (max-width:1200px){.jobsync-home-shell{max-width:calc(100vw - 36px)}.jobsync-home-command-grid{grid-template-columns:minmax(0,1fr) 320px}}
-    @media (max-width:900px){.block-container{padding-left:1rem!important;padding-right:1rem!important}.jobsync-home-shell{max-width:none}.jobsync-home-command-grid{grid-template-columns:1fr}.jobsync-home-rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.jobsync-home-actions{margin-top:14px}.jobsync-home-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:640px){.jobsync-home-greeting-title{font-size:clamp(2rem,9vw,2.7rem)}.jobsync-neural-card{border-radius:22px}.jobsync-network{inset:72px 4px 12px}.jobsync-network:before{width:210px;height:210px}.jobsync-network:after{width:330px;height:330px}.jobsync-neural-core{width:112px;height:112px}.jobsync-logo-mark{transform:scale(.86)}.jobsync-home-rail{grid-template-columns:1fr}.jobsync-home-action-grid{grid-template-columns:1fr}.jobsync-home-actions{padding:12px}div:has(>.jobsync-sector-grid-marker) [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]{min-width:100% !important;flex:1 1 100% !important;}}
-    @media (prefers-reduced-motion:reduce){.jobsync-neural-card:before,.jobsync-neural-card:after,.jobsync-network:before,.jobsync-network:after,.jobsync-network path,.jobsync-network circle,.jobsync-neural-core,.jobsync-logo-mark i,div:has(>.jobsync-sector-grid-marker) .stButton > button:after{animation:none!important}}
+    .jobsync-home-shell{width:100%;max-width:1200px;margin:0 auto;padding:0;}
+    .jobsync-home-greeting-top{text-align:left;margin:0 0 1vh;padding:0 2px;}
+    .jobsync-home-greeting-kicker{font-size:.6rem;font-weight:950;letter-spacing:.22em;color:#a9d8ff;margin-bottom:4px}.jobsync-home-greeting-title{font-size:clamp(1.5rem,2.9vw,2.5rem);line-height:1.08;font-weight:800;letter-spacing:-.03em;color:#fff;animation:jobsync-home-fade .7s cubic-bezier(.22,1,.36,1) both}.jobsync-home-greeting-subtitle{margin-top:4px;color:rgba(226,233,247,.68);font-size:clamp(.7rem,1vw,.84rem);animation:jobsync-home-fade .7s cubic-bezier(.22,1,.36,1) .08s both;}
+    @keyframes jobsync-home-fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+    /* Glass panel base — used by the "about" card, the presence card and the
+       quick-actions row so the whole page reads as one coherent material. */
+    .ag-glass{position:relative;border-radius:28px;background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.025));border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);box-shadow:0 24px 60px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(0,0,0,.14);overflow:hidden;transition:transform .45s cubic-bezier(.22,1,.36,1),box-shadow .45s cubic-bezier(.22,1,.36,1),border-color .35s ease;}
+    .ag-glass:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 16% -10%,rgba(255,255,255,.20),transparent 46%);pointer-events:none;}
+    .ag-glass:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.24);box-shadow:0 32px 80px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.14);}
+
+    .ag-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;align-items:stretch;}
+    .ag-about{padding:24px 26px;display:flex;flex-direction:column;min-height:0;}
+    .ag-about-kicker{font-size:.58rem;font-weight:850;letter-spacing:.24em;color:#a9d8ff;text-transform:uppercase;position:relative;z-index:1;}
+    .ag-about-title{margin-top:9px;font-size:clamp(1.1rem,1.8vw,1.42rem);font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.3;position:relative;z-index:1;}
+    .ag-about-copy{margin-top:8px;color:rgba(230,236,248,.72);font-size:.76rem;line-height:1.62;max-width:560px;position:relative;z-index:1;}
+    .ag-feature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px;position:relative;z-index:1;}
+    .ag-feature{padding:13px 14px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);transition:transform .35s cubic-bezier(.22,1,.36,1),background .3s ease,border-color .3s ease;}
+    .ag-feature:hover{transform:translateY(-3px);background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2);}
+    .ag-feature-icon{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(120,180,255,.4),rgba(190,130,255,.32));font-size:.82rem;box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
+    .ag-feature-name{margin-top:9px;color:#fff;font-size:.72rem;font-weight:750;letter-spacing:-.01em;}
+    .ag-feature-sub{margin-top:3px;color:rgba(222,229,242,.6);font-size:.6rem;line-height:1.45;}
+
+    /* Presence card */
+    .ag-presence{padding:20px 20px 16px;display:flex;flex-direction:column;min-height:0;}
+    .ag-presence-head{display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
+    .ag-live-dot{width:8px;height:8px;border-radius:50%;background:#39e58c;box-shadow:0 0 0 0 rgba(57,229,140,.55);animation:agPulse 2.2s ease-out infinite;flex:0 0 auto;}
+    @keyframes agPulse{0%{box-shadow:0 0 0 0 rgba(57,229,140,.55)}70%{box-shadow:0 0 0 11px rgba(57,229,140,0)}100%{box-shadow:0 0 0 0 rgba(57,229,140,0)}}
+    .ag-presence-title{font-size:.82rem;font-weight:800;color:#fff;letter-spacing:-.01em;}
+    .ag-presence-count{margin-left:auto;color:#82f2b8;font-weight:850;font-size:.9rem;}
+    .ag-presence-sub{margin-top:2px;color:rgba(222,229,242,.55);font-size:.58rem;position:relative;z-index:1;}
+    .ag-avatar-stack{display:flex;margin-top:14px;position:relative;z-index:1;}
+    .ag-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:.6rem;font-weight:800;color:#fff;background:linear-gradient(135deg,#57d8ff,#8c6bff 55%,#ff7ad1);border:2px solid rgba(10,14,24,.92);margin-left:-10px;box-shadow:0 6px 16px rgba(0,0,0,.35);transition:transform .3s cubic-bezier(.22,1,.36,1);}
+    .ag-avatar:first-child{margin-left:0;}
+    .ag-avatar:hover{transform:translateY(-4px) scale(1.1);z-index:5;}
+    .ag-avatar-more{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:.56rem;font-weight:800;color:#dfe6f5;background:rgba(255,255,255,.12);border:2px solid rgba(10,14,24,.92);margin-left:-10px;}
+    .ag-presence-list{margin-top:14px;max-height:19vh;overflow-y:auto;position:relative;z-index:1;}
+    .ag-presence-row{display:flex;align-items:center;gap:9px;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.06);}
+    .ag-presence-row:last-child{border-bottom:0;}
+    .ag-presence-avatar{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:.5rem;font-weight:800;color:#fff;background:linear-gradient(135deg,#57d8ff,#8c6bff 55%,#ff7ad1);flex:0 0 auto;}
+    .ag-presence-name{color:#eef2fb;font-size:.66rem;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .ag-presence-empty{color:rgba(222,229,242,.5);font-size:.66rem;padding:14px 2px;text-align:center;position:relative;z-index:1;}
+
+    /* Quick actions — real Streamlit buttons styled as glass pills. */
+    .ag-actions-head{margin:14px 2px 8px;color:rgba(222,229,242,.6);font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;}
+    .st-key-ag_actions_row [data-testid="stHorizontalBlock"]{gap:10px !important;}
+    .st-key-ag_actions_row .stButton > button{min-height:56px !important;border-radius:18px !important;background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.025)) !important;border:1px solid rgba(255,255,255,.16) !important;backdrop-filter:blur(20px) !important;color:#fff !important;font-weight:750 !important;font-size:.72rem !important;box-shadow:0 12px 30px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.14) !important;transition:transform .35s cubic-bezier(.22,1,.36,1),background .3s ease,box-shadow .3s ease !important;white-space:pre-line !important;line-height:1.4 !important;}
+    .st-key-ag_actions_row .stButton > button:hover{transform:translateY(-3px) !important;background:rgba(255,255,255,.14) !important;box-shadow:0 18px 42px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.2) !important;}
+    .st-key-ag_actions_row .stButton > button p:first-line{font-weight:800;}
+
+    @media(prefers-reduced-motion:reduce){.ag-glass,.ag-feature,.ag-avatar,.st-key-ag_actions_row .stButton > button,.jobsync-home-greeting-title,.jobsync-home-greeting-subtitle,.ag-live-dot{animation:none!important;transition:none!important}}
+    @media(max-width:1100px){.ag-grid{grid-template-columns:minmax(0,1fr) 280px}}
+    @media(max-width:900px){.block-container{padding-left:1rem!important;padding-right:1rem!important}.ag-grid{grid-template-columns:1fr}.ag-presence-list{max-height:22vh;}}
+    @media(max-width:640px){.jobsync-home-greeting-title{font-size:clamp(1.7rem,7vw,2.2rem)}.ag-feature-row{grid-template-columns:1fr}.ag-about{padding:18px 18px}.ag-presence{padding:16px 16px 14px}}
+    @media (min-width:1500px){.jobsync-home-shell{max-width:1360px}}
     /* Online presence is rendered only inside the Home overview. The duplicate
        fixed top-right presence panel has intentionally been removed. */
     .jobsync-role-badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px; font-size:.58rem; line-height:1.25; font-weight:850; letter-spacing:.04em; text-transform:uppercase; background:rgba(255,77,91,.08); border:1px solid rgba(255,77,91,.18); color:#ff9da2 !important; }
@@ -5101,118 +5091,92 @@ if page == "Login":
 
 
 def _render_home_authenticated_content():
-    '''Premium Home command center. Uses existing workspace data; Home only.'''
+    '''Apple-glass Home: what JobSync is for, plus who else is online right now.'''
     display_name = (profile.get("name") or "").strip() or (profile.get("email") or st.session_state.get("_user_email") or "User").split("@",1)[0].strip() or "User"
     display_name = display_name[:80]
     h = datetime.now().hour
     greeting = "Good morning" if 5 <= h < 12 else "Good afternoon" if 12 <= h < 18 else "Good evening" if 18 <= h < 23 else "Good night"
     jobs = state.get("jobs", []) or []
     applied = state.get("applied", []) or []
-    cvs = generated_cvs()
-    letters = generated_letters()
-    interviews = sum(1 for r in applied if r.get("status") == "Interview")
-    offers = sum(1 for r in applied if r.get("status") == "Offer")
-    profile_complete = bool(profile.get("name") and profile.get("location") and (profile.get("main_field") or profile.get("industry")))
-    profile_pct = 100 if profile_complete else 0
-    if profile.get("name"): profile_pct += 20
-    if profile.get("location"): profile_pct += 20
-    if profile.get("main_field") or profile.get("industry"): profile_pct += 20
-    if profile.get("target_titles") or profile.get("job_titles"): profile_pct += 20
-    profile_pct = min(100, profile_pct)
     target_raw = profile.get("target_titles") or profile.get("job_titles") or profile.get("target_job_titles") or ""
     if isinstance(target_raw, list): targets = [str(x).strip() for x in target_raw if str(x).strip()]
     else: targets = [x.strip() for x in re.split(r"[,;|]", str(target_raw)) if x.strip()]
     location = str(profile.get("location") or profile.get("city") or "").strip()
-
-    sectors = [
-        ("Technology", r"software|developer|devops|data|cloud|it|cyber|programmer|web|ai|machine learning", "High demand"),
-        ("Business", r"business|finance|account|sales|marketing|hr|human resources|consult|management", "Active"),
-        ("Healthcare", r"health|medical|nurse|doctor|pharma|clinic|care", "Growing"),
-        ("Design", r"design|ux|ui|graphic|creative|architect", "Growing"),
-        ("Engineering", r"engineer|mechanical|electrical|civil|manufactur|production|quality|automotive", "Strong match"),
-        ("Education", r"teacher|education|school|professor|trainer|academic", "Stable"),
-        ("Science", r"scientist|research|laboratory|lab|chemistry|physics|biology", "Emerging"),
-        ("Other", r".*", "Exploring"),
-    ]
-    sector_data=[]
-    for name, pat, status in sectors:
-        matches=[]
-        for j in jobs:
-            txt=(str(j.get("title") or "")+" "+str(j.get("description") or "")+" "+str(j.get("company") or "")).lower()
-            if re.search(pat, txt): matches.append(j)
-        sector_data.append((name, len(matches), status, matches))
-    # Assign Other only to jobs not classified by the first seven sectors.
-    covered=set(id(j) for _,_,_,ms in sector_data[:-1] for j in ms)
-    sector_data[-1]=(sector_data[-1][0], max(0,len(jobs)-len(covered)), sector_data[-1][2], [j for j in jobs if id(j) not in covered])
-    # Put strongest sectors first while keeping the visual's eight positions.
-    sector_data=sorted(sector_data, key=lambda x:x[1], reverse=True)
+    search_hint = html.escape(", ".join(targets[:3]) if targets else "Set your target roles")
+    location_hint = html.escape(location or "Set your preferred location")
 
     _presence_heartbeat(); _refresh_online_cache()
-    raw_online_users=st.session_state.get("_online_users") or []
-    online_users=[]
-    seen_presence=set()
+    raw_online_users = st.session_state.get("_online_users") or []
+    online_users = []
+    seen_presence = set()
     for user in raw_online_users:
-        uid=str(user.get("presence_id") or "").strip()
+        uid = str(user.get("presence_id") or "").strip()
         if uid and uid in seen_presence:
             continue
         if uid: seen_presence.add(uid)
-        raw_nm=str(user.get("display_name") or "").strip()
-        if not raw_nm or raw_nm.lower() in {"user","unknown","none"}:
-            seed=str(user.get("avatar_seed") or "").strip()
-            raw_nm=seed.split("@",1)[0].strip() if seed else "User"
-        online_users.append({"display_name":raw_nm or "User","presence_id":uid})
-    online_rows=[]
-    for user in online_users:
-        nm=html.escape(str(user.get("display_name") or "User"))[:60]
-        ini=html.escape(_presence_initials(str(user.get("display_name") or "User")))
-        online_rows.append(f'<div class="jobsync-home-online-row"><div class="jobsync-user-avatar">{ini}</div><div class="jobsync-user-copy"><div class="jobsync-user-name">{nm}</div><div class="jobsync-user-meta"><span class="jobsync-user-status"></span></div></div></div>')
-    online_body="".join(online_rows) or '<div class="jobsync-home-online-empty"><span class="jobsync-online-dot"></span>No one else online right now</div>'
+        raw_nm = str(user.get("display_name") or "").strip()
+        if not raw_nm or raw_nm.lower() in {"user", "unknown", "none"}:
+            seed = str(user.get("avatar_seed") or "").strip()
+            raw_nm = seed.split("@", 1)[0].strip() if seed else "User"
+        online_users.append({"display_name": raw_nm or "User", "presence_id": uid})
 
-    # SVG paths/dots are ambient decoration behind the hub only; the sector
-    # nodes themselves are real, clickable Streamlit buttons rendered below
-    # (see _render_home_sector_grid) so "Select a sector" actually navigates
-    # instead of just locally expanding a <details> element.
-    paths='''<path d="M50 50 C42 39 29 27 15 18"/><path class="p2" d="M50 50 C58 39 71 27 85 18"/><path class="p3" d="M50 50 C38 49 22 48 8 48"/><path class="p2" d="M50 50 C62 49 78 48 92 48"/><path class="p3" d="M50 50 C41 59 28 69 16 82"/><path d="M50 50 C59 59 72 69 84 82"/><path class="p2" d="M50 50 C50 63 50 77 50 91"/><path class="p3" d="M50 50 C50 38 50 24 50 8"/>'''
-    dots=''.join(f'<circle class="{c}" cx="{x}" cy="{y}" r="2.5"/>' for c,x,y in [("",15,18),("c2",85,18),("c3",8,48),("c2",92,48),("c3",16,82),("",84,82),("c2",50,91),("c3",50,8)])
-    cv_state="Ready" if cvs else "Not created yet"; letter_state="Ready" if letters else "Not created yet"; app_state=f"{len(applied)} tracked"; interview_state=f"{interviews} upcoming" if interviews else "No interviews yet"
-    insight_items=[(len(jobs),"New jobs in your fields","Current workspace results","↗"),(len([j for j in jobs if any(t.lower() in str(j.get("title") or "").lower() for t in targets)]),"Matched roles for you","Based on your target titles","✦"),(len(set(str(j.get("company") or "") for j in jobs if j.get("company"))),"Companies hiring actively","Across current results","↗")]
-    insights=''.join(f'<div class="jobsync-insight"><div class="jobsync-insight-icon">{icon}</div><div><b>{n:,} {html.escape(title)}</b><span>{html.escape(sub)}</span></div><strong>•</strong></div>' for n,title,sub,icon in insight_items)
-    progress=[("✓","Profile",f"{profile_pct}% complete",profile_pct>=100),("✓","CV",cv_state,bool(cvs)),("✓","Cover Letter",letter_state,bool(letters)),("○","Applications",app_state,bool(applied)),("○","Interviews",interview_state,bool(interviews))]
-    progress_html=''.join(f'<div class="jobsync-progress-row {"done" if done else ""}"><div class="jobsync-progress-dot">{mark}</div><div><div class="jobsync-progress-label">{label}</div><div class="jobsync-progress-state">{html.escape(st)}</div></div><div class="jobsync-progress-value">{"Ready" if done else ""}</div></div>' for mark,label,st,done in progress)
-    search_hint=html.escape(", ".join(targets[:3]) if targets else "Set your target roles")
-    location_hint=html.escape(location or "Set your preferred location")
-    markup=f'''<div class="jobsync-home-shell"><div class="jobsync-home-greeting-top"><div class="jobsync-home-greeting-kicker">JOBSYNC • OPPORTUNITY CENTER</div><div class="jobsync-home-greeting-title">{html.escape(greeting)}, {html.escape(display_name)}.</div><div class="jobsync-home-greeting-subtitle">Your opportunity network is ready. {search_hint} · {location_hint}</div></div><div class="jobsync-home-command-grid"><section class="jobsync-neural-card"><div class="jobsync-neural-head"><div class="jobsync-neural-kicker">LIVE OPPORTUNITY NETWORK</div><div class="jobsync-neural-title">Where your next opportunities connect</div><div class="jobsync-neural-sub">Click a sector below to search it now.</div></div><div class="jobsync-network"><svg viewBox="0 0 100 100" preserveAspectRatio="none">{paths}{dots}</svg><div class="jobsync-neural-core"><div><div class="jobsync-logo-mark"><i></i><i></i><i></i><i></i></div><div class="jobsync-core-name">JobSync</div><div class="jobsync-core-sub">Your opportunity is connected</div></div></div></div></section><aside class="jobsync-home-rail"><div class="jobsync-home-panel jobsync-home-online-inline"><div class="jobsync-panel-head"><div class="jobsync-panel-title"><span class="jobsync-online-dot jobsync-online-dot-lg"></span> Online now <span style="float:right;color:#6ee7b7">{len(online_users)}</span></div><div class="jobsync-panel-sub">People currently using JobSync</div></div><div class="jobsync-home-online-list">{online_body}</div></div><div class="jobsync-home-panel"><div class="jobsync-panel-head"><div class="jobsync-panel-title">Your Progress</div><div class="jobsync-panel-sub">Your career workflow, not analytics.</div></div><div class="jobsync-progress">{progress_html}</div></div><div class="jobsync-home-panel"><div class="jobsync-panel-head"><div class="jobsync-panel-title">Today's Insights</div><div class="jobsync-panel-sub">Live signals from your workspace.</div></div><div class="jobsync-insights">{insights}</div></div></aside></div></div>'''
+    # Overlapping avatar stack (up to 6, Apple-presence style) + a "+N" bubble
+    # for the rest, plus the full scrollable name list below it.
+    avatar_stack = "".join(
+        f'<div class="ag-avatar" title="{html.escape(str(u["display_name"]))}">{html.escape(_presence_initials(str(u["display_name"])))}</div>'
+        for u in online_users[:6]
+    )
+    if len(online_users) > 6:
+        avatar_stack += f'<div class="ag-avatar-more">+{len(online_users) - 6}</div>'
+    presence_rows = "".join(
+        f'<div class="ag-presence-row"><div class="ag-presence-avatar">{html.escape(_presence_initials(str(u["display_name"])))}</div>'
+        f'<div class="ag-presence-name">{html.escape(str(u["display_name"]))[:60]}</div></div>'
+        for u in online_users
+    )
+    presence_body = avatar_stack or ""
+    presence_list_html = presence_rows or '<div class="ag-presence-empty">No one else online right now — you have JobSync to yourself.</div>'
+
+    features = [
+        ("⌕", "Discover", "Search real listings across your configured job sources."),
+        ("▣", "Create", "Generate an AI-tailored CV and cover letter for each role."),
+        ("✓", "Track", "Keep every application organized in one private workspace."),
+    ]
+    feature_html = "".join(
+        f'<div class="ag-feature"><div class="ag-feature-icon">{icon}</div><div class="ag-feature-name">{name}</div><div class="ag-feature-sub">{html.escape(sub)}</div></div>'
+        for icon, name, sub in features
+    )
+
+    markup = f'''<div class="jobsync-home-shell">
+      <div class="jobsync-home-greeting-top">
+        <div class="jobsync-home-greeting-kicker">JOBSYNC</div>
+        <div class="jobsync-home-greeting-title">{html.escape(greeting)}, {html.escape(display_name)}.</div>
+        <div class="jobsync-home-greeting-subtitle">{search_hint} · {location_hint}</div>
+      </div>
+      <div class="ag-grid">
+        <section class="ag-glass ag-about">
+          <div class="ag-about-kicker">WHAT THIS IS</div>
+          <div class="ag-about-title">Your private job-search command center</div>
+          <div class="ag-about-copy">JobSync keeps discovery, tailored documents and application tracking in one calm, local workspace — no scattered tabs, no copy-pasting between five different tools.</div>
+          <div class="ag-feature-row">{feature_html}</div>
+        </section>
+        <aside class="ag-glass ag-presence">
+          <div class="ag-presence-head"><span class="ag-live-dot"></span><span class="ag-presence-title">Online now</span><span class="ag-presence-count">{len(online_users)}</span></div>
+          <div class="ag-presence-sub">People currently using JobSync</div>
+          <div class="ag-avatar-stack">{presence_body}</div>
+          <div class="ag-presence-list">{presence_list_html}</div>
+        </aside>
+      </div>
+    </div>'''
     st.markdown(markup, unsafe_allow_html=True)
 
-    # Real, clickable sector nodes. Replaces the old HTML-only <details> cards,
-    # which only expanded locally in place — clicking a sector here actually
-    # takes you to New Search, pre-filled with that sector so results are
-    # ready immediately. The "Online now / Progress / Insights" rail above is
-    # untouched.
-    sector_icons={"Technology":"💻","Business":"📈","Healthcare":"🩺","Design":"🎨","Engineering":"⚙️","Education":"🎓","Science":"🔬","Other":"✦"}
-    with st.container():
-        st.markdown('<span class="jobsync-sector-grid-marker" aria-hidden="true"></span><div class="jobsync-sector-grid-head">LIVE OPPORTUNITY NETWORK · Click a sector to search it</div>', unsafe_allow_html=True)
-        grid_cols = st.columns(4) + st.columns(4)
-        for col, (name, count, status, matches) in zip(grid_cols, sector_data[:8]):
+    st.markdown('<div class="ag-actions-head">Quick actions</div>', unsafe_allow_html=True)
+    with st.container(key="ag_actions_row"):
+        cols = st.columns(4)
+        labels = [("⌕ Find Jobs", "Search across your job sources", "New Search"), ("▣ Create CV", "Tailor your application", "CV & Cover Letter"), ("▤ Write Cover Letter", "Stand out to employers", "CV & Cover Letter"), ("✓ Track Applications", "Stay organized", "Applied Jobs")]
+        for col, (label, sub, target) in zip(cols, labels):
             with col:
-                icon = sector_icons.get(name, "✦")
-                # Two trailing spaces before each \n is a Markdown hard line
-                # break — a bare \n alone collapses to a space when Streamlit
-                # renders the button label.
-                label = f"{icon} {name}  \n{count:,} jobs  \n{status}"
-                if st.button(label, key=f"home_sector_{name}", width="stretch"):
-                    st.session_state["search_field"] = name
-                    go("New Search")
-                    st.rerun()
-
-    st.markdown('<div class="jobsync-home-actions"><div class="jobsync-home-actions-title">Quick Actions</div><div class="jobsync-home-actions-sub">Jump straight into the next step.</div></div>', unsafe_allow_html=True)
-    cols=st.columns(4)
-    labels=[("⌕ Find Jobs","Search across your job sources","New Search"),("▣ Create CV","Tailor your application","CV & Cover Letter"),("▤ Write Cover Letter","Stand out to employers","CV & Cover Letter"),("✓ Track Applications","Stay organized","Applied Jobs")]
-    for col,(label,sub,target) in zip(cols,labels):
-        with col:
-            if st.button(f"{label}\n{sub}",key=f"home_action_{target}_{label}",width="stretch"):
-                go(target); st.rerun()
-
+                if st.button(f"{label}  \n{sub}", key=f"home_action_{target}_{label}", width="stretch"):
+                    go(target); st.rerun()
 
 def _render_home_authenticated():
     """Render the authenticated Home overview in a 10-second fragment.
