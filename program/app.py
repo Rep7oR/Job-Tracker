@@ -49,7 +49,10 @@ from services.gmail import get_gmail_service, disconnect_gmail, sync_gmail
 from services.linkedin_browser import sync_linkedin_notifications, connect_linkedin
 from services.free_job_sources import FREE_SOURCE_NAMES
 from services.notifications import desktop_notify
-from services import voice_assistant
+try:
+    from services import voice_assistant
+except ImportError:
+    voice_assistant = None
 from services.presence import (
     configured as presence_configured,
     heartbeat_presence,
@@ -4862,6 +4865,8 @@ if page in {"Gmail Updates", "LinkedIn Updates"}:
 def render_voice_assistant_panel() -> None:
     """Floating assistant panel: starts the background wake-word listener
     (local desktop use only) and shows what it's doing / found."""
+    if voice_assistant is None:
+        return
     if page == "Login" or not st.session_state.get("_authed"):
         return
     if not st.session_state.get("voice_assistant_enabled", True):
@@ -6955,14 +6960,17 @@ elif page == "Settings":
     render_modern_page_header("Settings")
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">🎙️ Voice assistant</div>', unsafe_allow_html=True)
-    st.caption("Say “Hey JobSync” (or “Hey Sync” / “Hello Sync”), then a command like “search for manufacturing jobs in Germany” or “open dashboard”. Say “stop” to cancel. Requires a local microphone (desktop app), not available on hosted sessions.")
-    voice_enabled = st.toggle(
-        "Enable voice assistant",
-        value=st.session_state.get("voice_assistant_enabled", True),
-        key="voice_assistant_enabled",
-    )
-    if not voice_enabled:
-        voice_assistant.stop_assistant()
+    if voice_assistant is None:
+        st.caption("Voice assistant module is not installed in this build.")
+    else:
+        st.caption("Say “Hey JobSync” (or “Hey Sync” / “Hello Sync”), then a command like “search for manufacturing jobs in Germany” or “open dashboard”. Say “stop” to cancel. Requires a local microphone (desktop app), not available on hosted sessions.")
+        voice_enabled = st.toggle(
+            "Enable voice assistant",
+            value=st.session_state.get("voice_assistant_enabled", True),
+            key="voice_assistant_enabled",
+        )
+        if not voice_enabled:
+            voice_assistant.stop_assistant()
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
