@@ -3242,13 +3242,19 @@ def _cv_download_clicked(filename: str = "CV") -> None:
 
 
 def _ai_api_key(provider: str) -> str:
-    """Resolve a legacy hosted-provider API key without persisting it in JobSync state."""
+    """Resolve a hosted-provider API key without persisting it in JobSync state.
+
+    Keyed by the resolved provider (ChatGPT/Claude/Gemini), not the specific
+    model display name, so entering a key once covers every model from that
+    provider (e.g. GPT-4o mini and GPT-4o share the same OpenAI key).
+    """
+    resolved, _ = _resolve_ai_selection(provider)
     env_names = {
         "ChatGPT": "OPENAI_API_KEY",
         "Claude": "ANTHROPIC_API_KEY",
         "Gemini": "GEMINI_API_KEY",
     }
-    return str(st.session_state.get(f"cv_ai_key_{provider}") or os.getenv(env_names.get(provider, ""), "")).strip()
+    return str(st.session_state.get(f"cv_ai_key_{resolved}") or os.getenv(env_names.get(resolved, ""), "")).strip()
 
 
 LOCAL_AI_PROVIDER = "Local AI"
@@ -3271,8 +3277,43 @@ def _local_ai_key(provider: str | None) -> str:
 def _local_ai_config(provider: str | None) -> dict:
     return LOCAL_AI_MODELS[_local_ai_key(provider)]
 
+# Online model catalogue. Generation happens over a plain HTTPS API call (no
+# SDK, no local weights, no install) so the app stays small — this is the
+# default path. "Free" here means the provider itself charges nothing (a
+# free Google AI Studio key, no billing), not that zero setup is possible:
+# every hosted model still needs its own API key pasted in once. The
+# Offline/local models further below remain available for anyone who'd
+# rather download a model to this PC instead (large download, no key).
+HOSTED_AI_MODELS = {
+    "Gemini 2.0 Flash": {"provider": "Gemini", "model": "gemini-2.0-flash", "tier": "Free", "note": "Free Google AI Studio key · fast"},
+    "Gemini 1.5 Pro": {"provider": "Gemini", "model": "gemini-1.5-pro", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
+    "GPT-4o mini": {"provider": "ChatGPT", "model": "gpt-4o-mini", "tier": "Paid", "note": "OpenAI API key with billing · low cost"},
+    "GPT-4o": {"provider": "ChatGPT", "model": "gpt-4o", "tier": "Paid", "note": "OpenAI API key with billing · premium quality"},
+    "Claude 3.5 Haiku": {"provider": "Claude", "model": "claude-3-5-haiku-20241022", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
+    "Claude Sonnet 4": {"provider": "Claude", "model": "claude-sonnet-4-20250514", "tier": "Paid", "note": "Anthropic API key with billing · premium quality"},
+}
+AI_DEFAULT_PROVIDER = "Gemini 2.0 Flash"
+
+
+def _resolve_ai_selection(selection: str | None) -> tuple[str, str | None]:
+    """Map a wizard AI selection to (actual provider key, model override).
+
+    A selection is either a display name from HOSTED_AI_MODELS (e.g. "GPT-4o
+    mini") or a local model's own name (e.g. "Qwen3 14B"), which is already
+    the provider key everything downstream expects — resolving it is then a
+    no-op, so every caller can keep passing whatever is in cv_wizard_ai /
+    external_ai_provider unchanged.
+    """
+    sel = str(selection or "").strip()
+    cfg = HOSTED_AI_MODELS.get(sel)
+    if cfg:
+        return cfg["provider"], cfg.get("model")
+    return sel, None
+
+
 def _is_local_ai_provider(provider: str | None) -> bool:
-    return str(provider or "").strip() in set(LOCAL_AI_MODELS) | {LOCAL_AI_PROVIDER, LOCAL_AI_LEGACY_PROVIDER}
+    resolved, _ = _resolve_ai_selection(provider)
+    return resolved in set(LOCAL_AI_MODELS) | {LOCAL_AI_PROVIDER, LOCAL_AI_LEGACY_PROVIDER}
 
 
 def _ollama_executable() -> str | None:
@@ -4098,12 +4139,13 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
         if not content:
             raise RuntimeError("Qwen3 returned no visible document content. Please try Generate again.")
         return content
+    resolved_provider, model_override = _resolve_ai_selection(provider)
     key = _ai_api_key(provider)
     if not key:
         raise RuntimeError(f"Connect {provider} first by supplying its API key in this page, or set the provider API key in the JobSync environment.")
 
-    if provider == "ChatGPT":
-        model = os.getenv("JOBSYNC_OPENAI_MODEL", "gpt-5.6-luna")
+    if resolved_provider == "ChatGPT":
+        model = model_override or os.getenv("JOBSYNC_OPENAI_MODEL", "gpt-4o-mini")
         response = requests.post(
             "https://api.openai.com/v1/responses",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
@@ -4120,8 +4162,8 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
                     parts.append(str(content["text"]))
         return "\n".join(parts)
 
-    if provider == "Claude":
-        model = os.getenv("JOBSYNC_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+    if resolved_provider == "Claude":
+        model = model_override or os.getenv("JOBSYNC_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={"x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
@@ -4131,8 +4173,8 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
         data = response.json()
         return "\n".join(str(x.get("text", "")) for x in data.get("content", []) if isinstance(x, dict))
 
-    if provider == "Gemini":
-        model = os.getenv("JOBSYNC_GEMINI_MODEL", "gemini-2.5-pro")
+    if resolved_provider == "Gemini":
+        model = model_override or os.getenv("JOBSYNC_GEMINI_MODEL", "gemini-2.0-flash")
         response = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
             headers={"Content-Type": "application/json"}, params={"key": key},
@@ -5232,7 +5274,7 @@ def render_modern_page_header(page_name: str) -> None:
         "Applied Jobs": ("APPLICATION PIPELINE", "Move opportunities forward", "A focused command deck for every job you have decided to track.", [("TRACKED", len(applied), "applications"), ("INTERVIEW", interviews, "next stage"), ("OFFERS", offers, "wins"), ("REJECTED", rejected, "closed")]),
         "Gmail Updates": ("INBOX SIGNAL", "Stay ahead of replies", "Turn mailbox activity into a clean stream of job-search signals.", [("TRACKED", len(applied), "applications"), ("INTERVIEWS", interviews, "pipeline"), ("OFFERS", offers, "pipeline"), ("STATUS", "LIVE", "workspace")]),
         "LinkedIn Updates": ("NETWORK SIGNAL", "See what changed", "A compact space for LinkedIn notification and profile signals.", [("JOBS", len(jobs), "in workspace"), ("TRACKED", len(applied), "applications"), ("CVS", len(cvs), "ready"), ("STATUS", "LIVE", "workspace")]),
-        "CV & Cover Letter": ("DOCUMENT STUDIO", "Create application documents", "Generate tailored LaTeX, inspect the source, and continue to Overleaf when ready.", [("CVS", len(cvs), "saved"), ("LETTERS", len(letters), "saved"), ("PDF", "READY", "download"), ("ENGINE", "LOCAL", "generation")]),
+        "CV & Cover Letter": ("DOCUMENT STUDIO", "Create application documents", "Generate tailored LaTeX, inspect the source, and continue to Overleaf when ready.", [("CVS", len(cvs), "saved"), ("LETTERS", len(letters), "saved"), ("PDF", "READY", "download"), ("ENGINE", "ONLINE", "generation")]),
         "Folders": ("DOCUMENT LIBRARY", "Everything in one place", "Browse your generated documents with compact actions beside each file.", [("CVS", len(cvs), "documents"), ("LETTERS", len(letters), "documents"), ("PDF", "READY", "preview"), ("STORAGE", "LOCAL", "workspace")]),
         "Profile": ("PROFILE CONTROL", "Tune your job-search identity", "Keep the information JobSync uses to match opportunities accurate and current.", [("TARGET", profile.get("field") or "NOT SET", "role"), ("CITY", profile.get("city") or profile.get("location") or "NOT SET", "location"), ("LANG", profile.get("language") or "ANY", "preference"), ("SIGNAL", "READY" if profile.get("field") else "INCOMPLETE", "match quality")]),
         "Settings": ("CONTROL CENTER", "Configure JobSync", "Manage integrations, updates, notifications and workspace behavior from one place.", [("VERSION", APP_VERSION, "current"), ("DATA", "LOCAL", "workspace"), ("BROWSER", "READY", "automation"), ("UPDATE", "READY", "software")]),
@@ -6225,20 +6267,46 @@ elif page == "CV & Cover Letter":
 
     elif not prompt_ready and wizard_step == 2:
         doc=st.session_state.get("cv_wizard_doc","CV")
-        st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 2 OF 4</div><div class="cvwiz-question">Which AI should create your {html.escape(doc)}?</div><div class="cvwiz-copy">Choose a local AI model. JobSync automatically installs Ollama and downloads only the model you choose — no API key, account, or manual AI setup is required.</div><div class="cvwiz-choice-grid">',unsafe_allow_html=True)
-        selected_ai = st.session_state.get("cv_wizard_ai", LOCAL_AI_DEFAULT)
-        cols=st.columns(2,gap="small")
-        for col,(name,cfg) in zip(cols,list(LOCAL_AI_MODELS.items())):
+        st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 2 OF 4</div><div class="cvwiz-question">Which AI should create your {html.escape(doc)}?</div><div class="cvwiz-copy">Generation runs online by default, so JobSync stays a small install. Free models cost nothing but still need a free API key; paid models need your own billed key. An offline/local option is also available below for advanced use.</div><div class="cvwiz-choice-grid">',unsafe_allow_html=True)
+        selected_ai = st.session_state.get("cv_wizard_ai", AI_DEFAULT_PROVIDER)
+
+        def _hosted_model_button(name: str, cfg: dict) -> None:
+            is_selected = selected_ai == name
+            if st.button(("✓ " if is_selected else "") + name, key=f"cvwiz_ai_{name}_{cv_cycle}", width="stretch"):
+                st.session_state["cv_wizard_ai"] = name; st.session_state["cv_wizard_step"] = 3; st.rerun()
+            st.caption(f"{cfg['tier']} · {cfg['note']}")
+
+        free_models = {n: c for n, c in HOSTED_AI_MODELS.items() if c["tier"] == "Free"}
+        paid_models = {n: c for n, c in HOSTED_AI_MODELS.items() if c["tier"] == "Paid"}
+
+        st.markdown('<div class="cvwiz-source-label">ONLINE · FREE</div>', unsafe_allow_html=True)
+        cols = st.columns(len(free_models), gap="small")
+        for col, (name, cfg) in zip(cols, free_models.items()):
             with col:
-                is_selected = selected_ai == name
-                if st.button(("✓ " if is_selected else "") + name,key=f"cvwiz_ai_{name}_{cv_cycle}",width="stretch"):
-                    st.session_state["cv_wizard_ai"]=name; st.session_state["cv_wizard_step"]=3; st.rerun()
-                st.caption(f"{cfg['size']} · {cfg['ram']}\n{cfg['description']}")
-        st.markdown('<div class="cvwiz-status">✓ Local &nbsp;•&nbsp; ✓ No API key &nbsp;•&nbsp; ✓ JobSync installs the AI runtime automatically<br><b style="color:#e8edf5">Only the model you select is downloaded.</b></div>',unsafe_allow_html=True)
+                _hosted_model_button(name, cfg)
+
+        st.markdown('<div class="cvwiz-source-label">ONLINE · PAID (bring your own API key)</div>', unsafe_allow_html=True)
+        cols = st.columns(len(paid_models), gap="small")
+        for col, (name, cfg) in zip(cols, paid_models.items()):
+            with col:
+                _hosted_model_button(name, cfg)
+
+        st.markdown('<div class="cvwiz-status">✓ Online &nbsp;•&nbsp; ✓ No local install &nbsp;•&nbsp; ✓ Free and paid models available<br><b style="color:#e8edf5">Pick free to start with no cost, or bring a paid key for a premium model.</b></div>',unsafe_allow_html=True)
+
+        with st.expander("Offline / local AI (advanced — downloads a large model to this PC)"):
+            st.caption("JobSync automatically installs Ollama and downloads only the model you choose. No API key is needed, but the download is several GB and generation runs on this machine's CPU/GPU.")
+            cols=st.columns(2,gap="small")
+            for col,(name,cfg) in zip(cols,list(LOCAL_AI_MODELS.items())):
+                with col:
+                    is_selected = selected_ai == name
+                    if st.button(("✓ " if is_selected else "") + name,key=f"cvwiz_ai_{name}_{cv_cycle}",width="stretch"):
+                        st.session_state["cv_wizard_ai"]=name; st.session_state["cv_wizard_step"]=3; st.rerun()
+                    st.caption(f"{cfg['size']} · {cfg['ram']}\n{cfg['description']}")
+
         st.markdown('</div></div>',unsafe_allow_html=True); dots(4,2)
 
     elif not prompt_ready and wizard_step == 3:
-        provider=st.session_state.get("cv_wizard_ai",LOCAL_AI_DEFAULT); doc=st.session_state.get("cv_wizard_doc","CV")
+        provider=st.session_state.get("cv_wizard_ai",AI_DEFAULT_PROVIDER); doc=st.session_state.get("cv_wizard_doc","CV")
         st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 3 OF 4</div><div class="cvwiz-question">Which job should JobSync tailor it to?</div><div class="cvwiz-copy">Pick a saved vacancy or enter the missing details. JobSync auto-fills everything it already knows.</div>',unsafe_allow_html=True)
         jobs=state.get("search_results",[]) or []
         saved_jobs=[]
@@ -6289,7 +6357,7 @@ elif page == "CV & Cover Letter":
         st.markdown('</div>',unsafe_allow_html=True); dots(4,3)
 
     elif not prompt_ready and wizard_step == 4:
-        provider=st.session_state.get("cv_wizard_ai",LOCAL_AI_DEFAULT); doc=st.session_state.get("cv_wizard_doc","CV"); job=st.session_state.get("cv_wizard_job",{}) or {}
+        provider=st.session_state.get("cv_wizard_ai",AI_DEFAULT_PROVIDER); doc=st.session_state.get("cv_wizard_doc","CV"); job=st.session_state.get("cv_wizard_job",{}) or {}
         st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 4 OF 4</div><div class="cvwiz-question">Ready to build your {html.escape(doc)}?</div><div class="cvwiz-copy">JobSync assembles the complete prompt, sends it to {html.escape(provider)}, validates the returned LaTeX, shows the source here, lets you copy it into Overleaf, and keeps the final PDF in the JobSync folder.</div><div class="cvwiz-ready"><b>{html.escape(job.get("title") or "Untitled role")}</b><span>{html.escape(job.get("company") or "Company not entered")} · {html.escape(job.get("location") or "Location not entered")}</span></div>',unsafe_allow_html=True)
         refs=st.file_uploader("Optional reference CV / cover letter",type=["pdf","tex","docx"],accept_multiple_files=True,key=f"cvwiz_refs_{cv_cycle}")
         template=st.session_state.get("cv_wizard_template","")
@@ -6325,7 +6393,7 @@ elif page == "CV & Cover Letter":
 
     else:
         saved_job = st.session_state.get("external_job_snapshot", {}) or {}
-        provider = st.session_state.get("external_ai_provider", LOCAL_AI_DEFAULT)
+        provider = st.session_state.get("external_ai_provider", AI_DEFAULT_PROVIDER)
         doc = st.session_state.get("external_document_type_snapshot", "CV")
         prompt = st.session_state.get("external_ai_prompt", "")
         title = saved_job.get("title") or "Untitled role"
@@ -6454,8 +6522,16 @@ elif page == "CV & Cover Letter":
                 else:
                     key = _ai_api_key(provider)
                     if not key:
-                        st.text_input(f"Connect {provider} (API key)", type="password", key=f"cv_ai_key_{provider}", placeholder="Paste once for this session")
-                        st.caption("The key is kept only in this session and is not written to your JobSync documents.")
+                        resolved_provider, _ = _resolve_ai_selection(provider)
+                        hosted_cfg = HOSTED_AI_MODELS.get(provider)
+                        key_hint = {
+                            "Gemini": "Free at aistudio.google.com/apikey — no billing required.",
+                            "ChatGPT": "From platform.openai.com/api-keys — needs billing enabled.",
+                            "Claude": "From console.anthropic.com/settings/keys — needs billing enabled.",
+                        }.get(resolved_provider, "")
+                        tier_note = f" ({hosted_cfg['tier']})" if hosted_cfg else ""
+                        st.text_input(f"Connect {provider}{tier_note} — API key", type="password", key=f"cv_ai_key_{resolved_provider}", placeholder="Paste once for this session")
+                        st.caption(f"The key is kept only in this session and is not written to your JobSync documents. {key_hint}")
                 if st.button(f"Generate {doc} →", key=f"cvwiz_generate_{cv_cycle}", type="primary", width="stretch"):
                     st.session_state["cv_generation_running"] = True
                     st.rerun()

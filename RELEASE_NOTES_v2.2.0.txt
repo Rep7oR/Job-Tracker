@@ -1,0 +1,22 @@
+JobSync v2.2.0
+==============
+
+CV generation — online AI models by default
+---------------------------------------------
+- CV Studio's "Which AI should create your CV?" step previously offered only
+  local models — picking any of them made JobSync auto-install Ollama and
+  download an 8-19 GB model to the user's machine before it could generate
+  anything.
+- Generation is now online by default: a new model picker offers real
+  hosted models grouped by cost —
+    Free: Gemini 2.0 Flash, Gemini 1.5 Pro (free Google AI Studio key, no
+    billing)
+    Paid: GPT-4o mini, GPT-4o, Claude 3.5 Haiku, Claude Sonnet 4 (bring
+    your own billed API key)
+  All of them are called directly over HTTPS (no SDK, no local model
+  weights), so the app itself stays a small install.
+- The old local/offline path (Ollama + Qwen/Gemma/gpt-oss) is kept, moved
+  into a collapsed "Offline / local AI (advanced)" section for anyone who
+  prefers it.
+- Default selection is now Gemini 2.0 Flash (free, zero local footprint)
+  instead of the local Qwen3 14B download.
