@@ -1,0 +1,22 @@
+JobSync v2.3.0
+==============
+
+Home page — fits one viewport, no scrolling
+---------------------------------------------
+- Home is compacted so the greeting, the Live Opportunity Network hub, all
+  8 sector cards, the Online now / Your Progress / Today's Insights rail,
+  and the Quick Actions row are all visible together with no page-level
+  scrollbar, at typical laptop and desktop window heights.
+- Sizing uses vh-based clamps rather than fixed pixels, so the layout
+  scales with the actual window height instead of one fixed target size.
+- The Online now / Your Progress / Today's Insights rail keeps its own
+  small internal scroll if its content genuinely doesn't fit (e.g. a lot
+  of people online at once) — the page frame itself never scrolls, only
+  that one contained panel would, matching how apps like Notion/Linear
+  handle a long list without breaking the rest of the layout.
+
+Note: this establishes the pattern (compact vh-based sizing + contained
+scroll only where a list is genuinely unbounded) for the rest of the app.
+Other pages (Dashboard, New Search, Applied Jobs, CV & Cover Letter,
+Folders, Updates, Profile, Settings) still scroll normally and will get
+the same treatment in follow-up releases.
