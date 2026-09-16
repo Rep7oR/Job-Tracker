@@ -3293,11 +3293,11 @@ def _local_ai_config(provider: str | None) -> dict:
 # rather download a model to this PC instead (large download, no key).
 HOSTED_AI_MODELS = {
     "Gemini 2.0 Flash": {"provider": "Gemini", "model": "gemini-2.0-flash", "tier": "Free", "note": "Free Google AI Studio key · fast"},
-    "Gemini 1.5 Pro": {"provider": "Gemini", "model": "gemini-1.5-pro", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
+    "Gemini 2.5 Pro": {"provider": "Gemini", "model": "gemini-2.5-pro", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
     "GPT-4o mini": {"provider": "ChatGPT", "model": "gpt-4o-mini", "tier": "Paid", "note": "OpenAI API key with billing · low cost"},
     "GPT-4o": {"provider": "ChatGPT", "model": "gpt-4o", "tier": "Paid", "note": "OpenAI API key with billing · premium quality"},
-    "Claude 3.5 Haiku": {"provider": "Claude", "model": "claude-3-5-haiku-20241022", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
-    "Claude Sonnet 4": {"provider": "Claude", "model": "claude-sonnet-4-20250514", "tier": "Paid", "note": "Anthropic API key with billing · premium quality"},
+    "Claude Haiku 4.5": {"provider": "Claude", "model": "claude-haiku-4-5-20251001", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
+    "Claude Sonnet 5": {"provider": "Claude", "model": "claude-sonnet-5", "tier": "Paid", "note": "Anthropic API key with billing · premium quality"},
 }
 AI_DEFAULT_PROVIDER = "Gemini 2.0 Flash"
 
@@ -4170,7 +4170,7 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
         return "\n".join(parts)
 
     if resolved_provider == "Claude":
-        model = model_override or os.getenv("JOBSYNC_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+        model = model_override or os.getenv("JOBSYNC_ANTHROPIC_MODEL", "claude-sonnet-5")
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={"x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
