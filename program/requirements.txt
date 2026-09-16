@@ -13,4 +13,7 @@ requests
 beautifulsoup4
 lxml
 pywebview>=5.4
+SpeechRecognition
+PyAudio
+streamlit-autorefresh
 
