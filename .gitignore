@@ -6,6 +6,7 @@ output/
 uploads/
 data/state.json
 data/account.json
+data/accounts.json
 data/gmail_token.json
 data/linkedin_browser_profile/
 data/avatars/
