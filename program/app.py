@@ -159,7 +159,8 @@ st.markdown(
     div[data-testid="stSidebarCollapsedControl"],
     div[data-testid*="SidebarCollapsedControl"],
     button[aria-label="Close sidebar"],
-    button[aria-label="Open sidebar"] {
+    button[aria-label="Open sidebar"],
+    button[data-testid="stBaseButton-headerNoPadding"] {
         display:none !important;
         visibility:hidden !important;
     }
@@ -920,69 +921,74 @@ if "sidebar_collapsed" not in st.session_state:
 if "cv_studio_cycle" not in st.session_state:
     st.session_state.cv_studio_cycle = 0
 
-# Deterministic JobSync sidebar state. This intentionally overrides Streamlit's
-# remembered browser sidebar state so the application always starts with a usable menu.
+# Deterministic JobSync sidebar state (mobile/touch only — desktop uses the
+# always-on hover-expand icon rail defined in the JOBSYNC NAV RAIL skin below,
+# which needs no click-to-toggle state at all).
 if st.session_state.sidebar_collapsed:
     st.markdown("""
     <style>
-      section[data-testid="stSidebar"] {
-        width:0 !important; min-width:0 !important; max-width:0 !important;
-        flex:0 0 0 !important;
-        overflow:hidden !important;
-        transform:none !important;
-        visibility:visible !important;
-        opacity:1 !important;
-      }
-      section[data-testid="stSidebar"] > div:first-child {
-        width:280px !important;
-        min-width:280px !important;
-        max-width:280px !important;
-        opacity:0 !important;
-        pointer-events:none !important;
-      }
-      div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] {
-        position:fixed !important;
-        left:0 !important;
-        top:50% !important;
-        transform:translateY(-50%) !important;
-        z-index:2147483647 !important;
-        width:52px !important;
-      }
-      div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] button {
-        min-width:52px !important;
-        width:52px !important;
-        height:76px !important;
-        border-radius:0 14px 14px 0 !important;
-        border:1px solid rgba(255,255,255,.15) !important;
-        border-left:0 !important;
-        background:linear-gradient(180deg,rgba(255,77,91,.34),rgba(34,197,94,.20)) !important;
-        color:#fff !important;
-        font-size:1.3rem !important;
-        box-shadow:8px 0 30px rgba(0,0,0,.38) !important;
-      }
-      div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] button:hover {
-        border-color:#22c55e !important;
-        box-shadow:8px 0 34px rgba(34,197,94,.16) !important;
-      }
-      .main .block-container {
-        margin-left:0 !important;
+      @media (max-width: 900px) {
+        section[data-testid="stSidebar"] {
+          width:0 !important; min-width:0 !important; max-width:0 !important;
+          flex:0 0 0 !important;
+          overflow:hidden !important;
+          transform:none !important;
+          visibility:visible !important;
+          opacity:1 !important;
+        }
+        section[data-testid="stSidebar"] > div:first-child {
+          width:280px !important;
+          min-width:280px !important;
+          max-width:280px !important;
+          opacity:0 !important;
+          pointer-events:none !important;
+        }
+        div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] {
+          position:fixed !important;
+          left:0 !important;
+          top:50% !important;
+          transform:translateY(-50%) !important;
+          z-index:2147483647 !important;
+          width:52px !important;
+        }
+        div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] button {
+          min-width:52px !important;
+          width:52px !important;
+          height:76px !important;
+          border-radius:0 14px 14px 0 !important;
+          border:1px solid rgba(255,255,255,.15) !important;
+          border-left:0 !important;
+          background:linear-gradient(180deg,rgba(255,77,91,.34),rgba(34,197,94,.20)) !important;
+          color:#fff !important;
+          font-size:1.3rem !important;
+          box-shadow:8px 0 30px rgba(0,0,0,.38) !important;
+        }
+        div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] button:hover {
+          border-color:#22c55e !important;
+          box-shadow:8px 0 34px rgba(34,197,94,.16) !important;
+        }
+        .main .block-container {
+          margin-left:0 !important;
+        }
       }
     </style>
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
     <style>
-      section[data-testid="stSidebar"] {
-        display:block !important;
-        width:280px !important; min-width:280px !important; max-width:280px !important;
-        flex:0 0 280px !important;
-        transform:none !important;
-        visibility:visible !important;
-        opacity:1 !important;
-        overflow:visible !important;
-      }
-      section[data-testid="stSidebar"] > div:first-child {
-        opacity:1 !important; pointer-events:auto !important;
+      @media (max-width: 900px) {
+        section[data-testid="stSidebar"] {
+          display:block !important;
+          width:280px !important; min-width:280px !important; max-width:280px !important;
+          flex:0 0 280px !important;
+          transform:none !important;
+          visibility:visible !important;
+          opacity:1 !important;
+          overflow:visible !important;
+        }
+        section[data-testid="stSidebar"] > div:first-child {
+          opacity:1 !important; pointer-events:auto !important;
+        }
       }
     </style>
     """, unsafe_allow_html=True)
@@ -1205,6 +1211,215 @@ st.markdown(
         [data-testid="stAppViewContainer"] .block-container {
             padding-left: .55rem !important;
             padding-right: .55rem !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ================= JOBSYNC NAV RAIL — auto-hide, hover-expand sidebar =================
+# Desktop/tablet (>900px): the sidebar lives as a slim icon-only rail docked to the
+# left edge. Hovering it (or focusing a control inside it with the keyboard) expands
+# it smoothly to reveal labels; moving the pointer away collapses it again. Pure CSS —
+# no JS, no extra reruns, no change to navigation/session/business logic. Below 900px
+# the existing click-to-toggle overlay sidebar (session_state.sidebar_collapsed) is
+# used instead, since there is no hover on touch devices.
+st.markdown(
+    """
+    <style>
+    :root {
+        --nav-collapsed: 76px;
+        --nav-expanded: 258px;
+    }
+
+    @media (min-width: 901px) {
+        /* The rail docks to the viewport edge and overlays content on expand,
+           so hovering never reflows the page. */
+        section[data-testid="stSidebar"] {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            height: 100dvh !important;
+            width: var(--nav-collapsed) !important;
+            min-width: var(--nav-collapsed) !important;
+            max-width: var(--nav-collapsed) !important;
+            flex: 0 0 var(--nav-collapsed) !important;
+            z-index: 999999 !important;
+            overflow: hidden !important;
+            transition: width .28s cubic-bezier(.22,.9,.32,1),
+                        box-shadow .28s ease, background .28s ease !important;
+            background: linear-gradient(180deg, rgba(8,10,15,.99), rgba(5,6,9,.99)) !important;
+            border-right: 1px solid rgba(255,255,255,.07) !important;
+            box-shadow: 0 0 0 rgba(0,0,0,0) !important;
+        }
+        section[data-testid="stSidebar"]:hover,
+        section[data-testid="stSidebar"]:focus-within {
+            width: var(--nav-expanded) !important;
+            min-width: var(--nav-expanded) !important;
+            max-width: var(--nav-expanded) !important;
+            overflow-y: auto !important;
+            box-shadow: 22px 0 60px rgba(0,0,0,.5), 1px 0 0 rgba(255,255,255,.05) !important;
+        }
+        /* The inner content wrapper must track the SAME width as the section
+           itself at all times (not jump straight to the expanded width) —
+           otherwise buttons inside it lay out at full expanded width while the
+           section clips to the collapsed width, pushing every icon out of the
+           visible area entirely. */
+        section[data-testid="stSidebar"] > div:first-child {
+            width: var(--nav-collapsed) !important;
+            min-width: var(--nav-collapsed) !important;
+            padding-left: .55rem !important;
+            padding-right: .55rem !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transition: width .28s cubic-bezier(.22,.9,.32,1) !important;
+        }
+        section[data-testid="stSidebar"]:hover > div:first-child,
+        section[data-testid="stSidebar"]:focus-within > div:first-child {
+            width: var(--nav-expanded) !important;
+            min-width: var(--nav-expanded) !important;
+        }
+        /* Content always reserves only the collapsed width — the expanded rail
+           floats above it as an overlay so hovering never shifts the page. */
+        div[data-testid="stAppViewContainer"] > .main,
+        .stMain {
+            margin-left: var(--nav-collapsed) !important;
+        }
+        /* JobSync's own hide/reopen controls are a mobile-only affordance —
+           the rail is always present and auto-hides itself on desktop. */
+        div[data-testid="stElementContainer"]:has(.jobsync-sidebar-hide-marker),
+        div[data-testid="stElementContainer"]:has(.jobsync-sidebar-hide-marker) + div[data-testid="stElementContainer"],
+        button[title="Hide navigation"],
+        button[title="Open navigation"],
+        .jobsync-sidebar-reopen-marker,
+        div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker),
+        div[data-testid="stElementContainer"]:has(.jobsync-sidebar-reopen-marker) + div[data-testid="stElementContainer"] {
+            display: none !important;
+        }
+
+        /* Brand row: icon stays put, wordmark fades/slides in on expand. */
+        section[data-testid="stSidebar"] .brand {
+            display: flex !important;
+            align-items: center !important;
+            gap: .6rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+        }
+        section[data-testid="stSidebar"] .brand::before {
+            content: "💼";
+            font-size: 1.5rem;
+            flex: 0 0 auto;
+            filter: drop-shadow(0 0 10px rgba(255,77,91,.45));
+        }
+        section[data-testid="stSidebar"] .brand-name,
+        section[data-testid="stSidebar"] .brand-sub {
+            opacity: 0;
+            transform: translateX(-6px);
+            transition: opacity .2s ease .04s, transform .22s ease .04s;
+            white-space: nowrap;
+        }
+        section[data-testid="stSidebar"]:hover .brand-name,
+        section[data-testid="stSidebar"]:focus-within .brand-name,
+        section[data-testid="stSidebar"]:hover .brand-sub,
+        section[data-testid="stSidebar"]:focus-within .brand-sub {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Section captions ("WORKSPACE", "DOCUMENTS & ACCOUNT", ...) only make
+           sense once labels are visible. */
+        section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+        section[data-testid="stSidebar"] .stCaption {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            opacity: 0;
+            max-height: 0;
+            margin: 0 !important;
+            transition: opacity .18s ease, max-height .22s ease;
+        }
+        section[data-testid="stSidebar"]:hover [data-testid="stCaptionContainer"],
+        section[data-testid="stSidebar"]:focus-within [data-testid="stCaptionContainer"],
+        section[data-testid="stSidebar"]:hover .stCaption,
+        section[data-testid="stSidebar"]:focus-within .stCaption {
+            opacity: 1;
+            max-height: 2.2rem;
+            margin: .65rem 0 .25rem !important;
+        }
+
+        /* Nav buttons: fixed-width icon glyph on the left (always visible,
+           always aligned), label text clipped until the rail expands. */
+        /* Collapsed rail: nav labels are "<icon>  <text>" as one plain-text run
+           (Streamlit buttons can't hold markup), so the simplest reliable way to
+           show icon-only is to just left-align + clip — the leading glyph is
+           always first in reading order and is never cut, whatever symbol it is.
+           (A ::first-letter / fixed-pixel-clip trick was tried and discarded:
+           ::first-letter skips symbol glyphs like ⌂ ↪ ✚ and jumps to the first
+           *letter* of the word instead, which stayed invisible.) The rail simply
+           grows on hover via the section-width transition above, which naturally
+           reveals the rest of the label — no separate font/width rules needed.  */
+        section[data-testid="stSidebar"] .stButton > button {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            width: 100% !important;
+            padding-left: 1.05rem !important;
+            padding-right: .6rem !important;
+            transition: transform .16s ease, background .16s ease,
+                        border-color .16s ease, box-shadow .16s ease !important;
+        }
+        section[data-testid="stSidebar"] .stButton > button > div,
+        section[data-testid="stSidebar"] .stButton > button p {
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-align: left !important;
+        }
+
+        /* Divider + user card + footnote: same collapse/reveal treatment. */
+        section[data-testid="stSidebar"] hr,
+        section[data-testid="stSidebar"] .sidebar-userbar,
+        section[data-testid="stSidebar"] .sidebar-footnote {
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            transition: opacity .18s ease, max-height .26s ease, margin .26s ease, padding .26s ease;
+        }
+        section[data-testid="stSidebar"]:hover hr,
+        section[data-testid="stSidebar"]:focus-within hr {
+            opacity: 1; max-height: 2px; margin: .85rem 0 !important;
+        }
+        section[data-testid="stSidebar"]:hover .sidebar-userbar,
+        section[data-testid="stSidebar"]:focus-within .sidebar-userbar {
+            opacity: 1; max-height: 90px;
+            margin: .4rem 0 !important; padding: .75rem .65rem !important;
+            border: 1px solid #232832 !important;
+        }
+        section[data-testid="stSidebar"]:hover .sidebar-footnote,
+        section[data-testid="stSidebar"]:focus-within .sidebar-footnote {
+            opacity: 1; max-height: 60px; margin-top: .7rem !important;
+        }
+    }
+
+    /* Collapsed-rail nav item styling shared at all breakpoints ≥901px */
+    @media (min-width: 901px) {
+        section[data-testid="stSidebar"] .stButton > button {
+            position: relative;
+            min-height: 46px !important;
+            border-radius: 13px !important;
+        }
+        /* Active-page glow travels smoothly with the rail's own transition. */
+        section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+            background: linear-gradient(135deg, rgba(255,77,91,.24), rgba(255,122,89,.09)) !important;
+            border-color: rgba(255,100,100,.32) !important;
+        }
+        section[data-testid="stSidebar"] .stButton > button:not([kind="primary"]):hover {
+            transform: translateX(1px) !important;
         }
     }
     </style>
@@ -1831,15 +2046,17 @@ def latest_updates(limit=7):
 
 # ---------------- Sidebar ----------------
 with st.sidebar:
-    # Custom sidebar toggle. Keep a clearly visible labelled control rather than
-    # squeezing the icon into a tiny one-column container.
+    # Custom sidebar toggle. Mobile-only: the desktop rail auto-hides on its own via
+    # hover, so this click control is hidden by CSS above 900px width (see the
+    # jobsync-sidebar-hide-marker rule in the NAV RAIL skin).
+    st.markdown('<span class="jobsync-sidebar-hide-marker" aria-hidden="true"></span>', unsafe_allow_html=True)
     if st.button("«  Hide navigation", key="jobsync_sidebar_hide", help="Hide navigation", width="stretch"):
         st.session_state.sidebar_collapsed = True
         st.rerun()
     current_email = st.session_state.get("auth_email") or account_email()
     current_role = ensure_local_admin() if st.session_state.authenticated else "guest"
     st.markdown(
-        '<div class="brand"><div class="brand-name">💼 JobSync</div>'
+        '<div class="brand"><div class="brand-name">JobSync</div>'
         '<div class="brand-sub">Your local job-search workspace</div></div>',
         unsafe_allow_html=True,
     )
