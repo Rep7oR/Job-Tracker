@@ -200,46 +200,58 @@ def _listen_loop() -> None:
         return
 
     recognizer = sr.Recognizer()
+    recognizer.dynamic_energy_threshold = True
+    # A built-in laptop mic is noisy and the wake phrase is two full words, so
+    # give the recognizer more room before it decides speech has ended —
+    # the defaults (pause_threshold=0.8) tend to cut the phrase mid-word and
+    # produce garbage transcriptions that never contain the wake word.
+    recognizer.pause_threshold = 1.0
+    recognizer.non_speaking_duration = 0.5
     try:
         mic = sr.Microphone()
     except OSError as exc:
         _STATE.update(listening=False, status="No microphone detected.", error=str(exc))
         return
 
+    # Keep one persistent mic stream open for the whole loop instead of
+    # reopening it every iteration — reopening has a brief startup lag during
+    # which the first syllable of the next phrase is dropped, which is what
+    # was turning "Hey JobSync" into unrelated noise like "call 9676".
     with mic as source:
-        recognizer.adjust_for_ambient_noise(source, duration=1)
-
-    _STATE.update(status="Listening for “Hey JobSync”…")
-    while not _STOP_EVENT.is_set():
-        try:
-            with mic as source:
+        recognizer.adjust_for_ambient_noise(source, duration=2)
+        _STATE.update(status="Listening for “Hey JobSync”…")
+        while not _STOP_EVENT.is_set():
+            try:
                 audio = recognizer.listen(source, timeout=5, phrase_time_limit=6)
-        except sr.WaitTimeoutError:
-            continue
-        except Exception as exc:  # noqa: BLE001
-            _STATE.update(error=str(exc))
-            time.sleep(1)
-            continue
+            except sr.WaitTimeoutError:
+                continue
+            except Exception as exc:  # noqa: BLE001
+                _STATE.update(error=str(exc))
+                time.sleep(1)
+                continue
+            _process_audio(recognizer, sr, audio)
 
-        try:
-            text = recognizer.recognize_google(audio)
-        except sr.UnknownValueError:
-            continue
-        except sr.RequestError as exc:
-            _STATE.update(error=f"Speech recognition service error: {exc}")
-            time.sleep(2)
-            continue
 
-        _STATE.update(transcript=text)
+def _process_audio(recognizer, sr, audio) -> None:
+    try:
+        text = recognizer.recognize_google(audio)
+    except sr.UnknownValueError:
+        return
+    except sr.RequestError as exc:
+        _STATE.update(error=f"Speech recognition service error: {exc}")
+        time.sleep(2)
+        return
 
-        if not _STATE.snapshot()["awake"]:
-            if _contains_wake_word(text):
-                remainder = _strip_wake_word(text.lower())
-                _STATE.update(awake=True, status="I'm listening…")
-                if remainder:
-                    _handle_command(remainder)
-        else:
-            _handle_command(text)
+    _STATE.update(transcript=text)
+
+    if not _STATE.snapshot()["awake"]:
+        if _contains_wake_word(text):
+            remainder = _strip_wake_word(text.lower())
+            _STATE.update(awake=True, status="I'm listening…")
+            if remainder:
+                _handle_command(remainder)
+    else:
+        _handle_command(text)
 
 
 def ensure_started() -> None:
