@@ -5417,6 +5417,11 @@ if page == "Home":
             </div>
             """, unsafe_allow_html=True,
         )
+        _login_col1, _login_col2, _login_col3 = st.columns([1, 1, 1])
+        with _login_col2:
+            if st.button("Log In / Sign Up →", key="public_landing_login", width="stretch", type="primary"):
+                st.session_state.nav = "Login"
+                st.rerun()
         st.stop()
 
     _render_home_authenticated()
