@@ -1,0 +1,19 @@
+JobSync v2.1.0
+==============
+
+Home — neural network panel redesign
+-------------------------------------
+- The "Live Opportunity Network" sector cards on Home were plain HTML
+  <details> elements — clicking one only expanded a local description in
+  place, with no way to actually reach the matching jobs.
+- Replaced them with real, clickable sector nodes arranged in a responsive
+  grid below a trimmed, purely decorative hub visual (the pulsing core and
+  ambient connector dots/lines are kept).
+- Clicking a sector now sets it as the search field and navigates straight
+  to New Search, pre-filled and ready to run.
+- The Online now / Your Progress / Today's Insights rail is unchanged.
+
+Housekeeping
+------------
+- .gitignore now also excludes data/accounts.json (the local account
+  store), matching the existing data/account.json rule.
