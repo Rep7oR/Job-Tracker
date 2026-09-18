@@ -7154,11 +7154,12 @@ elif page == "Profile":
       @media(prefers-reduced-motion:reduce){.p17-identity-card,.p17-identity-avatar,.p17-identity-live i{animation:none!important}}
     </style>""", unsafe_allow_html=True)
 
-    st.markdown(f'''<section class="p17-profile-only"><div class="p17-identity-card">
-      <div class="p17-identity-top"><span class="p17-identity-kicker">JOBSYNC · PROFILE</span><span class="p17-identity-live"><i></i>{"PROFILE COMPLETE" if complete else "PROFILE ACTIVE"}</span></div>''', unsafe_allow_html=True)
     with st.container(key="p17_edit_top"):
         edit_profile = st.button("✎ Edit profile", key="p17_edit_profile_top")
-    st.markdown(f'''<div class="p17-identity-body">
+
+    st.markdown(f'''<section class="p17-profile-only"><div class="p17-identity-card">
+      <div class="p17-identity-top"><span class="p17-identity-kicker">JOBSYNC · PROFILE</span><span class="p17-identity-live"><i></i>{"PROFILE COMPLETE" if complete else "PROFILE ACTIVE"}</span></div>
+      <div class="p17-identity-body">
         <div class="p17-identity-avatar-wrap"><div class="p17-identity-avatar">{html.escape(initials[:2])}</div><span class="p17-identity-dot"></span></div>
         <div class="p17-identity-status"><b></b>{"IDENTITY READY" if complete else "IDENTITY IN PROGRESS"}</div>
         <div class="p17-identity-name">{html.escape(display_name)}</div>
