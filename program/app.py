@@ -7234,8 +7234,96 @@ elif page == "Profile":
 
 elif page == "Settings":
     render_modern_page_header("Settings")
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🔐 Account security</div>', unsafe_allow_html=True)
+    st.markdown('''<style>
+      .settings-shell{max-width:1000px;margin:0 auto;}
+      .settings-nav{
+        position:sticky; top:6px; z-index:20; display:flex; flex-wrap:wrap; gap:7px;
+        margin:0 0 18px; padding:10px 12px; border-radius:16px;
+        background:rgba(12,17,28,.86); border:1px solid rgba(255,255,255,.08);
+        backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
+        box-shadow:0 14px 34px rgba(0,0,0,.30);
+        animation: jobsync-home-fade .5s cubic-bezier(.22,1,.36,1) both;
+      }
+      .settings-nav a{
+        padding:7px 13px; border-radius:999px; background:rgba(255,255,255,.045);
+        border:1px solid rgba(255,255,255,.09); color:#c7d1e2; font-size:.7rem; font-weight:750;
+        letter-spacing:-.01em; text-decoration:none; white-space:nowrap;
+        transition:background .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+      }
+      .settings-nav a:hover{
+        background:rgba(110,90,255,.20); border-color:rgba(150,128,255,.5); color:#fff;
+        transform:translateY(-1px);
+      }
+      .settings-card{
+        scroll-margin-top:64px;
+        animation: jobsync-home-fade .5s cubic-bezier(.22,1,.36,1) both;
+        transition:transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s ease, border-color .3s ease;
+      }
+      .settings-card:hover{ transform:translateY(-2px); box-shadow:0 20px 50px rgba(0,0,0,.28); border-color:rgba(255,255,255,.14); }
+      .settings-card.danger{ border-color:rgba(255,90,90,.28); background:linear-gradient(145deg,rgba(46,12,12,.55),rgba(20,8,10,.6)); }
+      .settings-card.danger:hover{ border-color:rgba(255,110,110,.5); box-shadow:0 20px 50px rgba(120,20,20,.22); }
+      .settings-card-head{display:flex; align-items:center; gap:11px; margin-bottom:2px;}
+      .settings-icon{
+        width:34px; height:34px; flex:0 0 34px; border-radius:11px; display:grid; place-items:center;
+        font-size:1rem; background:linear-gradient(135deg,rgba(120,180,255,.35),rgba(190,130,255,.28));
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+      }
+      .settings-icon.danger{ background:linear-gradient(135deg,rgba(255,110,110,.4),rgba(255,60,60,.22)); }
+      .settings-card .section-title{ margin:0 !important; }
+      @media(prefers-reduced-motion:reduce){ .settings-nav,.settings-card{ animation:none !important; transition:none !important; } }
+    </style>''', unsafe_allow_html=True)
+    st.markdown('''<div class="settings-shell"><div class="settings-nav">
+      <a href="#sec-ai">🤖 AI generation</a>
+      <a href="#sec-account">🔐 Account</a>
+      <a href="#sec-jobs">🔎 Job sources</a>
+      <a href="#sec-linkedin">in LinkedIn</a>
+      <a href="#sec-monitor">🔔 Monitoring</a>
+      <a href="#sec-oauth">✉ Gmail OAuth</a>
+      <a href="#sec-updates">⬆ Updates</a>
+      <a href="#sec-danger">⚠ Danger zone</a>
+    </div></div>''', unsafe_allow_html=True)
+
+    st.markdown('<div class="settings-shell">', unsafe_allow_html=True)
+
+    st.markdown('<div class="card settings-card" id="sec-ai">', unsafe_allow_html=True)
+    st.markdown('<div class="settings-card-head"><div class="settings-icon">🤖</div><div class="section-title">AI generation — connect once, use everywhere</div></div>', unsafe_allow_html=True)
+    st.caption("Set your key here once and CV/cover-letter generation just works from now on — no more pasting a key into the CV Studio every time. Gemini and Groq are free (no billing); ChatGPT and Claude need your own billed key.")
+
+    key_col1, key_col2 = st.columns(2)
+    with key_col1:
+        with st.container(border=True):
+            st.markdown("**Get your free Gemini key (about 30 seconds)**")
+            st.markdown(
+                "1. Click **Get free Gemini key** below — it opens Google AI Studio in a new tab.\n"
+                "2. Sign in with any Google account (no credit card, no billing).\n"
+                "3. Click **Create API key**, then the copy icon next to the new key.\n"
+                "4. Come back to this tab, paste it into the field below, and click **Save settings**."
+            )
+            st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
+        gemini_key = st.text_input("Gemini API key (free)", value=os.getenv("GEMINI_API_KEY", ""), type="password", help="Free at aistudio.google.com/apikey — no billing required.")
+    with key_col2:
+        with st.container(border=True):
+            st.markdown("**Get your free Groq key (about 30 seconds)**")
+            st.markdown(
+                "1. Click **Get free Groq key** below — it opens the Groq console in a new tab.\n"
+                "2. Sign in with Google, GitHub, or email (no credit card).\n"
+                "3. Click **Create API Key**, then copy it.\n"
+                "4. Come back to this tab, paste it into the field below, and click **Save settings**."
+            )
+            st.link_button("Get free Groq key ↗", "https://console.groq.com/keys", width="stretch")
+        groq_key = st.text_input("Groq API key (free)", value=os.getenv("GROQ_API_KEY", ""), type="password", help="Free at console.groq.com/keys — very fast, high free-tier limits, good fallback when Gemini is rate-limited.")
+
+    ai_col1, ai_col2 = st.columns(2)
+    with ai_col1:
+        openai_key = st.text_input("OpenAI API key (paid)", value=os.getenv("OPENAI_API_KEY", ""), type="password", help="From platform.openai.com/api-keys — needs billing enabled.")
+    with ai_col2:
+        anthropic_key = st.text_input("Anthropic API key (paid)", value=os.getenv("ANTHROPIC_API_KEY", ""), type="password", help="From console.anthropic.com/settings/keys — needs billing enabled.")
+    st.caption("Keys are saved locally to JobSync's own .env file on this computer only — never uploaded anywhere else.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.write("")
+    st.markdown('<div class="card settings-card" id="sec-account">', unsafe_allow_html=True)
+    st.markdown('<div class="settings-card-head"><div class="settings-icon">🔐</div><div class="section-title">Account security</div></div>', unsafe_allow_html=True)
     account_email = str(st.session_state.get("local_user_email") or profile.get("email") or "").strip().lower()
     st.caption(f"Local account: {account_email or 'Not signed in'}")
     with st.form("change_password_form"):
@@ -7268,8 +7356,8 @@ elif page == "Settings":
         st.caption("This code can reset the local password if you forget it.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🔎 Job sources</div>', unsafe_allow_html=True)
+    st.markdown('<div class="card settings-card" id="sec-jobs">', unsafe_allow_html=True)
+    st.markdown('<div class="settings-card-head"><div class="settings-icon">🔎</div><div class="section-title">Job sources</div></div>', unsafe_allow_html=True)
     saved_mode = state.get("settings", {}).get("job_search_mode", "free")
     if saved_mode not in JOB_SEARCH_MODE_LABELS:
         saved_mode = "free"
@@ -7306,8 +7394,8 @@ elif page == "Settings":
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.write("")
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">in LinkedIn profile & notifications</div>', unsafe_allow_html=True)
+    st.markdown('<div class="card settings-card" id="sec-linkedin">', unsafe_allow_html=True)
+    st.markdown('<div class="settings-card-head"><div class="settings-icon">in</div><div class="section-title">LinkedIn profile & notifications</div></div>', unsafe_allow_html=True)
     linkedin_profile_url = st.text_input(
         "LinkedIn profile URL",
         value=state.get("settings", {}).get("linkedin_profile_url", ""),
@@ -7341,8 +7429,8 @@ elif page == "Settings":
 
     st.write("")
     st.write("")
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🔔 Daily new-job monitoring</div>', unsafe_allow_html=True)
+    st.markdown('<div class="card settings-card" id="sec-monitor">', unsafe_allow_html=True)
+    st.markdown('<div class="settings-card-head"><div class="settings-icon">🔔</div><div class="section-title">Daily new-job monitoring</div></div>', unsafe_allow_html=True)
     monitor_enabled = st.checkbox(
         "Start the background job monitor automatically",
         value=bool(state.get("settings", {}).get("live_monitor_enabled", True)),
@@ -7376,8 +7464,8 @@ elif page == "Settings":
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🔐 Google OAuth setup (for Gmail sync)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="card settings-card" id="sec-oauth">', unsafe_allow_html=True)
+    st.markdown('<div class="settings-card-head"><div class="settings-icon">✉</div><div class="section-title">Google OAuth setup (for Gmail sync)</div></div>', unsafe_allow_html=True)
     with st.expander("Configure Google OAuth application credentials", expanded=False):
         st.caption(
             "Configure this once for this JobSync installation. You only need to complete this "
@@ -7425,8 +7513,8 @@ elif page == "Settings":
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.write("")
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">⬆ Software updates</div>', unsafe_allow_html=True)
+    st.markdown('<div class="card settings-card" id="sec-updates">', unsafe_allow_html=True)
+    st.markdown('<div class="settings-card-head"><div class="settings-icon">⬆</div><div class="section-title">Software updates</div></div>', unsafe_allow_html=True)
     st.caption("Updates are checked when you press the button. If a newer release is available, JobSync downloads the installer, closes the current app, and opens the visible installer. Your local data stays inside the JobSync folder.")
     update_col1, update_col2 = st.columns([1, 2])
     with update_col1:
@@ -7489,42 +7577,7 @@ elif page == "Settings":
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.write("")
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">AI generation — connect once, use everywhere</div>', unsafe_allow_html=True)
-    st.caption("Set your key here once and CV/cover-letter generation just works from now on — no more pasting a key into the CV Studio every time. Gemini and Groq are free (no billing); ChatGPT and Claude need your own billed key.")
-
-    key_col1, key_col2 = st.columns(2)
-    with key_col1:
-        with st.container(border=True):
-            st.markdown("**Get your free Gemini key (about 30 seconds)**")
-            st.markdown(
-                "1. Click **Get free Gemini key** below — it opens Google AI Studio in a new tab.\n"
-                "2. Sign in with any Google account (no credit card, no billing).\n"
-                "3. Click **Create API key**, then the copy icon next to the new key.\n"
-                "4. Come back to this tab, paste it into the field below, and click **Save settings**."
-            )
-            st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
-        gemini_key = st.text_input("Gemini API key (free)", value=os.getenv("GEMINI_API_KEY", ""), type="password", help="Free at aistudio.google.com/apikey — no billing required.")
-    with key_col2:
-        with st.container(border=True):
-            st.markdown("**Get your free Groq key (about 30 seconds)**")
-            st.markdown(
-                "1. Click **Get free Groq key** below — it opens the Groq console in a new tab.\n"
-                "2. Sign in with Google, GitHub, or email (no credit card).\n"
-                "3. Click **Create API Key**, then copy it.\n"
-                "4. Come back to this tab, paste it into the field below, and click **Save settings**."
-            )
-            st.link_button("Get free Groq key ↗", "https://console.groq.com/keys", width="stretch")
-        groq_key = st.text_input("Groq API key (free)", value=os.getenv("GROQ_API_KEY", ""), type="password", help="Free at console.groq.com/keys — very fast, high free-tier limits, good fallback when Gemini is rate-limited.")
-
-    ai_col1, ai_col2 = st.columns(2)
-    with ai_col1:
-        openai_key = st.text_input("OpenAI API key (paid)", value=os.getenv("OPENAI_API_KEY", ""), type="password", help="From platform.openai.com/api-keys — needs billing enabled.")
-    with ai_col2:
-        anthropic_key = st.text_input("Anthropic API key (paid)", value=os.getenv("ANTHROPIC_API_KEY", ""), type="password", help="From console.anthropic.com/settings/keys — needs billing enabled.")
-    st.caption("Keys are saved locally to JobSync's own .env file on this computer only — never uploaded anywhere else.")
-    st.markdown('</div>', unsafe_allow_html=True)
-
+    st.markdown('<div class="card settings-card" id="sec-save">', unsafe_allow_html=True)
     if st.button("Save settings", type="primary", width="stretch"):
         settings = state.setdefault("settings", {})
         settings["linkedin_profile_url"] = linkedin_profile_url.strip()
@@ -7553,15 +7606,16 @@ elif page == "Settings":
         notify_success("Settings saved locally.")
         st.rerun()
 
-    st.write("")
     st.caption("CV and cover-letter generation uses the online AI model you connected above (or a local model if you chose that instead in CV Studio's advanced option).")
     st.caption(f"Generated CV folder: {OUTPUT_CV}")
     st.caption(f"Local AI model storage: {OLLAMA_MODELS_DIR}")
     st.caption(f"Generated cover-letter folder: {OUTPUT_CL}")
     st.caption(f"Excel tracker: {TRACKER}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
     st.write("")
-    st.divider()
-    st.subheader("⚠ Master reset")
+    st.markdown('<div class="card settings-card danger" id="sec-danger">', unsafe_allow_html=True)
+    st.markdown('<div class="settings-card-head"><div class="settings-icon danger">⚠</div><div class="section-title">Master reset</div></div>', unsafe_allow_html=True)
     st.caption(
         "Completely clear JobSync's user data and return the workspace to a clean state."
     )
@@ -7572,6 +7626,9 @@ elif page == "Settings":
         key="master_reset_button",
     ):
         confirm_master_reset()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)  # close .settings-shell
 
 
 # Custom sections pages.
