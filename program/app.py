@@ -5302,6 +5302,16 @@ def _render_home_authenticated_content():
       .jobsync-launch-greeting{font-size:clamp(1.3rem,2.4vw,1.7rem);font-weight:700;letter-spacing:-.02em;color:#eef2f7;}
       .jobsync-launch-sub{margin-top:6px;color:rgba(226,233,247,.6);font-size:.82rem;}
       .st-key-home_launch_shortcuts{max-width:520px;margin:26px auto 4vh;}
+      /* Streamlit auto-stacks a stHorizontalBlock's columns vertically once
+         its own container is narrow (our 520px cap trips that), which broke
+         this into a single stacked column instead of 4 side-by-side icons.
+         Force the row layout explicitly regardless of container width. */
+      .st-key-home_launch_shortcuts [data-testid="stHorizontalBlock"]{
+        display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;width:100%!important;
+      }
+      .st-key-home_launch_shortcuts [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]{
+        flex:1 1 0!important;min-width:0!important;width:auto!important;
+      }
       .st-key-home_launch_shortcuts .stButton>button{
         height:64px!important;min-height:64px!important;width:64px!important;border-radius:50%!important;
         display:flex!important;align-items:center!important;justify-content:center!important;
