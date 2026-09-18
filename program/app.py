@@ -5368,74 +5368,74 @@ def _render_home_authenticated_content():
     )
 
     st.markdown('''<style>
-      /* One-viewport Home: a fixed-height flex column (topbar + content grid)
-         that never exceeds the visible window. The page itself never
-         scrolls — only the two content boxes (About, Online now) get their
-         own internal scrollbar if their content runs long.
+      /* One-viewport Home: a fixed-height flex column, its children stacked
+         and CENTERED as a group (not pinned to the top), so short content
+         reads as one composed screen instead of a cluster in the corner
+         above a dead black gap. The page itself never scrolls — only the
+         two content boxes (About, Online now) get their own internal
+         scrollbar if their content runs long.
 
-         Built from real st.container(key=...) wrappers rather than a raw
-         <div> spanning multiple st.markdown calls: Streamlit renders each
+         Every block is a real st.container(key=...) wrapper, not a raw
+         <div> spanning multiple st.markdown calls — Streamlit renders each
          markdown call into its own isolated wrapper element, so an unclosed
-         tag in one call does not actually nest around widgets emitted by
-         later calls — it only produces broken HTML. st.container's own
-         wrapper element is the thing CSS below targets by its "st-key-*"
-         class, which is the supported way to size a real block around
-         mixed markdown + widgets. */
+         tag in one call does not nest around widgets from a later call, it
+         only produces broken HTML. Nesting st.columns's own horizontal
+         block inside one half of an outer st.columns row (tried in an
+         earlier pass, for a brand+shortcuts single row) also proved fragile
+         — the inner block's flex sizing fought the outer column's width and
+         the shortcut icons rendered shifted out over the greeting text.
+         Stacked, full-width blocks avoid that column-in-column case. */
       body:has(.st-key-home_shell) [data-testid="stAppViewContainer"] {
         overflow: hidden !important;
       }
       .st-key-home_shell {
         display: flex !important; flex-direction: column !important;
+        justify-content: center !important; align-items: stretch !important;
         height: calc(100dvh - 2.4vh) !important; max-height: calc(100dvh - 2.4vh) !important;
-        overflow: hidden !important;
+        overflow: hidden !important; gap: 1.6vh !important;
       }
-      .st-key-home_topbar { flex: 0 0 auto !important; margin-bottom: 1.4vh !important; }
-      .st-key-home_topbar [data-testid="stHorizontalBlock"] { align-items: center !important; }
-      .jobsync-launch-brand{display:flex; align-items:center; gap:12px; min-width:0;}
-      .jobsync-launch-logo{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;border-radius:14px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.22),rgba(86,64,255,.15) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.22);box-shadow:0 0 16px rgba(54,190,255,.1);}
-      .jobsync-launch-logo svg{width:26px;height:26px;}
-      .jobsync-launch-greeting{font-size:clamp(1.1rem,1.8vw,1.4rem);font-weight:700;letter-spacing:-.02em;color:#eef2f7;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-      .jobsync-launch-sub{margin-top:2px;color:rgba(226,233,247,.6);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .jobsync-launch-hero{text-align:center; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) both;}
+      .jobsync-launch-logo{width:56px;height:56px;margin:0 auto 12px;display:grid;place-items:center;border-radius:16px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.24),rgba(86,64,255,.16) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.24);box-shadow:0 0 20px rgba(54,190,255,.14);animation:bigLogoFloat 4.2s ease-in-out infinite;}
+      .jobsync-launch-logo svg{width:32px;height:32px;}
+      .jobsync-launch-greeting{font-size:clamp(1.3rem,2.3vw,1.75rem);font-weight:700;letter-spacing:-.02em;color:#eef2f7;}
+      .jobsync-launch-sub{margin-top:6px;color:rgba(226,233,247,.6);font-size:.82rem;}
+      .st-key-home_launch_shortcuts{flex:0 0 auto !important; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) .08s both;}
       .st-key-home_launch_shortcuts [data-testid="stHorizontalBlock"]{
-        display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:14px!important;width:auto!important;justify-content:flex-end!important;
+        display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;width:100%!important;max-width:420px!important;margin:0 auto!important;
       }
-      .st-key-home_launch_shortcuts [data-testid="stColumn"]{width:auto!important;flex:0 0 auto!important;}
+      .st-key-home_launch_shortcuts [data-testid="stColumn"]{flex:1 1 0!important;min-width:0!important;width:auto!important;}
       .st-key-home_launch_shortcuts .stButton>button{
-        height:44px!important;min-height:44px!important;width:44px!important;border-radius:50%!important;
-        display:flex!important;align-items:center!important;justify-content:center!important;
-        font-size:1rem!important;font-weight:700!important;padding:0!important;
+        height:52px!important;min-height:52px!important;width:52px!important;border-radius:50%!important;
+        display:flex!important;align-items:center!important;justify-content:center!important;margin:0 auto!important;
+        font-size:1.1rem!important;font-weight:700!important;padding:0!important;
         background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.09)!important;color:#eef2f7!important;
         box-shadow:none!important;transition:background .18s ease,transform .18s ease!important;
       }
-      .st-key-home_launch_shortcuts .stButton>button:hover{background:rgba(255,255,255,.14)!important;transform:translateY(-2px)!important;}
-      .st-key-home_launch_shortcuts .stButton>button p{font-size:1rem!important;}
-      .st-key-home_content{flex:1 1 auto !important; min-height:0 !important;}
-      .st-key-home_content .ag-grid{height:100%;}
-      .st-key-home_content .ag-about,.st-key-home_content .ag-presence{min-height:0;overflow-y:auto;}
+      .st-key-home_launch_shortcuts .stButton>button:hover{background:rgba(255,255,255,.14)!important;transform:translateY(-3px) scale(1.05)!important;}
+      .st-key-home_launch_shortcuts .stButton>button p{font-size:1.1rem!important;}
+      .jobsync-launch-shortcut-label{text-align:center;font-size:.66rem;color:#9aa3b2;margin-top:6px;white-space:nowrap;}
+      .st-key-home_content{flex:0 1 auto !important; min-height:0 !important; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) .16s both;}
+      .st-key-home_content .ag-about,.st-key-home_content .ag-presence{min-height:0;overflow-y:auto;max-height:38vh;}
     </style>''', unsafe_allow_html=True)
 
     with st.container(key="home_shell"):
-        with st.container(key="home_topbar"):
-            top_left, top_right = st.columns([1.4, 1], gap="small")
-            with top_left:
-                st.markdown(f'''<div class="jobsync-launch-brand">
-                  <div class="jobsync-launch-logo" aria-hidden="true">
-                    <svg viewBox="0 0 48 48"><defs><linearGradient id="jsyncLaunchJ" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ff1ff"/><stop offset=".48" stop-color="#3fb8ff"/><stop offset="1" stop-color="#8b62ff"/></linearGradient></defs>
-                    <path style="fill:url(#jsyncLaunchJ)" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/></svg>
-                  </div>
-                  <div>
-                    <div class="jobsync-launch-greeting">{html.escape(greeting)}, {html.escape(display_name)}.</div>
-                    <div class="jobsync-launch-sub">{search_hint} · {location_hint}</div>
-                  </div>
-                </div>''', unsafe_allow_html=True)
-            with top_right:
-                with st.container(key="home_launch_shortcuts"):
-                    shortcut_cols = st.columns(4)
-                    shortcuts = [("⌕", "Find Jobs", "New Search"), ("▣", "Create CV", "CV & Cover Letter"), ("▤", "Cover Letter", "CV & Cover Letter"), ("✓", "Applications", "Applied Jobs")]
-                    for col, (icon, label, target) in zip(shortcut_cols, shortcuts):
-                        with col:
-                            if st.button(icon, key=f"home_launch_{target}_{label}", help=label):
-                                go(target); st.rerun()
+        st.markdown(f'''<div class="jobsync-launch-hero">
+          <div class="jobsync-launch-logo" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><defs><linearGradient id="jsyncLaunchJ" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ff1ff"/><stop offset=".48" stop-color="#3fb8ff"/><stop offset="1" stop-color="#8b62ff"/></linearGradient></defs>
+            <path style="fill:url(#jsyncLaunchJ)" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/></svg>
+          </div>
+          <div class="jobsync-launch-greeting">{html.escape(greeting)}, {html.escape(display_name)}.</div>
+          <div class="jobsync-launch-sub">{search_hint} · {location_hint}</div>
+        </div>''', unsafe_allow_html=True)
+
+        with st.container(key="home_launch_shortcuts"):
+            shortcut_cols = st.columns(4)
+            shortcuts = [("⌕", "Find Jobs", "New Search"), ("▣", "Create CV", "CV & Cover Letter"), ("▤", "Cover Letter", "CV & Cover Letter"), ("✓", "Applications", "Applied Jobs")]
+            for col, (icon, label, target) in zip(shortcut_cols, shortcuts):
+                with col:
+                    if st.button(icon, key=f"home_launch_{target}_{label}", help=label):
+                        go(target); st.rerun()
+                    st.markdown(f'<div class="jobsync-launch-shortcut-label">{html.escape(label)}</div>', unsafe_allow_html=True)
 
         with st.container(key="home_content"):
             markup = f'''<div class="ag-grid">
