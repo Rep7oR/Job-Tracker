@@ -3346,9 +3346,8 @@ HOSTED_AI_MODELS = {
     "Free AI (auto-switch)": {"provider": "Auto", "model": "", "tier": "Free", "note": "Routes across every connected free key · switches models automatically when one is rate-limited"},
     "Gemini Flash": {"provider": "Gemini", "model": "gemini-flash-latest", "tier": "Free", "note": "Free Google AI Studio key · fast"},
     "Gemini Pro": {"provider": "Gemini", "model": "gemini-pro-latest", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
-    "Groq Llama 3.3 70B": {"provider": "Groq", "model": "llama-3.3-70b-versatile", "tier": "Free", "note": "Free Groq key · very fast · high rate limits"},
-    "Groq Llama 3.1 8B": {"provider": "Groq", "model": "llama-3.1-8b-instant", "tier": "Free", "note": "Free Groq key · fastest, smaller model · separate rate-limit bucket from 70B"},
-    "Groq Gemma2 9B": {"provider": "Groq", "model": "gemma2-9b-it", "tier": "Free", "note": "Free Groq key · Google's open Gemma2 on Groq · another independent rate-limit bucket"},
+    "Groq Llama 3.3 70B": {"provider": "Groq", "model": "llama-3.3-70b-versatile", "tier": "Free", "note": "Free Groq key · very fast · high rate limits · 128K context"},
+    "Groq Llama 3.1 8B": {"provider": "Groq", "model": "llama-3.1-8b-instant", "tier": "Free", "note": "Free Groq key · fastest, smaller model · separate rate-limit bucket from 70B · 128K context"},
     "GPT-4o mini": {"provider": "ChatGPT", "model": "gpt-4o-mini", "tier": "Paid", "note": "OpenAI API key with billing · low cost"},
     "GPT-4o": {"provider": "ChatGPT", "model": "gpt-4o", "tier": "Paid", "note": "OpenAI API key with billing · premium quality"},
     "Claude 3.5 Haiku": {"provider": "Claude", "model": "claude-3-5-haiku-20241022", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
@@ -3359,11 +3358,16 @@ AI_DEFAULT_PROVIDER = "Free AI (auto-switch)"
 # Preference order for the "Free AI (auto-switch)" router: each entry is a
 # HOSTED_AI_MODELS display name. Different models on the SAME provider still
 # help — Groq meters each model's rate limit independently, so 70B being
-# limited doesn't mean 8B or Gemma2 are too. Only entries whose provider has
-# a configured key are actually tried.
+# limited doesn't mean 8B is too. Only entries whose provider has a
+# configured key are actually tried. Every entry here must have a large
+# enough context window for a full CV-generation prompt (template + CV +
+# job description can easily run several thousand tokens) — a small-context
+# model like Groq's Gemma2 9B (~8K tokens) was tried here and consistently
+# failed with a 400 "request too large" instead of a usable fallback, so it
+# was removed rather than left in the chain as a guaranteed dead end.
 AUTO_FREE_MODEL_CHAIN = [
     "Gemini Flash", "Groq Llama 3.3 70B", "Gemini Pro",
-    "Groq Llama 3.1 8B", "Groq Gemma2 9B",
+    "Groq Llama 3.1 8B",
 ]
 
 
@@ -4304,7 +4308,18 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
                 "Groq's free-tier rate limit is still exceeded after several retries. "
                 "Wait a minute and try again, or switch to Gemini for this generation."
             )
-        response.raise_for_status()
+        if not response.ok:
+            # raise_for_status() alone only reports the status code ("400
+            # Bad Request") with no indication of what was actually wrong —
+            # Groq's error body names the real cause (e.g. a decommissioned
+            # model id, or the request exceeding the model's context
+            # window), so surface that instead of a bare status code.
+            detail = ""
+            try:
+                detail = str((response.json().get("error") or {}).get("message") or "")
+            except Exception:
+                detail = response.text[:300]
+            raise RuntimeError(f"Groq rejected the request ({response.status_code}): {detail or 'no further detail returned.'}")
         data = response.json()
         choices = data.get("choices", [])
         return str((choices[0].get("message") or {}).get("content") or "") if choices else ""
@@ -4366,7 +4381,16 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
                     "Wait a minute and try again, or enable billing on this API key at "
                     "aistudio.google.com/apikey for a much higher limit."
                 )
-            response.raise_for_status()
+            if not response.ok:
+                # raise_for_status() alone would only report the bare status
+                # code — Gemini's error body names the real cause (invalid
+                # request, safety block, quota, disabled API, etc).
+                detail = ""
+                try:
+                    detail = str((response.json().get("error") or {}).get("message") or "")
+                except Exception:
+                    detail = response.text[:300]
+                raise RuntimeError(f"Gemini rejected the request ({response.status_code}) for '{candidate_model}': {detail or 'no further detail returned.'}")
             data = response.json()
             parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
             return "\n".join(str(x.get("text", "")) for x in parts if isinstance(x, dict))
