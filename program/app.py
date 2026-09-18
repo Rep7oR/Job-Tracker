@@ -6528,9 +6528,18 @@ elif page == "CV & Cover Letter":
                     key_missing = not _ai_api_key(provider)
                     if key_missing:
                         resolved_provider, _ = _resolve_ai_selection(provider)
-                        st.warning(f"{provider} isn't connected yet. Add its API key once in Settings → AI generation, and every CV/cover letter from then on will generate automatically — no more pasting a key here each time.")
-                        if st.button("Open Settings →", key=f"cvwiz_open_settings_{cv_cycle}", width="stretch"):
-                            go("Settings"); st.rerun()
+                        if resolved_provider == "Gemini":
+                            st.warning(f"{provider} needs a free Gemini API key before it can generate — this is a one-time, no-billing step from Google, not a JobSync limitation. Create the key (about 30 seconds), then paste it into Settings → AI generation.")
+                            link_col, settings_col = st.columns(2, gap="small")
+                            with link_col:
+                                st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
+                            with settings_col:
+                                if st.button("Open Settings →", key=f"cvwiz_open_settings_{cv_cycle}", width="stretch"):
+                                    go("Settings"); st.rerun()
+                        else:
+                            st.warning(f"{provider} isn't connected yet. Add its API key once in Settings → AI generation, and every CV/cover letter from then on will generate automatically — no more pasting a key here each time.")
+                            if st.button("Open Settings →", key=f"cvwiz_open_settings_{cv_cycle}", width="stretch"):
+                                go("Settings"); st.rerun()
                 if st.button(f"Generate {doc} →", key=f"cvwiz_generate_{cv_cycle}", type="primary", width="stretch", disabled=key_missing):
                     st.session_state["cv_generation_running"] = True
                     st.rerun()
@@ -7139,6 +7148,7 @@ elif page == "Settings":
     st.markdown('<div class="section-title">AI generation — connect once, use everywhere</div>', unsafe_allow_html=True)
     st.caption("Set your key here once and CV/cover-letter generation just works from now on — no more pasting a key into the CV Studio every time. Gemini is free (no billing); ChatGPT and Claude need your own billed key.")
     gemini_key = st.text_input("Gemini API key (free)", value=os.getenv("GEMINI_API_KEY", ""), type="password", help="Free at aistudio.google.com/apikey — no billing required.")
+    st.link_button("Get a free Gemini API key ↗", "https://aistudio.google.com/apikey", help="Sign in with any Google account, click 'Create API key', then paste it above and Save settings.")
     ai_col1, ai_col2 = st.columns(2)
     with ai_col1:
         openai_key = st.text_input("OpenAI API key (paid)", value=os.getenv("OPENAI_API_KEY", ""), type="password", help="From platform.openai.com/api-keys — needs billing enabled.")
