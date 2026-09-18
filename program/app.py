@@ -6444,6 +6444,14 @@ elif page == "CV & Cover Letter":
     wizard_step = int(st.session_state.get("cv_wizard_step", 1))
     prompt_ready = bool(st.session_state.get("external_ai_prompt"))
 
+    with st.container(key="cvwiz_reset_row"):
+        _, reset_col = st.columns([4, 1])
+        with reset_col:
+            if st.button("↺ Start over", key=f"cvwiz_reset_all_{cv_cycle}", help="Clear the document type, AI model, job details and any generated draft, and return to step 1", width="stretch"):
+                reset_cv_studio_for_new_preparation()
+                st.rerun()
+    st.markdown('<style>.st-key-cvwiz_reset_row{max-width:980px;margin:0 auto 6px;}</style>', unsafe_allow_html=True)
+
     st.markdown("""
     <style>
       .cvwiz { max-width:980px; margin:0 auto; }
