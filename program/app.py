@@ -1505,11 +1505,11 @@ st.markdown(
        unusually short window degrades to a small scroll instead of hiding
        content), and only the "Online now" list keeps its own small internal
        scroll, since it's the one genuinely unbounded list on this page. */
-    body:has(.jobsync-home-shell) [data-testid="stAppViewContainer"] .block-container {
+    body:has(.st-key-home_shell) [data-testid="stAppViewContainer"] .block-container {
         padding-top: .6vh !important;
         padding-bottom: .6vh !important;
     }
-    .jobsync-home-shell{width:100%;max-width:1200px;margin:0 auto;padding:0;}
+    .jobsync-home-shell,.st-key-home_shell{width:100%;max-width:1200px;margin:0 auto;padding:0;}
     .jobsync-home-greeting-top{text-align:left;margin:0 0 1vh;padding:0 2px;}
     .jobsync-home-greeting-kicker{font-size:.6rem;font-weight:950;letter-spacing:.22em;color:#a9d8ff;margin-bottom:4px}.jobsync-home-greeting-title{font-size:clamp(1.5rem,2.9vw,2.5rem);line-height:1.08;font-weight:800;letter-spacing:-.03em;color:#fff;animation:jobsync-home-fade .7s cubic-bezier(.22,1,.36,1) both}.jobsync-home-greeting-subtitle{margin-top:4px;color:rgba(226,233,247,.68);font-size:clamp(.7rem,1vw,.84rem);animation:jobsync-home-fade .7s cubic-bezier(.22,1,.36,1) .08s both;}
     @keyframes jobsync-home-fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -1563,7 +1563,7 @@ st.markdown(
     @media(max-width:1100px){.ag-grid{grid-template-columns:minmax(0,1fr) 280px}}
     @media(max-width:900px){.block-container{padding-left:1rem!important;padding-right:1rem!important}.ag-grid{grid-template-columns:1fr}.ag-presence-list{max-height:22vh;}}
     @media(max-width:640px){.jobsync-home-greeting-title{font-size:clamp(1.7rem,7vw,2.2rem)}.ag-feature-row{grid-template-columns:1fr}.ag-about{padding:18px 18px}.ag-presence{padding:16px 16px 14px}}
-    @media (min-width:1500px){.jobsync-home-shell{max-width:1360px}}
+    @media (min-width:1500px){.jobsync-home-shell,.st-key-home_shell{max-width:1360px}}
     /* Online presence is rendered only inside the Home overview. The duplicate
        fixed top-right presence panel has intentionally been removed. */
     .jobsync-role-badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px; font-size:.58rem; line-height:1.25; font-weight:850; letter-spacing:.04em; text-transform:uppercase; background:rgba(255,77,91,.08); border:1px solid rgba(255,77,91,.18); color:#ff9da2 !important; }
@@ -5296,72 +5296,91 @@ def _render_home_authenticated_content():
     )
 
     st.markdown('''<style>
-      .jobsync-launch-hero{max-width:640px;margin:2.5vh auto 3vh;text-align:center;}
-      .jobsync-launch-logo{width:76px;height:76px;margin:0 auto 18px;display:grid;place-items:center;border-radius:22px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.22),rgba(86,64,255,.15) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.22);box-shadow:0 0 22px rgba(54,190,255,.12);}
-      .jobsync-launch-logo svg{width:46px;height:46px;}
-      .jobsync-launch-greeting{font-size:clamp(1.3rem,2.4vw,1.7rem);font-weight:700;letter-spacing:-.02em;color:#eef2f7;}
-      .jobsync-launch-sub{margin-top:6px;color:rgba(226,233,247,.6);font-size:.82rem;}
-      .st-key-home_launch_shortcuts{max-width:520px;margin:26px auto 4vh;}
-      /* Streamlit auto-stacks a stHorizontalBlock's columns vertically once
-         its own container is narrow (our 520px cap trips that), which broke
-         this into a single stacked column instead of 4 side-by-side icons.
-         Force the row layout explicitly regardless of container width. */
+      /* One-viewport Home: a fixed-height flex column (topbar + content grid)
+         that never exceeds the visible window. The page itself never
+         scrolls — only the two content boxes (About, Online now) get their
+         own internal scrollbar if their content runs long.
+
+         Built from real st.container(key=...) wrappers rather than a raw
+         <div> spanning multiple st.markdown calls: Streamlit renders each
+         markdown call into its own isolated wrapper element, so an unclosed
+         tag in one call does not actually nest around widgets emitted by
+         later calls — it only produces broken HTML. st.container's own
+         wrapper element is the thing CSS below targets by its "st-key-*"
+         class, which is the supported way to size a real block around
+         mixed markdown + widgets. */
+      body:has(.st-key-home_shell) [data-testid="stAppViewContainer"] {
+        overflow: hidden !important;
+      }
+      .st-key-home_shell {
+        display: flex !important; flex-direction: column !important;
+        height: calc(100dvh - 2.4vh) !important; max-height: calc(100dvh - 2.4vh) !important;
+        overflow: hidden !important;
+      }
+      .st-key-home_topbar { flex: 0 0 auto !important; margin-bottom: 1.4vh !important; }
+      .st-key-home_topbar [data-testid="stHorizontalBlock"] { align-items: center !important; }
+      .jobsync-launch-brand{display:flex; align-items:center; gap:12px; min-width:0;}
+      .jobsync-launch-logo{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;border-radius:14px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.22),rgba(86,64,255,.15) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.22);box-shadow:0 0 16px rgba(54,190,255,.1);}
+      .jobsync-launch-logo svg{width:26px;height:26px;}
+      .jobsync-launch-greeting{font-size:clamp(1.1rem,1.8vw,1.4rem);font-weight:700;letter-spacing:-.02em;color:#eef2f7;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .jobsync-launch-sub{margin-top:2px;color:rgba(226,233,247,.6);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       .st-key-home_launch_shortcuts [data-testid="stHorizontalBlock"]{
-        display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;width:100%!important;
+        display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:14px!important;width:auto!important;justify-content:flex-end!important;
       }
-      .st-key-home_launch_shortcuts [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]{
-        flex:1 1 0!important;min-width:0!important;width:auto!important;
-      }
+      .st-key-home_launch_shortcuts [data-testid="stColumn"]{width:auto!important;flex:0 0 auto!important;}
       .st-key-home_launch_shortcuts .stButton>button{
-        height:64px!important;min-height:64px!important;width:64px!important;border-radius:50%!important;
+        height:44px!important;min-height:44px!important;width:44px!important;border-radius:50%!important;
         display:flex!important;align-items:center!important;justify-content:center!important;
-        font-size:1.3rem!important;font-weight:700!important;padding:0!important;margin:0 auto!important;
+        font-size:1rem!important;font-weight:700!important;padding:0!important;
         background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.09)!important;color:#eef2f7!important;
         box-shadow:none!important;transition:background .18s ease,transform .18s ease!important;
       }
-      .st-key-home_launch_shortcuts .stButton>button:hover{background:rgba(255,255,255,.12)!important;transform:translateY(-2px)!important;}
-      .st-key-home_launch_shortcuts .stButton>button p{font-size:1.3rem!important;}
-      .jobsync-launch-shortcut-label{text-align:center;font-size:.68rem;color:#9aa3b2;margin-top:6px;white-space:nowrap;}
-      .jobsync-launch-divider{max-width:1200px;margin:1vh auto 2.5vh;border-top:1px solid rgba(255,255,255,.06);}
+      .st-key-home_launch_shortcuts .stButton>button:hover{background:rgba(255,255,255,.14)!important;transform:translateY(-2px)!important;}
+      .st-key-home_launch_shortcuts .stButton>button p{font-size:1rem!important;}
+      .st-key-home_content{flex:1 1 auto !important; min-height:0 !important;}
+      .st-key-home_content .ag-grid{height:100%;}
+      .st-key-home_content .ag-about,.st-key-home_content .ag-presence{min-height:0;overflow-y:auto;}
     </style>''', unsafe_allow_html=True)
 
-    st.markdown(f'''<div class="jobsync-launch-hero">
-      <div class="jobsync-launch-logo" aria-hidden="true">
-        <svg viewBox="0 0 48 48"><defs><linearGradient id="jsyncLaunchJ" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ff1ff"/><stop offset=".48" stop-color="#3fb8ff"/><stop offset="1" stop-color="#8b62ff"/></linearGradient></defs>
-        <path style="fill:url(#jsyncLaunchJ)" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/></svg>
-      </div>
-      <div class="jobsync-launch-greeting">{html.escape(greeting)}, {html.escape(display_name)}.</div>
-      <div class="jobsync-launch-sub">{search_hint} · {location_hint}</div>
-    </div>''', unsafe_allow_html=True)
+    with st.container(key="home_shell"):
+        with st.container(key="home_topbar"):
+            top_left, top_right = st.columns([1.4, 1], gap="small")
+            with top_left:
+                st.markdown(f'''<div class="jobsync-launch-brand">
+                  <div class="jobsync-launch-logo" aria-hidden="true">
+                    <svg viewBox="0 0 48 48"><defs><linearGradient id="jsyncLaunchJ" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ff1ff"/><stop offset=".48" stop-color="#3fb8ff"/><stop offset="1" stop-color="#8b62ff"/></linearGradient></defs>
+                    <path style="fill:url(#jsyncLaunchJ)" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/></svg>
+                  </div>
+                  <div>
+                    <div class="jobsync-launch-greeting">{html.escape(greeting)}, {html.escape(display_name)}.</div>
+                    <div class="jobsync-launch-sub">{search_hint} · {location_hint}</div>
+                  </div>
+                </div>''', unsafe_allow_html=True)
+            with top_right:
+                with st.container(key="home_launch_shortcuts"):
+                    shortcut_cols = st.columns(4)
+                    shortcuts = [("⌕", "Find Jobs", "New Search"), ("▣", "Create CV", "CV & Cover Letter"), ("▤", "Cover Letter", "CV & Cover Letter"), ("✓", "Applications", "Applied Jobs")]
+                    for col, (icon, label, target) in zip(shortcut_cols, shortcuts):
+                        with col:
+                            if st.button(icon, key=f"home_launch_{target}_{label}", help=label):
+                                go(target); st.rerun()
 
-    with st.container(key="home_launch_shortcuts"):
-        shortcut_cols = st.columns(4)
-        shortcuts = [("⌕", "Find Jobs", "New Search"), ("▣", "Create CV", "CV & Cover Letter"), ("▤", "Cover Letter", "CV & Cover Letter"), ("✓", "Applications", "Applied Jobs")]
-        for col, (icon, label, target) in zip(shortcut_cols, shortcuts):
-            with col:
-                if st.button(icon, key=f"home_launch_{target}_{label}", help=label):
-                    go(target); st.rerun()
-                st.markdown(f'<div class="jobsync-launch-shortcut-label">{html.escape(label)}</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="jobsync-launch-divider"></div>', unsafe_allow_html=True)
-
-    markup = f'''<div class="jobsync-home-shell">
-      <div class="ag-grid">
-        <section class="ag-glass ag-about">
-          <div class="ag-about-kicker">WHAT THIS IS</div>
-          <div class="ag-about-title">Your private job-search command center</div>
-          <div class="ag-about-copy">JobSync keeps discovery, tailored documents and application tracking in one calm, local workspace — no scattered tabs, no copy-pasting between five different tools.</div>
-          <div class="ag-feature-row">{feature_html}</div>
-        </section>
-        <aside class="ag-glass ag-presence">
-          <div class="ag-presence-head"><span class="ag-live-dot"></span><span class="ag-presence-title">Online now</span><span class="ag-presence-count">{len(online_users)}</span></div>
-          <div class="ag-presence-sub">People currently using JobSync</div>
-          <div class="ag-avatar-stack">{presence_body}</div>
-          <div class="ag-presence-list">{presence_list_html}</div>
-        </aside>
-      </div>
-    </div>'''
-    st.markdown(markup, unsafe_allow_html=True)
+        with st.container(key="home_content"):
+            markup = f'''<div class="ag-grid">
+              <section class="ag-glass ag-about">
+                <div class="ag-about-kicker">WHAT THIS IS</div>
+                <div class="ag-about-title">Your private job-search command center</div>
+                <div class="ag-about-copy">JobSync keeps discovery, tailored documents and application tracking in one calm, local workspace — no scattered tabs, no copy-pasting between five different tools.</div>
+                <div class="ag-feature-row">{feature_html}</div>
+              </section>
+              <aside class="ag-glass ag-presence">
+                <div class="ag-presence-head"><span class="ag-live-dot"></span><span class="ag-presence-title">Online now</span><span class="ag-presence-count">{len(online_users)}</span></div>
+                <div class="ag-presence-sub">People currently using JobSync</div>
+                <div class="ag-avatar-stack">{presence_body}</div>
+                <div class="ag-presence-list">{presence_list_html}</div>
+              </aside>
+            </div>'''
+            st.markdown(markup, unsafe_allow_html=True)
 
 def _render_home_authenticated():
     """Render the authenticated Home overview in a 10-second fragment.
