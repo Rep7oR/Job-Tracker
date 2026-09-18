@@ -6529,7 +6529,13 @@ elif page == "CV & Cover Letter":
                     if key_missing:
                         resolved_provider, _ = _resolve_ai_selection(provider)
                         if resolved_provider == "Gemini":
-                            st.warning(f"{provider} needs a free Gemini API key before it can generate — this is a one-time, no-billing step from Google, not a JobSync limitation. Create the key (about 30 seconds), then paste it into Settings → AI generation.")
+                            st.warning(f"{provider} needs a free Gemini API key before it can generate — this is a one-time, no-billing step from Google, not a JobSync limitation.")
+                            st.markdown(
+                                "1. Click **Get free Gemini key** — opens Google AI Studio in a new tab.\n"
+                                "2. Sign in with any Google account (no credit card).\n"
+                                "3. Click **Create API key**, then copy it.\n"
+                                "4. Click **Open Settings**, paste the key, and click **Save settings**."
+                            )
                             link_col, settings_col = st.columns(2, gap="small")
                             with link_col:
                                 st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
@@ -7147,8 +7153,18 @@ elif page == "Settings":
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">AI generation — connect once, use everywhere</div>', unsafe_allow_html=True)
     st.caption("Set your key here once and CV/cover-letter generation just works from now on — no more pasting a key into the CV Studio every time. Gemini is free (no billing); ChatGPT and Claude need your own billed key.")
+
+    with st.container(border=True):
+        st.markdown("**Get your free Gemini key (about 30 seconds)**")
+        st.markdown(
+            "1. Click **Get free Gemini key** below — it opens Google AI Studio in a new tab.\n"
+            "2. Sign in with any Google account (no credit card, no billing).\n"
+            "3. Click **Create API key**, then the copy icon next to the new key.\n"
+            "4. Come back to this tab, paste it into the field below, and click **Save settings**."
+        )
+        st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
+
     gemini_key = st.text_input("Gemini API key (free)", value=os.getenv("GEMINI_API_KEY", ""), type="password", help="Free at aistudio.google.com/apikey — no billing required.")
-    st.link_button("Get a free Gemini API key ↗", "https://aistudio.google.com/apikey", help="Sign in with any Google account, click 'Create API key', then paste it above and Save settings.")
     ai_col1, ai_col2 = st.columns(2)
     with ai_col1:
         openai_key = st.text_input("OpenAI API key (paid)", value=os.getenv("OPENAI_API_KEY", ""), type="password", help="From platform.openai.com/api-keys — needs billing enabled.")
