@@ -2621,6 +2621,24 @@ def _identity() -> tuple[str, str]:
     return name[:120], email[:240]
 
 
+def _presence_session_id() -> str:
+    """A per-browser-session presence identity, distinct from the account id.
+
+    heartbeat_presence() upserts on presence_id (on_conflict="presence_id"),
+    so using the account's local_user_id directly meant two sessions signed
+    into the SAME account (two windows, or two testers sharing one test
+    login) silently overwrote each other's row instead of both showing up —
+    "two users online" would report as one. Appending a random token
+    generated once per Streamlit session makes every open window/tab its
+    own presence row regardless of which account it's signed into.
+    """
+    key = "_presence_session_token"
+    if not st.session_state.get(key):
+        st.session_state[key] = uuid.uuid4().hex[:12]
+    account_id = str(st.session_state.get("local_user_id") or "anon")
+    return f"{account_id}:{st.session_state[key]}"
+
+
 def _presence_heartbeat(max_age: float = 25.0):
     if not is_authed or not presence_configured():
         return
@@ -2631,7 +2649,7 @@ def _presence_heartbeat(max_age: float = 25.0):
         st.session_state["_presence_beat"] = now
         name, _email = _identity()
         heartbeat_presence(
-            user_id=str(st.session_state.get("local_user_id") or ""),
+            user_id=_presence_session_id(),
             display_name=name,
             avatar_seed=name,
         )
