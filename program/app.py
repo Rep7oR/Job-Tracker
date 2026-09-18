@@ -5441,22 +5441,7 @@ def _render_home_authenticated_content():
       .jobsync-launch-logo svg{width:32px;height:32px;}
       .jobsync-launch-greeting{font-size:clamp(1.3rem,2.3vw,1.75rem);font-weight:700;letter-spacing:-.02em;color:#eef2f7;}
       .jobsync-launch-sub{margin-top:6px;color:rgba(226,233,247,.6);font-size:.82rem;}
-      .st-key-home_launch_shortcuts{flex:0 0 auto !important; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) .08s both;}
-      .st-key-home_launch_shortcuts [data-testid="stHorizontalBlock"]{
-        display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;width:100%!important;max-width:420px!important;margin:0 auto!important;
-      }
-      .st-key-home_launch_shortcuts [data-testid="stColumn"]{flex:1 1 0!important;min-width:0!important;width:auto!important;}
-      .st-key-home_launch_shortcuts .stButton>button{
-        height:52px!important;min-height:52px!important;width:52px!important;border-radius:50%!important;
-        display:flex!important;align-items:center!important;justify-content:center!important;margin:0 auto!important;
-        font-size:1.1rem!important;font-weight:700!important;padding:0!important;
-        background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.09)!important;color:#eef2f7!important;
-        box-shadow:none!important;transition:background .18s ease,transform .18s ease!important;
-      }
-      .st-key-home_launch_shortcuts .stButton>button:hover{background:rgba(255,255,255,.14)!important;transform:translateY(-3px) scale(1.05)!important;}
-      .st-key-home_launch_shortcuts .stButton>button p{font-size:1.1rem!important;}
-      .jobsync-launch-shortcut-label{text-align:center;font-size:.66rem;color:#9aa3b2;margin-top:6px;white-space:nowrap;}
-      .st-key-home_content{flex:0 1 auto !important; min-height:0 !important; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) .16s both;}
+      .st-key-home_content{flex:0 1 auto !important; min-height:0 !important; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) .1s both;}
       .st-key-home_content .ag-about,.st-key-home_content .ag-presence{min-height:0;overflow-y:auto;max-height:38vh;}
     </style>''', unsafe_allow_html=True)
 
@@ -5469,15 +5454,6 @@ def _render_home_authenticated_content():
           <div class="jobsync-launch-greeting">{html.escape(greeting)}, {html.escape(display_name)}.</div>
           <div class="jobsync-launch-sub">{search_hint} · {location_hint}</div>
         </div>''', unsafe_allow_html=True)
-
-        with st.container(key="home_launch_shortcuts"):
-            shortcut_cols = st.columns(4)
-            shortcuts = [("⌕", "Find Jobs", "New Search"), ("▣", "Create CV", "CV & Cover Letter"), ("▤", "Cover Letter", "CV & Cover Letter"), ("✓", "Applications", "Applied Jobs")]
-            for col, (icon, label, target) in zip(shortcut_cols, shortcuts):
-                with col:
-                    if st.button(icon, key=f"home_launch_{target}_{label}", help=label):
-                        go(target); st.rerun()
-                    st.markdown(f'<div class="jobsync-launch-shortcut-label">{html.escape(label)}</div>', unsafe_allow_html=True)
 
         with st.container(key="home_content"):
             markup = f'''<div class="ag-grid">
