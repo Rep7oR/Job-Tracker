@@ -6637,12 +6637,37 @@ elif page == "CV & Cover Letter":
                     except Exception as exc:
                         notify_error(f"Could not save PDF: {exc}")
         else:
+            error_text = str(st.session_state.get("cv_generation_error") or "Unknown error")
+            resolved_provider, _ = _resolve_ai_selection(provider)
+            key_related = (not _is_local_ai_provider(provider)) and (
+                not _ai_api_key(provider)
+                or any(token in error_text for token in ("401", "403", "API key", "api key", "PERMISSION_DENIED", "API_KEY_INVALID"))
+            )
             st.markdown(
                 f'''<div class="cvwiz-card">
                   <div class="cvwiz-eyebrow">JOBSYNC • GENERATION ERROR</div>
                   <div class="cvwiz-question">The document could not be completed</div>
-                  <div class="cvwiz-copy">{html.escape(str(st.session_state.get("cv_generation_error") or "Unknown error"))}</div>
+                  <div class="cvwiz-copy">{html.escape(error_text)}</div>
                 </div>''', unsafe_allow_html=True)
+            if key_related:
+                if resolved_provider == "Gemini":
+                    st.warning(f"{provider} needs a free Gemini API key before it can generate — this is a one-time, no-billing step from Google, not a JobSync limitation.")
+                    st.markdown(
+                        "1. Click **Get free Gemini key** — opens Google AI Studio in a new tab.\n"
+                        "2. Sign in with any Google account (no credit card).\n"
+                        "3. Click **Create API key**, then copy it.\n"
+                        "4. Click **Open Settings**, paste the key, and click **Save settings**."
+                    )
+                    link_col, settings_col = st.columns(2, gap="small")
+                    with link_col:
+                        st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
+                    with settings_col:
+                        if st.button("Open Settings →", key=f"cvwiz_error_settings_{cv_cycle}", width="stretch"):
+                            go("Settings"); st.rerun()
+                else:
+                    st.warning(f"{provider} needs a valid API key. Add or fix it once in Settings → AI generation.")
+                    if st.button("Open Settings →", key=f"cvwiz_error_settings_{cv_cycle}", width="stretch"):
+                        go("Settings"); st.rerun()
             if st.button("Try generation again", key=f"cvwiz_retry_{cv_cycle}", type="primary", width="stretch"):
                 st.session_state["cv_generation_error"] = ""
                 st.session_state["cv_generation_status"] = "prompt_generated"
