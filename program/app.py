@@ -3291,14 +3291,14 @@ def _local_ai_config(provider: str | None) -> dict:
 # Offline/local models further below remain available for anyone who'd
 # rather download a model to this PC instead (large download, no key).
 HOSTED_AI_MODELS = {
-    "Gemini 2.0 Flash": {"provider": "Gemini", "model": "gemini-2.0-flash", "tier": "Free", "note": "Free Google AI Studio key · fast"},
-    "Gemini 1.5 Pro": {"provider": "Gemini", "model": "gemini-1.5-pro", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
+    "Gemini 2.5 Flash": {"provider": "Gemini", "model": "gemini-2.5-flash", "tier": "Free", "note": "Free Google AI Studio key · fast"},
+    "Gemini 2.5 Pro": {"provider": "Gemini", "model": "gemini-2.5-pro", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
     "GPT-4o mini": {"provider": "ChatGPT", "model": "gpt-4o-mini", "tier": "Paid", "note": "OpenAI API key with billing · low cost"},
     "GPT-4o": {"provider": "ChatGPT", "model": "gpt-4o", "tier": "Paid", "note": "OpenAI API key with billing · premium quality"},
     "Claude 3.5 Haiku": {"provider": "Claude", "model": "claude-3-5-haiku-20241022", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
     "Claude Sonnet 4": {"provider": "Claude", "model": "claude-sonnet-4-20250514", "tier": "Paid", "note": "Anthropic API key with billing · premium quality"},
 }
-AI_DEFAULT_PROVIDER = "Gemini 2.0 Flash"
+AI_DEFAULT_PROVIDER = "Gemini 2.5 Flash"
 
 
 def _resolve_ai_selection(selection: str | None) -> tuple[str, str | None]:
@@ -4180,12 +4180,18 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
         return "\n".join(str(x.get("text", "")) for x in data.get("content", []) if isinstance(x, dict))
 
     if resolved_provider == "Gemini":
-        model = model_override or os.getenv("JOBSYNC_GEMINI_MODEL", "gemini-2.0-flash")
+        model = model_override or os.getenv("JOBSYNC_GEMINI_MODEL", "gemini-2.5-flash")
         response = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
             headers={"Content-Type": "application/json"}, params={"key": key},
             json={"systemInstruction": {"parts": [{"text": system}]}, "contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}}, timeout=180,
         )
+        if response.status_code == 404:
+            raise RuntimeError(
+                f"Gemini model '{model}' is not available for this API key (404 Not Found). "
+                "Google occasionally retires model names — open Settings and check for a JobSync update, "
+                "or set JOBSYNC_GEMINI_MODEL to a current model id from ai.google.dev/gemini-api/docs/models."
+            )
         response.raise_for_status()
         data = response.json()
         parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
