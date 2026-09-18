@@ -3259,8 +3259,33 @@ def _ai_api_key(provider: str) -> str:
         "ChatGPT": "OPENAI_API_KEY",
         "Claude": "ANTHROPIC_API_KEY",
         "Gemini": "GEMINI_API_KEY",
+        "Groq": "GROQ_API_KEY",
     }
     return str(st.session_state.get(f"cv_ai_key_{resolved}") or os.getenv(env_names.get(resolved, ""), "")).strip()
+
+
+FREE_AI_KEY_SETUP = {
+    "Gemini": {
+        "url": "https://aistudio.google.com/apikey",
+        "button": "Get free Gemini key ↗",
+        "steps": [
+            "Click **Get free Gemini key** — opens Google AI Studio in a new tab.",
+            "Sign in with any Google account (no credit card).",
+            "Click **Create API key**, then copy it.",
+            "Click **Open Settings**, paste the key, and click **Save settings**.",
+        ],
+    },
+    "Groq": {
+        "url": "https://console.groq.com/keys",
+        "button": "Get free Groq key ↗",
+        "steps": [
+            "Click **Get free Groq key** — opens the Groq console in a new tab.",
+            "Sign in with Google, GitHub, or email (no credit card).",
+            "Click **Create API Key**, then copy it.",
+            "Click **Open Settings**, paste the key, and click **Save settings**.",
+        ],
+    },
+}
 
 
 LOCAL_AI_PROVIDER = "Local AI"
@@ -3293,6 +3318,7 @@ def _local_ai_config(provider: str | None) -> dict:
 HOSTED_AI_MODELS = {
     "Gemini Flash": {"provider": "Gemini", "model": "gemini-flash-latest", "tier": "Free", "note": "Free Google AI Studio key · fast"},
     "Gemini Pro": {"provider": "Gemini", "model": "gemini-pro-latest", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
+    "Groq Llama 3.3 70B": {"provider": "Groq", "model": "llama-3.3-70b-versatile", "tier": "Free", "note": "Free Groq key · very fast · high rate limits"},
     "GPT-4o mini": {"provider": "ChatGPT", "model": "gpt-4o-mini", "tier": "Paid", "note": "OpenAI API key with billing · low cost"},
     "GPT-4o": {"provider": "ChatGPT", "model": "gpt-4o", "tier": "Paid", "note": "OpenAI API key with billing · premium quality"},
     "Claude 3.5 Haiku": {"provider": "Claude", "model": "claude-3-5-haiku-20241022", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
@@ -4167,6 +4193,40 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
                 if isinstance(content, dict) and content.get("text"):
                     parts.append(str(content["text"]))
         return "\n".join(parts)
+
+    if resolved_provider == "Groq":
+        model = model_override or os.getenv("JOBSYNC_GROQ_MODEL", "llama-3.3-70b-versatile")
+        attempt = 0
+        max_retries = 4
+        while True:
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={"model": model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}], "temperature": 0.2}, timeout=180,
+            )
+            if response.status_code == 429 and attempt < max_retries:
+                retry_after = response.headers.get("Retry-After")
+                try:
+                    wait_s = float(retry_after) if retry_after else (2 ** attempt) * 3
+                except ValueError:
+                    wait_s = (2 ** attempt) * 3
+                wait_s = min(wait_s, 60)
+                progress = st.session_state.get("cv_ai_progress_callback")
+                if progress:
+                    progress(f"Groq rate limit hit — retrying in {int(wait_s)}s ({attempt + 1}/{max_retries})…")
+                time.sleep(wait_s)
+                attempt += 1
+                continue
+            break
+        if response.status_code == 429:
+            raise RuntimeError(
+                "Groq's free-tier rate limit is still exceeded after several retries. "
+                "Wait a minute and try again, or switch to Gemini for this generation."
+            )
+        response.raise_for_status()
+        data = response.json()
+        choices = data.get("choices", [])
+        return str((choices[0].get("message") or {}).get("content") or "") if choices else ""
 
     if resolved_provider == "Claude":
         model = model_override or os.getenv("JOBSYNC_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
@@ -6643,17 +6703,13 @@ elif page == "CV & Cover Letter":
                     key_missing = not _ai_api_key(provider)
                     if key_missing:
                         resolved_provider, _ = _resolve_ai_selection(provider)
-                        if resolved_provider == "Gemini":
-                            st.warning(f"{provider} needs a free Gemini API key before it can generate — this is a one-time, no-billing step from Google, not a JobSync limitation.")
-                            st.markdown(
-                                "1. Click **Get free Gemini key** — opens Google AI Studio in a new tab.\n"
-                                "2. Sign in with any Google account (no credit card).\n"
-                                "3. Click **Create API key**, then copy it.\n"
-                                "4. Click **Open Settings**, paste the key, and click **Save settings**."
-                            )
+                        setup = FREE_AI_KEY_SETUP.get(resolved_provider)
+                        if setup:
+                            st.warning(f"{provider} needs a free {resolved_provider} API key before it can generate — this is a one-time, no-billing step, not a JobSync limitation.")
+                            st.markdown("\n".join(f"{i + 1}. {step}" for i, step in enumerate(setup["steps"])))
                             link_col, settings_col = st.columns(2, gap="small")
                             with link_col:
-                                st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
+                                st.link_button(setup["button"], setup["url"], width="stretch")
                             with settings_col:
                                 if st.button("Open Settings →", key=f"cvwiz_open_settings_{cv_cycle}", width="stretch"):
                                     go("Settings"); st.rerun()
@@ -6759,17 +6815,13 @@ elif page == "CV & Cover Letter":
                   <div class="cvwiz-copy">{html.escape(error_text)}</div>
                 </div>''', unsafe_allow_html=True)
             if key_related:
-                if resolved_provider == "Gemini":
-                    st.warning(f"{provider} needs a free Gemini API key before it can generate — this is a one-time, no-billing step from Google, not a JobSync limitation.")
-                    st.markdown(
-                        "1. Click **Get free Gemini key** — opens Google AI Studio in a new tab.\n"
-                        "2. Sign in with any Google account (no credit card).\n"
-                        "3. Click **Create API key**, then copy it.\n"
-                        "4. Click **Open Settings**, paste the key, and click **Save settings**."
-                    )
+                setup = FREE_AI_KEY_SETUP.get(resolved_provider)
+                if setup:
+                    st.warning(f"{provider} needs a free {resolved_provider} API key before it can generate — this is a one-time, no-billing step, not a JobSync limitation.")
+                    st.markdown("\n".join(f"{i + 1}. {step}" for i, step in enumerate(setup["steps"])))
                     link_col, settings_col = st.columns(2, gap="small")
                     with link_col:
-                        st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
+                        st.link_button(setup["button"], setup["url"], width="stretch")
                     with settings_col:
                         if st.button("Open Settings →", key=f"cvwiz_error_settings_{cv_cycle}", width="stretch"):
                             go("Settings"); st.rerun()
@@ -7292,19 +7344,32 @@ elif page == "Settings":
     st.write("")
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">AI generation — connect once, use everywhere</div>', unsafe_allow_html=True)
-    st.caption("Set your key here once and CV/cover-letter generation just works from now on — no more pasting a key into the CV Studio every time. Gemini is free (no billing); ChatGPT and Claude need your own billed key.")
+    st.caption("Set your key here once and CV/cover-letter generation just works from now on — no more pasting a key into the CV Studio every time. Gemini and Groq are free (no billing); ChatGPT and Claude need your own billed key.")
 
-    with st.container(border=True):
-        st.markdown("**Get your free Gemini key (about 30 seconds)**")
-        st.markdown(
-            "1. Click **Get free Gemini key** below — it opens Google AI Studio in a new tab.\n"
-            "2. Sign in with any Google account (no credit card, no billing).\n"
-            "3. Click **Create API key**, then the copy icon next to the new key.\n"
-            "4. Come back to this tab, paste it into the field below, and click **Save settings**."
-        )
-        st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
+    key_col1, key_col2 = st.columns(2)
+    with key_col1:
+        with st.container(border=True):
+            st.markdown("**Get your free Gemini key (about 30 seconds)**")
+            st.markdown(
+                "1. Click **Get free Gemini key** below — it opens Google AI Studio in a new tab.\n"
+                "2. Sign in with any Google account (no credit card, no billing).\n"
+                "3. Click **Create API key**, then the copy icon next to the new key.\n"
+                "4. Come back to this tab, paste it into the field below, and click **Save settings**."
+            )
+            st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
+        gemini_key = st.text_input("Gemini API key (free)", value=os.getenv("GEMINI_API_KEY", ""), type="password", help="Free at aistudio.google.com/apikey — no billing required.")
+    with key_col2:
+        with st.container(border=True):
+            st.markdown("**Get your free Groq key (about 30 seconds)**")
+            st.markdown(
+                "1. Click **Get free Groq key** below — it opens the Groq console in a new tab.\n"
+                "2. Sign in with Google, GitHub, or email (no credit card).\n"
+                "3. Click **Create API Key**, then copy it.\n"
+                "4. Come back to this tab, paste it into the field below, and click **Save settings**."
+            )
+            st.link_button("Get free Groq key ↗", "https://console.groq.com/keys", width="stretch")
+        groq_key = st.text_input("Groq API key (free)", value=os.getenv("GROQ_API_KEY", ""), type="password", help="Free at console.groq.com/keys — very fast, high free-tier limits, good fallback when Gemini is rate-limited.")
 
-    gemini_key = st.text_input("Gemini API key (free)", value=os.getenv("GEMINI_API_KEY", ""), type="password", help="Free at aistudio.google.com/apikey — no billing required.")
     ai_col1, ai_col2 = st.columns(2)
     with ai_col1:
         openai_key = st.text_input("OpenAI API key (paid)", value=os.getenv("OPENAI_API_KEY", ""), type="password", help="From platform.openai.com/api-keys — needs billing enabled.")
@@ -7325,6 +7390,7 @@ elif page == "Settings":
         content = "\n".join([
             f"APIFY_TOKEN={apify_token}",
             f"GEMINI_API_KEY={gemini_key.strip()}",
+            f"GROQ_API_KEY={groq_key.strip()}",
             f"OPENAI_API_KEY={openai_key.strip()}",
             f"ANTHROPIC_API_KEY={anthropic_key.strip()}",
             "",
@@ -7334,7 +7400,7 @@ elif page == "Settings":
         # Session-only keys pasted directly in CV Studio (the old per-generation
         # flow) are superseded once a key is saved here — drop them so
         # _ai_api_key() always prefers the persisted, one-time value.
-        for _provider_name in ("Gemini", "ChatGPT", "Claude"):
+        for _provider_name in ("Gemini", "Groq", "ChatGPT", "Claude"):
             st.session_state.pop(f"cv_ai_key_{_provider_name}", None)
         save_state(state)
         notify_success("Settings saved locally.")
