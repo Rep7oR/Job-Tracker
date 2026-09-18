@@ -4783,6 +4783,50 @@ with st.sidebar:
         :root { --jsync-nav-collapsed: 62px; }
         section[data-testid="stSidebar"] .stButton > button { min-height: 46px !important; height: 46px !important; }
       }
+
+      /* Flyout restyle: a flatter, darker row list closer to a browser's
+         hover-out tab/menu panel — solid near-black rows, a simple left
+         highlight bar on the active item, no colored gradients or glow. */
+      section[data-testid="stSidebar"][data-testid="stSidebar"] {
+        background: #17181c !important;
+        border-right: 1px solid rgba(255,255,255,.06) !important;
+      }
+      section[data-testid="stSidebar"]:hover,
+      section[data-testid="stSidebar"]:focus-within {
+        box-shadow: 18px 0 46px rgba(0,0,0,.45) !important;
+      }
+      section[data-testid="stSidebar"] .stButton > button {
+        min-height: 40px !important; height: 40px !important;
+        border-radius: 10px !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        box-shadow: none !important;
+        font-size: .82rem !important; font-weight: 600 !important; letter-spacing: 0 !important;
+        color: #d7d9dc !important;
+      }
+      section[data-testid="stSidebar"] .stButton > button p {
+        font-size: .82rem !important; font-weight: 600 !important; letter-spacing: 0 !important;
+        color: #d7d9dc !important;
+      }
+      section[data-testid="stSidebar"] .stButton > button::before { display: none !important; }
+      section[data-testid="stSidebar"] .stButton > button:hover {
+        transform: none !important;
+        background: rgba(255,255,255,.07) !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
+      }
+      section[data-testid="stSidebar"] .stButton > button:active { transform: none !important; }
+      section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+        background: rgba(255,255,255,.1) !important;
+        border-color: transparent !important;
+        box-shadow: inset 3px 0 0 #8ab4f8 !important;
+        animation: none !important;
+      }
+      section[data-testid="stSidebar"] .stButton > button[kind="primary"] p { color: #fff !important; }
+      section[data-testid="stSidebar"] .nav-category-label {
+        font-size: .62rem !important; font-weight: 600 !important; letter-spacing: .02em !important;
+        text-transform: none !important; color: #8a8d93 !important;
+      }
     </style>
     """, unsafe_allow_html=True)
 
@@ -5163,12 +5207,47 @@ def _render_home_authenticated_content():
         for icon, name, sub in features
     )
 
-    markup = f'''<div class="jobsync-home-shell">
-      <div class="jobsync-home-greeting-top">
-        <div class="jobsync-home-greeting-kicker">JOBSYNC</div>
-        <div class="jobsync-home-greeting-title">{html.escape(greeting)}, {html.escape(display_name)}.</div>
-        <div class="jobsync-home-greeting-subtitle">{search_hint} · {location_hint}</div>
+    st.markdown('''<style>
+      .jobsync-launch-hero{max-width:640px;margin:2.5vh auto 3vh;text-align:center;}
+      .jobsync-launch-logo{width:76px;height:76px;margin:0 auto 18px;display:grid;place-items:center;border-radius:22px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.22),rgba(86,64,255,.15) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.22);box-shadow:0 0 22px rgba(54,190,255,.12);}
+      .jobsync-launch-logo svg{width:46px;height:46px;}
+      .jobsync-launch-greeting{font-size:clamp(1.3rem,2.4vw,1.7rem);font-weight:700;letter-spacing:-.02em;color:#eef2f7;}
+      .jobsync-launch-sub{margin-top:6px;color:rgba(226,233,247,.6);font-size:.82rem;}
+      .st-key-home_launch_shortcuts{max-width:520px;margin:26px auto 4vh;}
+      .st-key-home_launch_shortcuts .stButton>button{
+        height:64px!important;min-height:64px!important;width:64px!important;border-radius:50%!important;
+        display:flex!important;align-items:center!important;justify-content:center!important;
+        font-size:1.3rem!important;font-weight:700!important;padding:0!important;margin:0 auto!important;
+        background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.09)!important;color:#eef2f7!important;
+        box-shadow:none!important;transition:background .18s ease,transform .18s ease!important;
+      }
+      .st-key-home_launch_shortcuts .stButton>button:hover{background:rgba(255,255,255,.12)!important;transform:translateY(-2px)!important;}
+      .st-key-home_launch_shortcuts .stButton>button p{font-size:1.3rem!important;}
+      .jobsync-launch-shortcut-label{text-align:center;font-size:.68rem;color:#9aa3b2;margin-top:6px;white-space:nowrap;}
+      .jobsync-launch-divider{max-width:1200px;margin:1vh auto 2.5vh;border-top:1px solid rgba(255,255,255,.06);}
+    </style>''', unsafe_allow_html=True)
+
+    st.markdown(f'''<div class="jobsync-launch-hero">
+      <div class="jobsync-launch-logo" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><defs><linearGradient id="jsyncLaunchJ" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ff1ff"/><stop offset=".48" stop-color="#3fb8ff"/><stop offset="1" stop-color="#8b62ff"/></linearGradient></defs>
+        <path style="fill:url(#jsyncLaunchJ)" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/></svg>
       </div>
+      <div class="jobsync-launch-greeting">{html.escape(greeting)}, {html.escape(display_name)}.</div>
+      <div class="jobsync-launch-sub">{search_hint} · {location_hint}</div>
+    </div>''', unsafe_allow_html=True)
+
+    with st.container(key="home_launch_shortcuts"):
+        shortcut_cols = st.columns(4)
+        shortcuts = [("⌕", "Find Jobs", "New Search"), ("▣", "Create CV", "CV & Cover Letter"), ("▤", "Cover Letter", "CV & Cover Letter"), ("✓", "Applications", "Applied Jobs")]
+        for col, (icon, label, target) in zip(shortcut_cols, shortcuts):
+            with col:
+                if st.button(icon, key=f"home_launch_{target}_{label}", help=label):
+                    go(target); st.rerun()
+                st.markdown(f'<div class="jobsync-launch-shortcut-label">{html.escape(label)}</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="jobsync-launch-divider"></div>', unsafe_allow_html=True)
+
+    markup = f'''<div class="jobsync-home-shell">
       <div class="ag-grid">
         <section class="ag-glass ag-about">
           <div class="ag-about-kicker">WHAT THIS IS</div>
@@ -5185,15 +5264,6 @@ def _render_home_authenticated_content():
       </div>
     </div>'''
     st.markdown(markup, unsafe_allow_html=True)
-
-    st.markdown('<div class="ag-actions-head">Quick actions</div>', unsafe_allow_html=True)
-    with st.container(key="ag_actions_row"):
-        cols = st.columns(4)
-        labels = [("⌕ Find Jobs", "Search across your job sources", "New Search"), ("▣ Create CV", "Tailor your application", "CV & Cover Letter"), ("▤ Write Cover Letter", "Stand out to employers", "CV & Cover Letter"), ("✓ Track Applications", "Stay organized", "Applied Jobs")]
-        for col, (label, sub, target) in zip(cols, labels):
-            with col:
-                if st.button(f"{label}  \n{sub}", key=f"home_action_{target}_{label}", width="stretch"):
-                    go(target); st.rerun()
 
 def _render_home_authenticated():
     """Render the authenticated Home overview in a 10-second fragment.
