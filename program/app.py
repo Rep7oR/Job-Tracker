@@ -6565,65 +6565,19 @@ elif page == "CV & Cover Letter":
         st.markdown(f'<div class="cvwiz-progress">{html_dots}</div>', unsafe_allow_html=True)
 
     if not prompt_ready and wizard_step == 1:
-        st.markdown('<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 1 OF 4</div><div class="cvwiz-question">What are you creating?</div><div class="cvwiz-copy">Choose one. JobSync keeps the rest hidden until it is needed.</div><div class="cvwiz-choice-grid">', unsafe_allow_html=True)
+        st.markdown('<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 1 OF 3</div><div class="cvwiz-question">What are you creating?</div><div class="cvwiz-copy">Choose one. JobSync generates it locally with its built-in AI — no account, no API key, nothing else to set up.</div><div class="cvwiz-choice-grid">', unsafe_allow_html=True)
         a,b=st.columns(2,gap="medium")
         with a:
             if st.button("CV\nTailored resume for this vacancy",key=f"cvwiz_cv_{cv_cycle}",width="stretch"):
-                st.session_state["cv_wizard_doc"]="CV"; st.session_state["cv_wizard_step"]=2; st.rerun()
+                st.session_state["cv_wizard_doc"]="CV"; st.session_state["cv_wizard_ai"]=LOCAL_AI_DEFAULT; st.session_state["cv_wizard_step"]=3; st.rerun()
         with b:
             if st.button("Cover Letter\nFocused letter for this vacancy",key=f"cvwiz_cl_{cv_cycle}",width="stretch"):
-                st.session_state["cv_wizard_doc"]="Cover Letter"; st.session_state["cv_wizard_step"]=2; st.rerun()
-        st.markdown('</div></div>',unsafe_allow_html=True); dots(4,1)
-
-    elif not prompt_ready and wizard_step == 2:
-        doc=st.session_state.get("cv_wizard_doc","CV")
-        st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 2 OF 4</div><div class="cvwiz-question">Which AI should create your {html.escape(doc)}?</div><div class="cvwiz-copy">Generation runs online by default, so JobSync stays a small install. Free models cost nothing but still need a free API key; paid models need your own billed key. An offline/local option is also available below for advanced use.</div><div class="cvwiz-choice-grid">',unsafe_allow_html=True)
-        selected_ai = st.session_state.get("cv_wizard_ai", AI_DEFAULT_PROVIDER)
-
-        def _hosted_model_button(name: str, cfg: dict) -> None:
-            is_selected = selected_ai == name
-            if st.button(("✓ " if is_selected else "") + name, key=f"cvwiz_ai_{name}_{cv_cycle}", width="stretch"):
-                st.session_state["cv_wizard_ai"] = name; st.session_state["cv_wizard_step"] = 3; st.rerun()
-            st.caption(f"{cfg['tier']} · {cfg['note']}")
-
-        auto_models = {n: c for n, c in HOSTED_AI_MODELS.items() if c["provider"] == "Auto"}
-        free_models = {n: c for n, c in HOSTED_AI_MODELS.items() if c["tier"] == "Free" and c["provider"] != "Auto"}
-        paid_models = {n: c for n, c in HOSTED_AI_MODELS.items() if c["tier"] == "Paid"}
-
-        st.markdown('<div class="cvwiz-source-label">ONLINE · FREE · RECOMMENDED</div>', unsafe_allow_html=True)
-        for name, cfg in auto_models.items():
-            _hosted_model_button(name, cfg)
-
-        with st.expander("Pick a specific free model instead"):
-            st.caption("The auto-switch router above already tries these in order and skips whichever is rate-limited — pick one manually only if you want to force a specific model.")
-            cols = st.columns(len(free_models), gap="small")
-            for col, (name, cfg) in zip(cols, free_models.items()):
-                with col:
-                    _hosted_model_button(name, cfg)
-
-        st.markdown('<div class="cvwiz-source-label">ONLINE · PAID (bring your own API key)</div>', unsafe_allow_html=True)
-        cols = st.columns(len(paid_models), gap="small")
-        for col, (name, cfg) in zip(cols, paid_models.items()):
-            with col:
-                _hosted_model_button(name, cfg)
-
-        st.markdown('<div class="cvwiz-status">✓ Online &nbsp;•&nbsp; ✓ No local install &nbsp;•&nbsp; ✓ Free and paid models available<br><b style="color:#e8edf5">Pick free to start with no cost, or bring a paid key for a premium model.</b></div>',unsafe_allow_html=True)
-
-        with st.expander("Offline / local AI (advanced — downloads a large model to this PC)"):
-            st.caption("JobSync automatically installs Ollama and downloads only the model you choose. No API key is needed, but the download is several GB and generation runs on this machine's CPU/GPU.")
-            cols=st.columns(2,gap="small")
-            for col,(name,cfg) in zip(cols,list(LOCAL_AI_MODELS.items())):
-                with col:
-                    is_selected = selected_ai == name
-                    if st.button(("✓ " if is_selected else "") + name,key=f"cvwiz_ai_{name}_{cv_cycle}",width="stretch"):
-                        st.session_state["cv_wizard_ai"]=name; st.session_state["cv_wizard_step"]=3; st.rerun()
-                    st.caption(f"{cfg['size']} · {cfg['ram']}\n{cfg['description']}")
-
-        st.markdown('</div></div>',unsafe_allow_html=True); dots(4,2)
+                st.session_state["cv_wizard_doc"]="Cover Letter"; st.session_state["cv_wizard_ai"]=LOCAL_AI_DEFAULT; st.session_state["cv_wizard_step"]=3; st.rerun()
+        st.markdown('</div></div>',unsafe_allow_html=True); dots(3,1)
 
     elif not prompt_ready and wizard_step == 3:
-        provider=st.session_state.get("cv_wizard_ai",AI_DEFAULT_PROVIDER); doc=st.session_state.get("cv_wizard_doc","CV")
-        st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 3 OF 4</div><div class="cvwiz-question">Which job should JobSync tailor it to?</div><div class="cvwiz-copy">Pick a saved vacancy or enter the missing details. JobSync auto-fills everything it already knows.</div>',unsafe_allow_html=True)
+        provider=st.session_state.get("cv_wizard_ai",LOCAL_AI_DEFAULT); doc=st.session_state.get("cv_wizard_doc","CV")
+        st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 2 OF 3</div><div class="cvwiz-question">Which job should JobSync tailor it to?</div><div class="cvwiz-copy">Pick a saved vacancy or enter the missing details. JobSync auto-fills everything it already knows.</div>',unsafe_allow_html=True)
         jobs=state.get("search_results",[]) or []
         saved_jobs=[]
         for j in jobs:
@@ -6670,10 +6624,10 @@ elif page == "CV & Cover Letter":
         st.session_state["cv_wizard_job"]={**job,"title":title,"company":company,"location":location,"url":url,"description":description}
         if st.button("Continue →",key=f"cvwiz_continue_{cv_cycle}",type="primary",width="stretch",disabled=not bool(title.strip())):
             st.session_state["cv_wizard_step"]=4; st.rerun()
-        st.markdown('</div>',unsafe_allow_html=True); dots(4,3)
+        st.markdown('</div>',unsafe_allow_html=True); dots(3,2)
 
     elif not prompt_ready and wizard_step == 4:
-        provider=st.session_state.get("cv_wizard_ai",AI_DEFAULT_PROVIDER); doc=st.session_state.get("cv_wizard_doc","CV"); job=st.session_state.get("cv_wizard_job",{}) or {}
+        provider=st.session_state.get("cv_wizard_ai",LOCAL_AI_DEFAULT); doc=st.session_state.get("cv_wizard_doc","CV"); job=st.session_state.get("cv_wizard_job",{}) or {}
         # Everything for this step — the summary text, the uploader, the
         # blueprint caption, the Build button, and any error — renders
         # inside one real st.container() styled as a single panel (see the
@@ -6683,7 +6637,7 @@ elif page == "CV & Cover Letter":
         # fragment, so the uploader/button/errors always rendered as
         # separate, unstyled elements below an oversized, mostly-empty box.
         with st.container(key="cvwiz_step4_panel"):
-            st.markdown(f'<div class="cvwiz-eyebrow">STEP 4 OF 4</div><div class="cvwiz-question">Ready to build your {html.escape(doc)}?</div><div class="cvwiz-copy">JobSync assembles the complete prompt, sends it to {html.escape(provider)}, validates the returned LaTeX, shows the source here, lets you copy it into Overleaf, and keeps the final PDF in the JobSync folder.</div><div class="cvwiz-ready"><b>{html.escape(job.get("title") or "Untitled role")}</b><span>{html.escape(job.get("company") or "Company not entered")} · {html.escape(job.get("location") or "Location not entered")}</span></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="cvwiz-eyebrow">STEP 3 OF 3</div><div class="cvwiz-question">Ready to build your {html.escape(doc)}?</div><div class="cvwiz-copy">JobSync generates this locally with its built-in AI, validates the result, shows the source here, lets you copy it into Overleaf, and keeps the final PDF in the JobSync folder.</div><div class="cvwiz-ready"><b>{html.escape(job.get("title") or "Untitled role")}</b><span>{html.escape(job.get("company") or "Company not entered")} · {html.escape(job.get("location") or "Location not entered")}</span></div>',unsafe_allow_html=True)
             refs=st.file_uploader("Optional reference CV / cover letter",type=["pdf","tex","docx"],accept_multiple_files=True,key=f"cvwiz_refs_{cv_cycle}")
             template=st.session_state.get("cv_wizard_template","")
             blueprint_file = "cv_base.tex" if doc == "CV" else "cover_letter_base.tex"
@@ -6715,11 +6669,11 @@ elif page == "CV & Cover Letter":
                     st.rerun()
                 except Exception as exc:
                     st.error(f"Could not build the document prompt: {exc}")
-        dots(4,4)
+        dots(3,3)
 
     else:
         saved_job = st.session_state.get("external_job_snapshot", {}) or {}
-        provider = st.session_state.get("external_ai_provider", AI_DEFAULT_PROVIDER)
+        provider = st.session_state.get("external_ai_provider", LOCAL_AI_DEFAULT)
         doc = st.session_state.get("external_document_type_snapshot", "CV")
         prompt = st.session_state.get("external_ai_prompt", "")
         title = saved_job.get("title") or "Untitled role"
