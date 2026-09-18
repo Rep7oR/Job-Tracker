@@ -7131,21 +7131,26 @@ elif page == "Profile":
     complete = completion_pct >= 100
 
     st.markdown("""<style>
-      .p17-profile-only{min-height:calc(100vh - 92px);display:flex;align-items:flex-start;justify-content:center;padding:3.5rem 1rem 4rem;box-sizing:border-box}
+      .p17-profile-only{min-height:calc(100vh - 92px);display:flex;align-items:flex-start;justify-content:center;padding:1rem 1rem 4rem;box-sizing:border-box}
       .p17-identity-card{width:min(640px,100%);border:1px solid rgba(89,211,255,.18);border-radius:28px;overflow:hidden;background:radial-gradient(circle at 50% 0%,rgba(89,211,255,.10),transparent 30%),linear-gradient(150deg,rgba(9,22,39,.98),rgba(10,11,24,.99));box-shadow:0 28px 80px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.055);animation:p17IdentityIn .55s cubic-bezier(.2,.75,.2,1) both}
-      .p17-identity-top{height:92px;background:radial-gradient(circle at 80% 10%,rgba(224,74,202,.16),transparent 28%),linear-gradient(120deg,rgba(24,62,91,.7),rgba(51,25,75,.72));display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;box-sizing:border-box}
+      .p17-identity-top{position:relative;height:92px;background:radial-gradient(circle at 80% 10%,rgba(224,74,202,.16),transparent 28%),linear-gradient(120deg,rgba(24,62,91,.7),rgba(51,25,75,.72));display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;box-sizing:border-box}
       .p17-identity-kicker{font-size:.52rem;font-weight:950;letter-spacing:.18em;color:#65ddff;text-transform:uppercase}.p17-identity-live{font-size:.48rem;font-weight:900;letter-spacing:.08em;color:#7cf0b6;border:1px solid rgba(74,231,164,.18);background:rgba(48,205,133,.055);padding:6px 9px;border-radius:999px}.p17-identity-live i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4be6a0;box-shadow:0 0 10px rgba(75,230,160,.8);margin-right:5px;animation:p17IdentityPulse 1.7s ease-in-out infinite}
       .p17-identity-body{padding:0 28px 28px;text-align:center}.p17-identity-avatar-wrap{position:relative;width:112px;height:112px;margin:-55px auto 13px}.p17-identity-avatar{width:112px;height:112px;border-radius:34px;display:grid;place-items:center;font-size:2rem;font-weight:950;color:white;background:linear-gradient(145deg,#32d8ff,#7658ff 55%,#ef58b4);border:6px solid #091522;box-shadow:0 0 0 1px rgba(101,220,255,.52),0 0 46px rgba(91,91,255,.26);animation:p17IdentityFloat 5s ease-in-out infinite}.p17-identity-dot{position:absolute;right:1px;bottom:2px;width:16px;height:16px;border-radius:50%;background:#42e7a0;border:4px solid #091522;box-shadow:0 0 15px rgba(66,231,160,.72)}
       .p17-identity-status{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;color:#99f3c7;background:rgba(62,226,158,.055);border:1px solid rgba(62,226,158,.16);font-size:.49rem;font-weight:950;letter-spacing:.08em}.p17-identity-status b{width:6px;height:6px;border-radius:50%;background:#4be6a0;box-shadow:0 0 9px rgba(75,230,160,.7)}
       .p17-identity-name{margin:10px 0 3px;font-size:1.8rem;line-height:1.05;font-weight:950;letter-spacing:-.045em;color:#f4f7fc}.p17-identity-email{font-size:.72rem;color:#8291a5}.p17-identity-role{margin-top:8px;font-size:.78rem;color:#b7c6d5;font-weight:750}.p17-identity-meta{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin:18px auto 0;max-width:520px}.p17-identity-chip{padding:8px 11px;border-radius:12px;border:1px solid rgba(255,255,255,.065);background:rgba(255,255,255,.025);color:#aab9c9;font-size:.57rem}.p17-identity-chip strong{color:#edf4fa;font-weight:850}.p17-identity-actions{display:flex;justify-content:center;margin-top:22px}.p17-identity-actions .stButton{width:min(360px,100%)}.p17-identity-actions .stButton>button{height:46px!important;border-radius:14px!important;font-size:.68rem!important;font-weight:900!important;background:linear-gradient(100deg,rgba(47,194,231,.9),rgba(115,76,231,.95),rgba(205,61,177,.92))!important;color:#fff!important;border:1px solid rgba(103,224,255,.38)!important;box-shadow:0 10px 28px rgba(77,86,220,.16)!important}.p17-identity-hint{margin-top:11px;color:#5f7085;font-size:.52rem}.p17-identity-progress{margin:20px auto 0;max-width:420px}.p17-identity-progress-head{display:flex;justify-content:space-between;color:#718196;font-size:.48rem;font-weight:900;letter-spacing:.08em}.p17-identity-progress-head b{color:#eaf3f8}.p17-identity-track{height:6px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:6px}.p17-identity-track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#38d9ff,#7c5cff,#eb5ab5);box-shadow:0 0 15px rgba(88,128,255,.3)}
+      .st-key-p17_edit_top{max-width:640px;margin:0 auto 8px;display:flex;justify-content:flex-end;}
+      .st-key-p17_edit_top .stButton>button{height:34px!important;min-height:34px!important;padding:0 14px!important;border-radius:10px!important;font-size:.64rem!important;font-weight:850!important;background:rgba(255,255,255,.07)!important;color:#eef2f7!important;border:1px solid rgba(255,255,255,.14)!important;box-shadow:none!important;white-space:nowrap!important;}
+      .st-key-p17_edit_top .stButton>button:hover{background:rgba(255,255,255,.14)!important;}
       @keyframes p17IdentityIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}@keyframes p17IdentityFloat{50%{transform:translateY(-2px)}}@keyframes p17IdentityPulse{50%{opacity:.35;transform:scale(.72)}}
       @media(max-width:700px){.p17-profile-only{padding:2rem .5rem 3rem}.p17-identity-body{padding:0 18px 22px}.p17-identity-name{font-size:1.5rem}.p17-identity-top{height:82px;padding:15px}.p17-identity-avatar,.p17-identity-avatar-wrap{width:96px;height:96px}.p17-identity-avatar-wrap{margin-top:-47px}.p17-identity-avatar{font-size:1.7rem}.p17-identity-chip{font-size:.54rem}}
       @media(prefers-reduced-motion:reduce){.p17-identity-card,.p17-identity-avatar,.p17-identity-live i{animation:none!important}}
     </style>""", unsafe_allow_html=True)
 
     st.markdown(f'''<section class="p17-profile-only"><div class="p17-identity-card">
-      <div class="p17-identity-top"><span class="p17-identity-kicker">JOBSYNC · PROFILE</span><span class="p17-identity-live"><i></i>{"PROFILE COMPLETE" if complete else "PROFILE ACTIVE"}</span></div>
-      <div class="p17-identity-body">
+      <div class="p17-identity-top"><span class="p17-identity-kicker">JOBSYNC · PROFILE</span><span class="p17-identity-live"><i></i>{"PROFILE COMPLETE" if complete else "PROFILE ACTIVE"}</span></div>''', unsafe_allow_html=True)
+    with st.container(key="p17_edit_top"):
+        edit_profile = st.button("✎ Edit profile", key="p17_edit_profile_top")
+    st.markdown(f'''<div class="p17-identity-body">
         <div class="p17-identity-avatar-wrap"><div class="p17-identity-avatar">{html.escape(initials[:2])}</div><span class="p17-identity-dot"></span></div>
         <div class="p17-identity-status"><b></b>{"IDENTITY READY" if complete else "IDENTITY IN PROGRESS"}</div>
         <div class="p17-identity-name">{html.escape(display_name)}</div>
@@ -7153,9 +7158,9 @@ elif page == "Profile":
         <div class="p17-identity-role">{html.escape(display_field)}</div>
         <div class="p17-identity-meta"><span class="p17-identity-chip">⌖ <strong>{html.escape(display_city)}</strong></span><span class="p17-identity-chip">▦ <strong>{html.escape(display_industry)}</strong></span><span class="p17-identity-chip">◉ <strong>{html.escape(display_language)}</strong></span><span class="p17-identity-chip">◌ <strong>{html.escape(display_experience)}</strong></span></div>
         <div class="p17-identity-progress"><div class="p17-identity-progress-head"><span>PROFILE READINESS</span><b>{completion_pct}%</b></div><div class="p17-identity-track"><i style="width:{completion_pct}%"></i></div></div>
-        <div class="p17-identity-actions">''', unsafe_allow_html=True)
-    edit_profile = st.button("✎  Edit profile", key="p17_edit_profile_center", width="stretch")
-    st.markdown('''</div><div class="p17-identity-hint">Edit any profile signal from one focused window. Your saved details power search matching and documents.</div></div></div></section>''', unsafe_allow_html=True)
+        <div class="p17-identity-hint">Edit any profile signal from one focused window. Your saved details power search matching and documents.</div>
+      </div>
+    </div></section>''', unsafe_allow_html=True)
 
     @st.dialog("Edit your profile", width="large")
     def _p17_full_profile_dialog():
@@ -7172,6 +7177,8 @@ elif page == "Profile":
                 p_industry=st.text_input("Industry", profile.get("industry", ""), placeholder="Automotive, Manufacturing …")
                 p_field=st.text_input("Main field", profile.get("field", ""), placeholder="Mechanical Engineer")
                 p_location=st.text_input("Search location", profile.get("location", profile.get("city", "")), placeholder="Germany, Hannover, Remote …")
+                raw_titles = profile.get("target_titles") or []
+                saved_titles = [str(x).strip() for x in raw_titles if str(x).strip()] if isinstance(raw_titles, list) else [x.strip() for x in re.split(r"[,;|]", str(raw_titles)) if x.strip()]
                 titles_text=st.text_input("Target job titles", ", ".join(saved_titles), placeholder="Mechanical Engineer, Design Engineer")
             st.markdown("**Matching signals**")
             c,d=st.columns(2)
