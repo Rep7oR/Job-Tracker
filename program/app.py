@@ -6364,7 +6364,8 @@ elif page == "CV & Cover Letter":
             st.markdown(f'<div class="cvwiz-eyebrow">STEP 4 OF 4</div><div class="cvwiz-question">Ready to build your {html.escape(doc)}?</div><div class="cvwiz-copy">JobSync assembles the complete prompt, sends it to {html.escape(provider)}, validates the returned LaTeX, shows the source here, lets you copy it into Overleaf, and keeps the final PDF in the JobSync folder.</div><div class="cvwiz-ready"><b>{html.escape(job.get("title") or "Untitled role")}</b><span>{html.escape(job.get("company") or "Company not entered")} · {html.escape(job.get("location") or "Location not entered")}</span></div>',unsafe_allow_html=True)
             refs=st.file_uploader("Optional reference CV / cover letter",type=["pdf","tex","docx"],accept_multiple_files=True,key=f"cvwiz_refs_{cv_cycle}")
             template=st.session_state.get("cv_wizard_template","")
-            st.caption(f"CV blueprint: {"cv_base.tex" if doc == 'CV' else "cover_letter_base.tex"}")
+            blueprint_file = "cv_base.tex" if doc == "CV" else "cover_letter_base.tex"
+            st.caption(f"CV blueprint: {blueprint_file}")
             if st.button("Build my document →",key=f"cvwiz_build_{cv_cycle}",type="primary",width="stretch"):
                 try:
                     from services.cv_engine import load_builtin_template
