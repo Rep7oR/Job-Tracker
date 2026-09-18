@@ -1505,9 +1505,18 @@ st.markdown(
        unusually short window degrades to a small scroll instead of hiding
        content), and only the "Online now" list keeps its own small internal
        scroll, since it's the one genuinely unbounded list on this page. */
+    /* Vertically center Home's content as a group instead of pinning it to
+       the top. Centering has to happen on block-container — the actual
+       scrollable element Streamlit owns — not on our own inner container:
+       an inner container can only center children within ITS OWN height,
+       and that height still just grows to fit its content unless the real
+       parent gives it room to be centered inside in the first place. */
     body:has(.st-key-home_shell) [data-testid="stAppViewContainer"] .block-container {
+        display: flex !important; flex-direction: column !important; justify-content: center !important;
+        min-height: calc(100dvh - 1.2vh) !important;
         padding-top: .6vh !important;
         padding-bottom: .6vh !important;
+        overflow: hidden !important;
     }
     .jobsync-home-shell,.st-key-home_shell{width:100%;max-width:1200px;margin:0 auto;padding:0;}
     .jobsync-home-greeting-top{text-align:left;margin:0 0 1vh;padding:0 2px;}
@@ -5390,9 +5399,8 @@ def _render_home_authenticated_content():
       }
       .st-key-home_shell {
         display: flex !important; flex-direction: column !important;
-        justify-content: center !important; align-items: stretch !important;
-        height: calc(100dvh - 2.4vh) !important; max-height: calc(100dvh - 2.4vh) !important;
-        overflow: hidden !important; gap: 1.6vh !important;
+        align-items: stretch !important;
+        gap: 1.6vh !important;
       }
       .jobsync-launch-hero{text-align:center; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) both;}
       .jobsync-launch-logo{width:56px;height:56px;margin:0 auto 12px;display:grid;place-items:center;border-radius:16px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.24),rgba(86,64,255,.16) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.24);box-shadow:0 0 20px rgba(54,190,255,.14);animation:bigLogoFloat 4.2s ease-in-out infinite;}
