@@ -3255,6 +3255,14 @@ def _ai_api_key(provider: str) -> str:
     provider (e.g. GPT-4o mini and GPT-4o share the same OpenAI key).
     """
     resolved, _ = _resolve_ai_selection(provider)
+    if resolved == "Auto":
+        # The router itself has no key of its own — it's "connected" as soon
+        # as at least one model in its fallback chain has a key.
+        for candidate_name in AUTO_FREE_MODEL_CHAIN:
+            candidate_provider = HOSTED_AI_MODELS.get(candidate_name, {}).get("provider", "")
+            if candidate_provider and _ai_api_key(candidate_provider):
+                return "auto-connected"
+        return ""
     env_names = {
         "ChatGPT": "OPENAI_API_KEY",
         "Claude": "ANTHROPIC_API_KEY",
@@ -3283,6 +3291,16 @@ FREE_AI_KEY_SETUP = {
             "Sign in with Google, GitHub, or email (no credit card).",
             "Click **Create API Key**, then copy it.",
             "Click **Open Settings**, paste the key, and click **Save settings**.",
+        ],
+    },
+    "Auto": {
+        "url": "https://aistudio.google.com/apikey",
+        "button": "Get free Gemini key ↗",
+        "steps": [
+            "The auto-switch router needs at least one connected free key — Gemini is the quickest to set up.",
+            "Click **Get free Gemini key** — opens Google AI Studio in a new tab.",
+            "Sign in with any Google account (no credit card), click **Create API key**, then copy it.",
+            "Click **Open Settings**, paste it, click **Save settings** — then add a free Groq key too for extra fallback capacity.",
         ],
     },
 }
@@ -3316,15 +3334,28 @@ def _local_ai_config(provider: str | None) -> dict:
 # Offline/local models further below remain available for anyone who'd
 # rather download a model to this PC instead (large download, no key).
 HOSTED_AI_MODELS = {
+    "Free AI (auto-switch)": {"provider": "Auto", "model": "", "tier": "Free", "note": "Routes across every connected free key · switches models automatically when one is rate-limited"},
     "Gemini Flash": {"provider": "Gemini", "model": "gemini-flash-latest", "tier": "Free", "note": "Free Google AI Studio key · fast"},
     "Gemini Pro": {"provider": "Gemini", "model": "gemini-pro-latest", "tier": "Free", "note": "Free Google AI Studio key · stronger reasoning"},
     "Groq Llama 3.3 70B": {"provider": "Groq", "model": "llama-3.3-70b-versatile", "tier": "Free", "note": "Free Groq key · very fast · high rate limits"},
+    "Groq Llama 3.1 8B": {"provider": "Groq", "model": "llama-3.1-8b-instant", "tier": "Free", "note": "Free Groq key · fastest, smaller model · separate rate-limit bucket from 70B"},
+    "Groq Gemma2 9B": {"provider": "Groq", "model": "gemma2-9b-it", "tier": "Free", "note": "Free Groq key · Google's open Gemma2 on Groq · another independent rate-limit bucket"},
     "GPT-4o mini": {"provider": "ChatGPT", "model": "gpt-4o-mini", "tier": "Paid", "note": "OpenAI API key with billing · low cost"},
     "GPT-4o": {"provider": "ChatGPT", "model": "gpt-4o", "tier": "Paid", "note": "OpenAI API key with billing · premium quality"},
     "Claude 3.5 Haiku": {"provider": "Claude", "model": "claude-3-5-haiku-20241022", "tier": "Paid", "note": "Anthropic API key with billing · fast, low cost"},
     "Claude Sonnet 4": {"provider": "Claude", "model": "claude-sonnet-4-20250514", "tier": "Paid", "note": "Anthropic API key with billing · premium quality"},
 }
-AI_DEFAULT_PROVIDER = "Gemini Flash"
+AI_DEFAULT_PROVIDER = "Free AI (auto-switch)"
+
+# Preference order for the "Free AI (auto-switch)" router: each entry is a
+# HOSTED_AI_MODELS display name. Different models on the SAME provider still
+# help — Groq meters each model's rate limit independently, so 70B being
+# limited doesn't mean 8B or Gemma2 are too. Only entries whose provider has
+# a configured key are actually tried.
+AUTO_FREE_MODEL_CHAIN = [
+    "Gemini Flash", "Groq Llama 3.3 70B", "Gemini Pro",
+    "Groq Llama 3.1 8B", "Groq Gemma2 9B",
+]
 
 
 def _resolve_ai_selection(selection: str | None) -> tuple[str, str | None]:
@@ -3938,8 +3969,49 @@ def _ollama_chat_request(payload: dict, *, stream: bool, timeout: int, progress=
     )
 
 
+def _generate_with_auto_router(prompt: str, document_type: str = "CV", template: str = "") -> str:
+    """Free-tier router: try each connected free model in order, and switch to
+    the next one automatically when the current one is rate-limited, missing
+    its key, or otherwise fails — instead of making the user pick a model and
+    manually retry after every 429."""
+    progress = st.session_state.get("cv_ai_progress_callback")
+    tried: list[str] = []
+    errors: list[str] = []
+    for candidate_name in AUTO_FREE_MODEL_CHAIN:
+        cfg = HOSTED_AI_MODELS.get(candidate_name)
+        if not cfg:
+            continue
+        candidate_provider = cfg["provider"]
+        if not _ai_api_key(candidate_provider):
+            continue  # no key configured for this provider — skip silently
+        tried.append(candidate_name)
+        if progress:
+            progress(f"Free AI router: trying {candidate_name}…")
+        try:
+            return _generate_latex_with_ai(candidate_name, prompt, document_type=document_type, template=template)
+        except Exception as exc:
+            errors.append(f"{candidate_name}: {exc}")
+            if progress:
+                progress(f"{candidate_name} failed — switching to the next free model…")
+            continue
+    if not tried:
+        raise RuntimeError(
+            "The free AI router has no connected key yet. Add a free Gemini or Groq key once in "
+            "Settings → AI generation."
+        )
+    raise RuntimeError(
+        "Every connected free AI model failed or is rate-limited right now: "
+        + " | ".join(errors)
+        + ". Wait a minute and try again, or connect another free provider key in Settings."
+    )
+
+
 def _generate_latex_with_ai(provider: str, prompt: str, document_type: str = "CV", template: str = "") -> str:
     """Generate LaTeX inside JobSync. Local Qwen3 is the no-key default."""
+    resolved_selection, _ = _resolve_ai_selection(provider)
+    if resolved_selection == "Auto":
+        return _generate_with_auto_router(prompt, document_type=document_type, template=template)
+
     system = (
         "Return exactly one complete LaTeX document in a single latex code block and nothing else. "
         "Follow the user's prompt exactly. Never invent facts, employers, dates, qualifications, "
@@ -6474,14 +6546,20 @@ elif page == "CV & Cover Letter":
                 st.session_state["cv_wizard_ai"] = name; st.session_state["cv_wizard_step"] = 3; st.rerun()
             st.caption(f"{cfg['tier']} · {cfg['note']}")
 
-        free_models = {n: c for n, c in HOSTED_AI_MODELS.items() if c["tier"] == "Free"}
+        auto_models = {n: c for n, c in HOSTED_AI_MODELS.items() if c["provider"] == "Auto"}
+        free_models = {n: c for n, c in HOSTED_AI_MODELS.items() if c["tier"] == "Free" and c["provider"] != "Auto"}
         paid_models = {n: c for n, c in HOSTED_AI_MODELS.items() if c["tier"] == "Paid"}
 
-        st.markdown('<div class="cvwiz-source-label">ONLINE · FREE</div>', unsafe_allow_html=True)
-        cols = st.columns(len(free_models), gap="small")
-        for col, (name, cfg) in zip(cols, free_models.items()):
-            with col:
-                _hosted_model_button(name, cfg)
+        st.markdown('<div class="cvwiz-source-label">ONLINE · FREE · RECOMMENDED</div>', unsafe_allow_html=True)
+        for name, cfg in auto_models.items():
+            _hosted_model_button(name, cfg)
+
+        with st.expander("Pick a specific free model instead"):
+            st.caption("The auto-switch router above already tries these in order and skips whichever is rate-limited — pick one manually only if you want to force a specific model.")
+            cols = st.columns(len(free_models), gap="small")
+            for col, (name, cfg) in zip(cols, free_models.items()):
+                with col:
+                    _hosted_model_button(name, cfg)
 
         st.markdown('<div class="cvwiz-source-label">ONLINE · PAID (bring your own API key)</div>', unsafe_allow_html=True)
         cols = st.columns(len(paid_models), gap="small")
