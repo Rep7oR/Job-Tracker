@@ -1505,18 +1505,13 @@ st.markdown(
        unusually short window degrades to a small scroll instead of hiding
        content), and only the "Online now" list keeps its own small internal
        scroll, since it's the one genuinely unbounded list on this page. */
-    /* Vertically center Home's content as a group instead of pinning it to
-       the top. Centering has to happen on block-container — the actual
-       scrollable element Streamlit owns — not on our own inner container:
-       an inner container can only center children within ITS OWN height,
-       and that height still just grows to fit its content unless the real
-       parent gives it room to be centered inside in the first place. */
+    /* Home's own spacing is margin-based (see .jobsync-launch-hero's margin
+       further down) rather than viewport-height flex centering — simpler
+       and more predictable across different window heights/browser chrome
+       than trying to force block-container itself to a fixed height. */
     body:has(.st-key-home_shell) [data-testid="stAppViewContainer"] .block-container {
-        display: flex !important; flex-direction: column !important; justify-content: center !important;
-        min-height: calc(100dvh - 1.2vh) !important;
         padding-top: .6vh !important;
-        padding-bottom: .6vh !important;
-        overflow: hidden !important;
+        padding-bottom: 3vh !important;
     }
     .jobsync-home-shell,.st-key-home_shell{width:100%;max-width:1200px;margin:0 auto;padding:0;}
     .jobsync-home-greeting-top{text-align:left;margin:0 0 1vh;padding:0 2px;}
@@ -5446,21 +5441,30 @@ def _render_home_authenticated_content():
          — the inner block's flex sizing fought the outer column's width and
          the shortcut icons rendered shifted out over the greeting text.
          Stacked, full-width blocks avoid that column-in-column case. */
-      body:has(.st-key-home_shell) [data-testid="stAppViewContainer"] {
-        overflow: hidden !important;
-      }
+      /* Margin-based positioning instead of viewport-height flex centering:
+         predictable regardless of exact browser chrome/viewport quirks. The
+         hero sits with generous top margin so it reads as vertically
+         centered in the upper-middle of the screen; the content grid
+         follows immediately below it, filling the rest of the page. */
       .st-key-home_shell {
         display: flex !important; flex-direction: column !important;
         align-items: stretch !important;
-        gap: 1.6vh !important;
       }
-      .jobsync-launch-hero{text-align:center; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) both;}
+      .jobsync-launch-hero{text-align:center; margin: 9vh 0 5vh; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) both;}
       .jobsync-launch-logo{width:56px;height:56px;margin:0 auto 12px;display:grid;place-items:center;border-radius:16px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.24),rgba(86,64,255,.16) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.24);box-shadow:0 0 20px rgba(54,190,255,.14);animation:bigLogoFloat 4.2s ease-in-out infinite;}
       .jobsync-launch-logo svg{width:32px;height:32px;}
-      .jobsync-launch-greeting{font-size:clamp(1.3rem,2.3vw,1.75rem);font-weight:700;letter-spacing:-.02em;color:#eef2f7;}
+      .jobsync-launch-greeting{
+        font-size:clamp(1.3rem,2.3vw,1.75rem);font-weight:700;letter-spacing:-.02em;
+        background:linear-gradient(90deg,#eef2f7,#9fd8ff,#c9a9ff,#eef2f7);
+        background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+        animation: jobsyncGreetingShimmer 6s ease-in-out infinite;
+      }
+      @keyframes jobsyncGreetingShimmer{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
       .jobsync-launch-sub{margin-top:6px;color:rgba(226,233,247,.6);font-size:.82rem;}
-      .st-key-home_content{flex:0 1 auto !important; min-height:0 !important; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) .1s both;}
-      .st-key-home_content .ag-about,.st-key-home_content .ag-presence{min-height:0;overflow-y:auto;max-height:38vh;}
+      .st-key-home_content{animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) .1s both;}
+      .st-key-home_content .ag-about,.st-key-home_content .ag-presence{min-height:280px;}
+      .st-key-home_content .ag-presence-list{max-height:24vh;overflow-y:auto;}
+      @media(prefers-reduced-motion:reduce){.jobsync-launch-greeting{animation:none !important;}}
     </style>''', unsafe_allow_html=True)
 
     with st.container(key="home_shell"):
