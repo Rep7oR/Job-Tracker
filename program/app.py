@@ -4188,15 +4188,43 @@ Return only the complete LaTeX document in one ```latex``` block. Do not return 
         preferred = model_override or os.getenv("JOBSYNC_GEMINI_MODEL", "")
         candidates = [m for m in [preferred, "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"] if m]
         last_error: Exception | None = None
+        # Free-tier Gemini keys hit a per-minute rate limit under normal use;
+        # a bare 429 used to hard-fail generation immediately. Retry a few
+        # times with backoff (honoring Retry-After when Google sends one)
+        # before giving up, so a transient rate limit self-resolves instead
+        # of forcing the user to click "Try generation again" by hand.
+        max_retries = 4
         for candidate_model in dict.fromkeys(candidates):
-            response = requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{candidate_model}:generateContent",
-                headers={"Content-Type": "application/json"}, params={"key": key},
-                json={"systemInstruction": {"parts": [{"text": system}]}, "contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}}, timeout=180,
-            )
+            attempt = 0
+            while True:
+                response = requests.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{candidate_model}:generateContent",
+                    headers={"Content-Type": "application/json"}, params={"key": key},
+                    json={"systemInstruction": {"parts": [{"text": system}]}, "contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}}, timeout=180,
+                )
+                if response.status_code == 429 and attempt < max_retries:
+                    retry_after = response.headers.get("Retry-After")
+                    try:
+                        wait_s = float(retry_after) if retry_after else (2 ** attempt) * 3
+                    except ValueError:
+                        wait_s = (2 ** attempt) * 3
+                    wait_s = min(wait_s, 60)
+                    progress = st.session_state.get("cv_ai_progress_callback")
+                    if progress:
+                        progress(f"Gemini rate limit hit — retrying in {int(wait_s)}s ({attempt + 1}/{max_retries})…")
+                    time.sleep(wait_s)
+                    attempt += 1
+                    continue
+                break
             if response.status_code == 404:
                 last_error = RuntimeError(f"Gemini model '{candidate_model}' returned 404 Not Found.")
                 continue
+            if response.status_code == 429:
+                raise RuntimeError(
+                    "Gemini's free-tier rate limit is still exceeded after several retries. "
+                    "Wait a minute and try again, or enable billing on this API key at "
+                    "aistudio.google.com/apikey for a much higher limit."
+                )
             response.raise_for_status()
             data = response.json()
             parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
