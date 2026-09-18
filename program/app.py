@@ -2635,8 +2635,13 @@ def _presence_heartbeat(max_age: float = 25.0):
             display_name=name,
             avatar_seed=name,
         )
-    except Exception:
-        pass
+        st.session_state["_presence_error"] = ""
+    except Exception as exc:
+        # Presence is a nice-to-have, never worth crashing Home over — but a
+        # silently swallowed error here is indistinguishable from "everyone
+        # else is just offline", which is what made this look broken with no
+        # way to tell why. Keep the last error so Home can show it.
+        st.session_state["_presence_error"] = f"heartbeat: {exc}"
 
 
 def _refresh_online_cache(max_age: float = 20.0):
@@ -2648,8 +2653,9 @@ def _refresh_online_cache(max_age: float = 20.0):
             return
         st.session_state["_presence_list_at"] = now
         st.session_state["_online_users"] = list_online_users() or []
-    except Exception:
-        pass
+        st.session_state["_presence_error"] = ""
+    except Exception as exc:
+        st.session_state["_presence_error"] = f"list: {exc}"
 
 
 def _presence_initials(name: str) -> str:
@@ -5388,7 +5394,11 @@ def _render_home_authenticated_content():
         for u in online_users
     )
     presence_body = avatar_stack or ""
-    presence_list_html = presence_rows or '<div class="ag-presence-empty">No one else online right now — you have JobSync to yourself.</div>'
+    presence_error = str(st.session_state.get("_presence_error") or "").strip()
+    if presence_error:
+        presence_list_html = f'<div class="ag-presence-empty">Presence is unavailable right now.<br><span style="opacity:.6;font-size:.85em">{html.escape(presence_error)}</span></div>'
+    else:
+        presence_list_html = presence_rows or '<div class="ag-presence-empty">No one else online right now — you have JobSync to yourself.</div>'
 
     features = [
         ("⌕", "Discover", "Search real listings across your configured job sources."),
@@ -7190,348 +7200,326 @@ elif page == "Settings":
     render_modern_page_header("Settings")
     st.markdown('''<style>
       .settings-shell{max-width:1000px;margin:0 auto;}
-      .settings-nav{
-        position:sticky; top:6px; z-index:20; display:flex; flex-wrap:wrap; gap:7px;
-        margin:0 0 18px; padding:10px 12px; border-radius:16px;
-        background:rgba(12,17,28,.86); border:1px solid rgba(255,255,255,.08);
-        backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
-        box-shadow:0 14px 34px rgba(0,0,0,.30);
-        animation: jobsync-home-fade .5s cubic-bezier(.22,1,.36,1) both;
+      .settings-tabpanel{padding-top:6px; animation: jobsync-home-fade .4s cubic-bezier(.22,1,.36,1) both;}
+      .stTabs [data-baseweb="tab-list"]{ gap:4px !important; }
+      .stTabs [data-baseweb="tab"]{
+        border-radius:12px 12px 0 0 !important; font-weight:700 !important; font-size:.78rem !important;
+        padding:9px 14px !important; transition: background .2s ease, color .2s ease !important;
       }
-      .settings-nav a{
-        padding:7px 13px; border-radius:999px; background:rgba(255,255,255,.045);
-        border:1px solid rgba(255,255,255,.09); color:#c7d1e2; font-size:.7rem; font-weight:750;
-        letter-spacing:-.01em; text-decoration:none; white-space:nowrap;
-        transition:background .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
-      }
-      .settings-nav a:hover{
-        background:rgba(110,90,255,.20); border-color:rgba(150,128,255,.5); color:#fff;
-        transform:translateY(-1px);
-      }
-      .settings-card{
-        scroll-margin-top:64px;
-        animation: jobsync-home-fade .5s cubic-bezier(.22,1,.36,1) both;
-        transition:transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s ease, border-color .3s ease;
-      }
-      .settings-card:hover{ transform:translateY(-2px); box-shadow:0 20px 50px rgba(0,0,0,.28); border-color:rgba(255,255,255,.14); }
-      .settings-card.danger{ border-color:rgba(255,90,90,.28); background:linear-gradient(145deg,rgba(46,12,12,.55),rgba(20,8,10,.6)); }
-      .settings-card.danger:hover{ border-color:rgba(255,110,110,.5); box-shadow:0 20px 50px rgba(120,20,20,.22); }
-      .settings-card-head{display:flex; align-items:center; gap:11px; margin-bottom:2px;}
+      .stTabs [data-baseweb="tab"]:hover{ background:rgba(110,90,255,.12) !important; }
+      .stTabs [aria-selected="true"]{ background:rgba(110,90,255,.16) !important; }
+      .settings-card-head{display:flex; align-items:center; gap:11px; margin-bottom:10px;}
       .settings-icon{
         width:34px; height:34px; flex:0 0 34px; border-radius:11px; display:grid; place-items:center;
         font-size:1rem; background:linear-gradient(135deg,rgba(120,180,255,.35),rgba(190,130,255,.28));
         box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
       }
       .settings-icon.danger{ background:linear-gradient(135deg,rgba(255,110,110,.4),rgba(255,60,60,.22)); }
-      .settings-card .section-title{ margin:0 !important; }
-      @media(prefers-reduced-motion:reduce){ .settings-nav,.settings-card{ animation:none !important; transition:none !important; } }
+      @media(prefers-reduced-motion:reduce){ .settings-tabpanel{ animation:none !important; } }
     </style>''', unsafe_allow_html=True)
-    st.markdown('''<div class="settings-shell"><div class="settings-nav">
-      <a href="#sec-ai">🤖 AI generation</a>
-      <a href="#sec-account">🔐 Account</a>
-      <a href="#sec-jobs">🔎 Job sources</a>
-      <a href="#sec-linkedin">in LinkedIn</a>
-      <a href="#sec-monitor">🔔 Monitoring</a>
-      <a href="#sec-oauth">✉ Gmail OAuth</a>
-      <a href="#sec-updates">⬆ Updates</a>
-      <a href="#sec-danger">⚠ Danger zone</a>
-    </div></div>''', unsafe_allow_html=True)
-
     st.markdown('<div class="settings-shell">', unsafe_allow_html=True)
 
-    st.markdown('<div class="card settings-card" id="sec-ai">', unsafe_allow_html=True)
-    st.markdown('<div class="settings-card-head"><div class="settings-icon">🤖</div><div class="section-title">AI generation — connect once, use everywhere</div></div>', unsafe_allow_html=True)
-    st.caption("Set your key here once and CV/cover-letter generation just works from now on — no more pasting a key into the CV Studio every time. Gemini and Groq are free (no billing); ChatGPT and Claude need your own billed key.")
+    tab_ai, tab_account, tab_jobs, tab_linkedin, tab_monitor, tab_oauth, tab_updates, tab_danger = st.tabs([
+        "🤖 AI generation", "🔐 Account", "🔎 Job sources", "in LinkedIn",
+        "🔔 Monitoring", "✉ Gmail OAuth", "⬆ Updates", "⚠ Danger zone",
+    ])
 
-    key_col1, key_col2 = st.columns(2)
-    with key_col1:
-        with st.container(border=True):
-            st.markdown("**Get your free Gemini key (about 30 seconds)**")
-            st.markdown(
-                "1. Click **Get free Gemini key** below — it opens Google AI Studio in a new tab.\n"
-                "2. Sign in with any Google account (no credit card, no billing).\n"
-                "3. Click **Create API key**, then the copy icon next to the new key.\n"
-                "4. Come back to this tab, paste it into the field below, and click **Save settings**."
-            )
-            st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
-        gemini_key = st.text_input("Gemini API key (free)", value=os.getenv("GEMINI_API_KEY", ""), type="password", help="Free at aistudio.google.com/apikey — no billing required.")
-    with key_col2:
-        with st.container(border=True):
-            st.markdown("**Get your free Groq key (about 30 seconds)**")
-            st.markdown(
-                "1. Click **Get free Groq key** below — it opens the Groq console in a new tab.\n"
-                "2. Sign in with Google, GitHub, or email (no credit card).\n"
-                "3. Click **Create API Key**, then copy it.\n"
-                "4. Come back to this tab, paste it into the field below, and click **Save settings**."
-            )
-            st.link_button("Get free Groq key ↗", "https://console.groq.com/keys", width="stretch")
-        groq_key = st.text_input("Groq API key (free)", value=os.getenv("GROQ_API_KEY", ""), type="password", help="Free at console.groq.com/keys — very fast, high free-tier limits, good fallback when Gemini is rate-limited.")
+    with tab_ai:
+        st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
+        st.markdown('<div class="settings-card-head"><div class="settings-icon">🤖</div><div class="section-title">AI generation</div></div>', unsafe_allow_html=True)
+        st.info("CV and cover-letter generation uses JobSync's built-in local AI (Qwen3 14B) automatically — nothing to connect, no API key, no account. It downloads once (about 9.3 GB) the first time you generate a document.")
 
-    ai_col1, ai_col2 = st.columns(2)
-    with ai_col1:
-        openai_key = st.text_input("OpenAI API key (paid)", value=os.getenv("OPENAI_API_KEY", ""), type="password", help="From platform.openai.com/api-keys — needs billing enabled.")
-    with ai_col2:
-        anthropic_key = st.text_input("Anthropic API key (paid)", value=os.getenv("ANTHROPIC_API_KEY", ""), type="password", help="From console.anthropic.com/settings/keys — needs billing enabled.")
-    st.caption("Keys are saved locally to JobSync's own .env file on this computer only — never uploaded anywhere else.")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.write("")
-    st.markdown('<div class="card settings-card" id="sec-account">', unsafe_allow_html=True)
-    st.markdown('<div class="settings-card-head"><div class="settings-icon">🔐</div><div class="section-title">Account security</div></div>', unsafe_allow_html=True)
-    account_email = str(st.session_state.get("local_user_email") or profile.get("email") or "").strip().lower()
-    st.caption(f"Local account: {account_email or 'Not signed in'}")
-    with st.form("change_password_form"):
-        current_password = st.text_input("Current password", type="password", autocomplete="current-password")
-        new_password_settings = st.text_input("New password", type="password", autocomplete="new-password")
-        confirm_password_settings = st.text_input("Confirm new password", type="password", autocomplete="new-password")
-        change_pw = st.form_submit_button("Change password", type="primary", width="stretch")
-    if change_pw:
-        if new_password_settings != confirm_password_settings:
-            notify_error("The new passwords do not match.")
-        else:
-            try:
-                _local_change_password(account_email, current_password, new_password_settings)
-                st.session_state["_remembered_login"] = False
-                notify_success("Password changed. Sign in again if your session ends.")
-            except Exception as exc:
-                notify_error(f"Could not change password: {exc}")
-    if st.button("Generate a new recovery code", key="generate_recovery_code", type="secondary", width="stretch"):
-        try:
-            code = _ensure_recovery_code(account_email)
-            if code:
-                st.session_state["_account_recovery_code"] = code
-                notify_success("New recovery code created. Save it somewhere safe.")
-            else:
-                notify_success("A recovery code already exists for this account. Use the code saved when the account was created.")
-        except Exception as exc:
-            notify_error(f"Could not create recovery code: {exc}")
-    if st.session_state.get("_account_recovery_code"):
-        st.code(st.session_state["_account_recovery_code"], language=None)
-        st.caption("This code can reset the local password if you forget it.")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="card settings-card" id="sec-jobs">', unsafe_allow_html=True)
-    st.markdown('<div class="settings-card-head"><div class="settings-icon">🔎</div><div class="section-title">Job sources</div></div>', unsafe_allow_html=True)
-    saved_mode = state.get("settings", {}).get("job_search_mode", "free")
-    if saved_mode not in JOB_SEARCH_MODE_LABELS:
-        saved_mode = "free"
-    settings_mode_label = st.selectbox(
-        "Default job search method",
-        options=list(JOB_SEARCH_MODES.keys()),
-        index=list(JOB_SEARCH_MODES.values()).index(saved_mode),
-    )
-    settings_search_mode = JOB_SEARCH_MODES[settings_mode_label]
-    free_sources_setting = st.multiselect(
-        "Free/public sources",
-        options=FREE_SOURCE_NAMES,
-        default=state.get("settings", {}).get("free_sources") or FREE_SOURCE_NAMES,
-    )
-    ats_urls_setting_text = st.text_area(
-        "Company ATS career URLs (one per line)",
-        value="\n".join(state.get("settings", {}).get("ats_urls") or []),
-        placeholder="https://company.wd5.myworkdayjobs.com/Careers\nhttps://boards.greenhouse.io/company",
-    )
-    ats_urls_setting = [x.strip() for x in ats_urls_setting_text.splitlines() if x.strip()]
-    if settings_search_mode == "free":
-        st.info("Free APIs & public sources selected. Searches from this installation will not use Apify.")
-    configured_ids = state.get("settings", {}).get("actor_ids") or [ACTOR_CATALOG[name]["id"] for name in DEFAULT_ACTOR_NAMES]
-    configured_names = [ACTOR_ID_TO_NAME.get(x, x) for x in configured_ids]
-    if settings_search_mode in {"apify", "both"}:
-        selected_names = st.multiselect("Default Apify Actors", options=list(ACTOR_CATALOG.keys()), default=[x for x in configured_names if x in ACTOR_CATALOG])
-        for name, meta in ACTOR_CATALOG.items():
-            if name in selected_names:
-                st.caption(f"{name} — {meta['pricing']} — {meta['note']}")
-    else:
-        selected_names = configured_names
-        st.caption("Apify Actor selection is ignored while Free mode is selected.")
-    apify_token = st.text_input("Apify API token", value=os.getenv("APIFY_TOKEN", ""), type="password")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.write("")
-    st.markdown('<div class="card settings-card" id="sec-linkedin">', unsafe_allow_html=True)
-    st.markdown('<div class="settings-card-head"><div class="settings-icon">in</div><div class="section-title">LinkedIn profile & notifications</div></div>', unsafe_allow_html=True)
-    linkedin_profile_url = st.text_input(
-        "LinkedIn profile URL",
-        value=state.get("settings", {}).get("linkedin_profile_url", ""),
-        placeholder="https://www.linkedin.com/in/your-profile/",
-        help="Saved locally. The notification sync uses the existing persistent LinkedIn browser session and does not use Apify.",
-    )
-    st.caption("Connect LinkedIn once in the browser. Your local session is then reused for notification syncs; no LinkedIn password is stored by JobSync.")
-    l1, l2 = st.columns(2)
-    with l1:
-        if st.button("in  Connect LinkedIn", width="stretch", key="linkedin_connect"):
-            try:
-                with st.spinner("Opening LinkedIn — complete the sign-in in the browser window…"):
-                    connect_linkedin(login_wait_seconds=300)
-                notify_success("LinkedIn connected successfully. You can now sync notifications.")
-            except Exception as exc:
-                notify_error(f"LinkedIn connection failed: {exc}")
-    with l2:
-        if st.button("Clear LinkedIn session", width="stretch", key="linkedin_clear"):
-            import shutil
-            from services.linkedin_browser import PROFILE_DIR
-            try:
-                shutil.rmtree(PROFILE_DIR, ignore_errors=True)
-                PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-                state.get("settings", {}).pop("linkedin_last_sync", None)
-                state["linkedin_updates"] = []
-                save_state(state)
-                notify_success("LinkedIn browser session cleared.")
-            except Exception as exc:
-                notify_error(f"Could not clear LinkedIn session: {exc}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.write("")
-    st.write("")
-    st.markdown('<div class="card settings-card" id="sec-monitor">', unsafe_allow_html=True)
-    st.markdown('<div class="settings-card-head"><div class="settings-icon">🔔</div><div class="section-title">Daily new-job monitoring</div></div>', unsafe_allow_html=True)
-    monitor_enabled = st.checkbox(
-        "Start the background job monitor automatically",
-        value=bool(state.get("settings", {}).get("live_monitor_enabled", True)),
-        help="When enabled, JobSync checks your selected job sources once every 24 hours, detects jobs it has not seen before, updates the New Jobs list, and shows a Windows desktop notification."
-    )
-    st.info("The monitor runs once every 24 hours. The first successful check creates a baseline and does not send a flood of notifications. Later checks notify only for newly detected jobs.")
-    manual_col1, manual_col2 = st.columns([1, 3])
-    with manual_col1:
-        if st.button("▶ Run monitor now", key="run_monitor_now", width="stretch"):
-            try:
-                from services.job_monitor import _monitor_once
-                ok = _monitor_once()
-                refresh_state()
-                if ok:
-                    notify_success("Live monitor check completed. See the monitor status below.")
-                else:
-                    notify_error("Monitor did not run. Check your profile/search settings or data/monitor.log.")
-            except Exception as exc:
-                notify_error(f"Monitor check failed: {exc}")
-            st.rerun()
-    with manual_col2:
-        st.caption("The background monitor checks immediately when Windows starts, then every 24 hours. It follows your most recent New Search settings, including selected free sources and ATS URLs.")
-    last_check = state.get("settings", {}).get("monitor_last_check", "")
-    last_new = state.get("settings", {}).get("monitor_last_new_count", 0)
-    last_results = state.get("settings", {}).get("monitor_last_result_count", 0)
-    last_error = state.get("settings", {}).get("monitor_last_error", "")
-    if last_check:
-        st.caption(f"Last monitor check: {last_check} · Results checked: {last_results} · New jobs detected: {last_new}")
-    if last_error:
-        st.error(f"Last monitor error: {last_error}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-    st.markdown('<div class="card settings-card" id="sec-oauth">', unsafe_allow_html=True)
-    st.markdown('<div class="settings-card-head"><div class="settings-icon">✉</div><div class="section-title">Google OAuth setup (for Gmail sync)</div></div>', unsafe_allow_html=True)
-    with st.expander("Configure Google OAuth application credentials", expanded=False):
-        st.caption(
-            "Configure this once for this JobSync installation. You only need to complete this "
-            "after enabling Gmail sync — you will be taken through Google's own login next."
-        )
-        existing_client_id = ""
-        existing_client_secret = ""
-        if OAUTH_CONFIG_FILE.exists():
-            try:
-                oauth_data = json.loads(OAUTH_CONFIG_FILE.read_text(encoding="utf-8"))
-                installed = oauth_data.get("installed", oauth_data.get("web", {}))
-                existing_client_id = str(installed.get("client_id", "")).strip()
-                existing_client_secret = str(installed.get("client_secret", "")).strip()
-            except Exception:
-                pass
-        oauth_client_id = st.text_input(
-            "Google OAuth Client ID",
-            value=existing_client_id or os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
-            help="Application-level Google OAuth client ID. Desktop app client is recommended for local JobSync."
-        )
-        oauth_client_secret = st.text_input(
-            "Google OAuth Client Secret",
-            value=existing_client_secret or os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", ""),
-            type="password",
-            help="Application-level Google OAuth client secret."
-        )
-        if st.button("Save Google OAuth", key="save_google_oauth", type="secondary"):
-            if not oauth_client_id.strip() or not oauth_client_secret.strip():
-                notify_error("Enter both the Google OAuth Client ID and Client Secret.")
-            else:
-                OAUTH_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-                payload = {
-                    "installed": {
-                        "client_id": oauth_client_id.strip(),
-                        "client_secret": oauth_client_secret.strip(),
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "redirect_uris": ["http://localhost"],
-                    }
-                }
-                OAUTH_CONFIG_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-                notify_success("Google OAuth application configuration saved locally.")
-                st.rerun()
-        st.caption(f"Configuration file: {OAUTH_CONFIG_FILE}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.write("")
-    st.markdown('<div class="card settings-card" id="sec-updates">', unsafe_allow_html=True)
-    st.markdown('<div class="settings-card-head"><div class="settings-icon">⬆</div><div class="section-title">Software updates</div></div>', unsafe_allow_html=True)
-    st.caption("Updates are checked when you press the button. If a newer release is available, JobSync downloads the installer, closes the current app, and opens the visible installer. Your local data stays inside the JobSync folder.")
-    update_col1, update_col2 = st.columns([1, 2])
-    with update_col1:
-        if st.button("Check GitHub for updates", key="manual_github_update", type="secondary", width="stretch"):
-            import subprocess
-            updater_root = _find_github_updater_root()
-            if updater_root is None:
-                expected = PACKAGE_DIR / "github"
-                notify_error(f"GitHub updater files not found. Expected: {expected}")
-            else:
-                updater_path = updater_root / "updater.ps1"
-                cfg_path = updater_root / "update-config.json"
-                try:
-                    completed = subprocess.run(
-                        ["powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(updater_path), "-InstallDir", str(PACKAGE_DIR), "-ConfigPath", str(cfg_path)],
-                        cwd=str(PACKAGE_DIR),
-                        capture_output=True,
-                        text=True,
-                        timeout=120,
+        with st.expander("Advanced: connect an online AI instead (optional)"):
+            st.caption("Only needed if you want to use an online model instead of the local one. Not required for normal use.")
+            key_col1, key_col2 = st.columns(2)
+            with key_col1:
+                with st.container(border=True):
+                    st.markdown("**Get your free Gemini key (about 30 seconds)**")
+                    st.markdown(
+                        "1. Click **Get free Gemini key** below — it opens Google AI Studio in a new tab.\n"
+                        "2. Sign in with any Google account (no credit card, no billing).\n"
+                        "3. Click **Create API key**, then the copy icon next to the new key.\n"
+                        "4. Come back to this tab, paste it into the field below, and click **Save settings**."
                     )
-                    output_text = (completed.stdout or completed.stderr or "").strip()
-                    result_path = _github_update_state_path()
-                    result = {}
-                    try:
-                        if result_path.exists():
-                            result = json.loads(result_path.read_text(encoding="utf-8-sig"))
-                    except Exception:
-                        result = {}
+                    st.link_button("Get free Gemini key ↗", "https://aistudio.google.com/apikey", width="stretch")
+                gemini_key = st.text_input("Gemini API key (free)", value=os.getenv("GEMINI_API_KEY", ""), type="password", help="Free at aistudio.google.com/apikey — no billing required.")
+            with key_col2:
+                with st.container(border=True):
+                    st.markdown("**Get your free Groq key (about 30 seconds)**")
+                    st.markdown(
+                        "1. Click **Get free Groq key** below — it opens the Groq console in a new tab.\n"
+                        "2. Sign in with Google, GitHub, or email (no credit card).\n"
+                        "3. Click **Create API Key**, then copy it.\n"
+                        "4. Come back to this tab, paste it into the field below, and click **Save settings**."
+                    )
+                    st.link_button("Get free Groq key ↗", "https://console.groq.com/keys", width="stretch")
+                groq_key = st.text_input("Groq API key (free)", value=os.getenv("GROQ_API_KEY", ""), type="password", help="Free at console.groq.com/keys — very fast, high free-tier limits, good fallback when Gemini is rate-limited.")
 
-                    if completed.returncode != 0 or result.get("error"):
-                        error_text = str(result.get("error") or output_text or "unknown error").strip()
-                        notify_error(f"Update check failed: {error_text[-1000:]}")
-                    elif result.get("downloaded"):
-                        notify_success(f"Update v{result.get('latest_version')} is ready. The installer will open automatically.")
-                    elif result.get("up_to_date"):
-                        notify_success(f"You are up to date (v{result.get('current_version', APP_VERSION)}).")
-                    else:
-                        notify_success(output_text[-1000:] or "Update check completed.")
+            ai_col1, ai_col2 = st.columns(2)
+            with ai_col1:
+                openai_key = st.text_input("OpenAI API key (paid)", value=os.getenv("OPENAI_API_KEY", ""), type="password", help="From platform.openai.com/api-keys — needs billing enabled.")
+            with ai_col2:
+                anthropic_key = st.text_input("Anthropic API key (paid)", value=os.getenv("ANTHROPIC_API_KEY", ""), type="password", help="From console.anthropic.com/settings/keys — needs billing enabled.")
+            st.caption("Keys are saved locally to JobSync's own .env file on this computer only — never uploaded anywhere else. CV Studio currently always uses the local model regardless of any key saved here.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with tab_account:
+        st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
+        st.markdown('<div class="settings-card-head"><div class="settings-icon">🔐</div><div class="section-title">Account security</div></div>', unsafe_allow_html=True)
+        account_email = str(st.session_state.get("local_user_email") or profile.get("email") or "").strip().lower()
+        st.caption(f"Local account: {account_email or 'Not signed in'}")
+        with st.form("change_password_form"):
+            current_password = st.text_input("Current password", type="password", autocomplete="current-password")
+            new_password_settings = st.text_input("New password", type="password", autocomplete="new-password")
+            confirm_password_settings = st.text_input("Confirm new password", type="password", autocomplete="new-password")
+            change_pw = st.form_submit_button("Change password", type="primary", width="stretch")
+        if change_pw:
+            if new_password_settings != confirm_password_settings:
+                notify_error("The new passwords do not match.")
+            else:
+                try:
+                    _local_change_password(account_email, current_password, new_password_settings)
+                    st.session_state["_remembered_login"] = False
+                    notify_success("Password changed. Sign in again if your session ends.")
                 except Exception as exc:
-                    notify_error(f"Could not run the updater: {exc}")
-    with update_col2:
-        updater_root = _find_github_updater_root()
-        result_path = _github_update_state_path() if updater_root else None
-        if result_path and result_path.exists():
+                    notify_error(f"Could not change password: {exc}")
+        if st.button("Generate a new recovery code", key="generate_recovery_code", type="secondary", width="stretch"):
             try:
-                result = json.loads(result_path.read_text(encoding="utf-8"))
-                checked = result.get("checked_at", "")
-                latest = result.get("latest_version", "")
-                dl = result.get("download_path") or ""
-                if result.get("downloaded"):
-                    st.caption(f"Latest: v{latest} · installer started: {dl} · checked: {checked}")
-                elif result.get("error"):
-                    st.caption(f"Last check failed: {result.get('error')} · checked: {checked}")
+                code = _ensure_recovery_code(account_email)
+                if code:
+                    st.session_state["_account_recovery_code"] = code
+                    notify_success("New recovery code created. Save it somewhere safe.")
                 else:
-                    st.caption(f"Latest checked: v{latest} · checked: {checked}")
-            except Exception:
-                st.caption("No successful update check recorded yet.")
+                    notify_success("A recovery code already exists for this account. Use the code saved when the account was created.")
+            except Exception as exc:
+                notify_error(f"Could not create recovery code: {exc}")
+        if st.session_state.get("_account_recovery_code"):
+            st.code(st.session_state["_account_recovery_code"], language=None)
+            st.caption("This code can reset the local password if you forget it.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with tab_jobs:
+        st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
+        st.markdown('<div class="settings-card-head"><div class="settings-icon">🔎</div><div class="section-title">Job sources</div></div>', unsafe_allow_html=True)
+        saved_mode = state.get("settings", {}).get("job_search_mode", "free")
+        if saved_mode not in JOB_SEARCH_MODE_LABELS:
+            saved_mode = "free"
+        settings_mode_label = st.selectbox(
+            "Default job search method",
+            options=list(JOB_SEARCH_MODES.keys()),
+            index=list(JOB_SEARCH_MODES.values()).index(saved_mode),
+        )
+        settings_search_mode = JOB_SEARCH_MODES[settings_mode_label]
+        free_sources_setting = st.multiselect(
+            "Free/public sources",
+            options=FREE_SOURCE_NAMES,
+            default=state.get("settings", {}).get("free_sources") or FREE_SOURCE_NAMES,
+        )
+        ats_urls_setting_text = st.text_area(
+            "Company ATS career URLs (one per line)",
+            value="\n".join(state.get("settings", {}).get("ats_urls") or []),
+            placeholder="https://company.wd5.myworkdayjobs.com/Careers\nhttps://boards.greenhouse.io/company",
+        )
+        ats_urls_setting = [x.strip() for x in ats_urls_setting_text.splitlines() if x.strip()]
+        if settings_search_mode == "free":
+            st.info("Free APIs & public sources selected. Searches from this installation will not use Apify.")
+        configured_ids = state.get("settings", {}).get("actor_ids") or [ACTOR_CATALOG[name]["id"] for name in DEFAULT_ACTOR_NAMES]
+        configured_names = [ACTOR_ID_TO_NAME.get(x, x) for x in configured_ids]
+        if settings_search_mode in {"apify", "both"}:
+            selected_names = st.multiselect("Default Apify Actors", options=list(ACTOR_CATALOG.keys()), default=[x for x in configured_names if x in ACTOR_CATALOG])
+            for name, meta in ACTOR_CATALOG.items():
+                if name in selected_names:
+                    st.caption(f"{name} — {meta['pricing']} — {meta['note']}")
         else:
-            st.caption("No manual GitHub update check has been run yet.")
-    st.markdown('</div>', unsafe_allow_html=True)
+            selected_names = configured_names
+            st.caption("Apify Actor selection is ignored while Free mode is selected.")
+        apify_token = st.text_input("Apify API token", value=os.getenv("APIFY_TOKEN", ""), type="password")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with tab_linkedin:
+        st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
+        st.markdown('<div class="settings-card-head"><div class="settings-icon">in</div><div class="section-title">LinkedIn profile & notifications</div></div>', unsafe_allow_html=True)
+        linkedin_profile_url = st.text_input(
+            "LinkedIn profile URL",
+            value=state.get("settings", {}).get("linkedin_profile_url", ""),
+            placeholder="https://www.linkedin.com/in/your-profile/",
+            help="Saved locally. The notification sync uses the existing persistent LinkedIn browser session and does not use Apify.",
+        )
+        st.caption("Connect LinkedIn once in the browser. Your local session is then reused for notification syncs; no LinkedIn password is stored by JobSync.")
+        l1, l2 = st.columns(2)
+        with l1:
+            if st.button("in  Connect LinkedIn", width="stretch", key="linkedin_connect"):
+                try:
+                    with st.spinner("Opening LinkedIn — complete the sign-in in the browser window…"):
+                        connect_linkedin(login_wait_seconds=300)
+                    notify_success("LinkedIn connected successfully. You can now sync notifications.")
+                except Exception as exc:
+                    notify_error(f"LinkedIn connection failed: {exc}")
+        with l2:
+            if st.button("Clear LinkedIn session", width="stretch", key="linkedin_clear"):
+                import shutil
+                from services.linkedin_browser import PROFILE_DIR
+                try:
+                    shutil.rmtree(PROFILE_DIR, ignore_errors=True)
+                    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+                    state.get("settings", {}).pop("linkedin_last_sync", None)
+                    state["linkedin_updates"] = []
+                    save_state(state)
+                    notify_success("LinkedIn browser session cleared.")
+                except Exception as exc:
+                    notify_error(f"Could not clear LinkedIn session: {exc}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with tab_monitor:
+        st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
+        st.markdown('<div class="settings-card-head"><div class="settings-icon">🔔</div><div class="section-title">Daily new-job monitoring</div></div>', unsafe_allow_html=True)
+        monitor_enabled = st.checkbox(
+            "Start the background job monitor automatically",
+            value=bool(state.get("settings", {}).get("live_monitor_enabled", True)),
+            help="When enabled, JobSync checks your selected job sources once every 24 hours, detects jobs it has not seen before, updates the New Jobs list, and shows a Windows desktop notification."
+        )
+        st.info("The monitor runs once every 24 hours. The first successful check creates a baseline and does not send a flood of notifications. Later checks notify only for newly detected jobs.")
+        manual_col1, manual_col2 = st.columns([1, 3])
+        with manual_col1:
+            if st.button("▶ Run monitor now", key="run_monitor_now", width="stretch"):
+                try:
+                    from services.job_monitor import _monitor_once
+                    ok = _monitor_once()
+                    refresh_state()
+                    if ok:
+                        notify_success("Live monitor check completed. See the monitor status below.")
+                    else:
+                        notify_error("Monitor did not run. Check your profile/search settings or data/monitor.log.")
+                except Exception as exc:
+                    notify_error(f"Monitor check failed: {exc}")
+                st.rerun()
+        with manual_col2:
+            st.caption("The background monitor checks immediately when Windows starts, then every 24 hours. It follows your most recent New Search settings, including selected free sources and ATS URLs.")
+        last_check = state.get("settings", {}).get("monitor_last_check", "")
+        last_new = state.get("settings", {}).get("monitor_last_new_count", 0)
+        last_results = state.get("settings", {}).get("monitor_last_result_count", 0)
+        last_error = state.get("settings", {}).get("monitor_last_error", "")
+        if last_check:
+            st.caption(f"Last monitor check: {last_check} · Results checked: {last_results} · New jobs detected: {last_new}")
+        if last_error:
+            st.error(f"Last monitor error: {last_error}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with tab_oauth:
+        st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
+        st.markdown('<div class="settings-card-head"><div class="settings-icon">✉</div><div class="section-title">Google OAuth setup (for Gmail sync)</div></div>', unsafe_allow_html=True)
+        with st.expander("Configure Google OAuth application credentials", expanded=False):
+            st.caption(
+                "Configure this once for this JobSync installation. You only need to complete this "
+                "after enabling Gmail sync — you will be taken through Google's own login next."
+            )
+            existing_client_id = ""
+            existing_client_secret = ""
+            if OAUTH_CONFIG_FILE.exists():
+                try:
+                    oauth_data = json.loads(OAUTH_CONFIG_FILE.read_text(encoding="utf-8"))
+                    installed = oauth_data.get("installed", oauth_data.get("web", {}))
+                    existing_client_id = str(installed.get("client_id", "")).strip()
+                    existing_client_secret = str(installed.get("client_secret", "")).strip()
+                except Exception:
+                    pass
+            oauth_client_id = st.text_input(
+                "Google OAuth Client ID",
+                value=existing_client_id or os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
+                help="Application-level Google OAuth client ID. Desktop app client is recommended for local JobSync."
+            )
+            oauth_client_secret = st.text_input(
+                "Google OAuth Client Secret",
+                value=existing_client_secret or os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+                type="password",
+                help="Application-level Google OAuth client secret."
+            )
+            if st.button("Save Google OAuth", key="save_google_oauth", type="secondary"):
+                if not oauth_client_id.strip() or not oauth_client_secret.strip():
+                    notify_error("Enter both the Google OAuth Client ID and Client Secret.")
+                else:
+                    OAUTH_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+                    payload = {
+                        "installed": {
+                            "client_id": oauth_client_id.strip(),
+                            "client_secret": oauth_client_secret.strip(),
+                            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                            "token_uri": "https://oauth2.googleapis.com/token",
+                            "redirect_uris": ["http://localhost"],
+                        }
+                    }
+                    OAUTH_CONFIG_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+                    notify_success("Google OAuth application configuration saved locally.")
+                    st.rerun()
+            st.caption(f"Configuration file: {OAUTH_CONFIG_FILE}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with tab_updates:
+        st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
+        st.markdown('<div class="settings-card-head"><div class="settings-icon">⬆</div><div class="section-title">Software updates</div></div>', unsafe_allow_html=True)
+        st.caption("Updates are checked when you press the button. If a newer release is available, JobSync downloads the installer, closes the current app, and opens the visible installer. Your local data stays inside the JobSync folder.")
+        update_col1, update_col2 = st.columns([1, 2])
+        with update_col1:
+            if st.button("Check GitHub for updates", key="manual_github_update", type="secondary", width="stretch"):
+                import subprocess
+                updater_root = _find_github_updater_root()
+                if updater_root is None:
+                    expected = PACKAGE_DIR / "github"
+                    notify_error(f"GitHub updater files not found. Expected: {expected}")
+                else:
+                    updater_path = updater_root / "updater.ps1"
+                    cfg_path = updater_root / "update-config.json"
+                    try:
+                        completed = subprocess.run(
+                            ["powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(updater_path), "-InstallDir", str(PACKAGE_DIR), "-ConfigPath", str(cfg_path)],
+                            cwd=str(PACKAGE_DIR),
+                            capture_output=True,
+                            text=True,
+                            timeout=120,
+                        )
+                        output_text = (completed.stdout or completed.stderr or "").strip()
+                        result_path = _github_update_state_path()
+                        result = {}
+                        try:
+                            if result_path.exists():
+                                result = json.loads(result_path.read_text(encoding="utf-8-sig"))
+                        except Exception:
+                            result = {}
+
+                        if completed.returncode != 0 or result.get("error"):
+                            error_text = str(result.get("error") or output_text or "unknown error").strip()
+                            notify_error(f"Update check failed: {error_text[-1000:]}")
+                        elif result.get("downloaded"):
+                            notify_success(f"Update v{result.get('latest_version')} is ready. The installer will open automatically.")
+                        elif result.get("up_to_date"):
+                            notify_success(f"You are up to date (v{result.get('current_version', APP_VERSION)}).")
+                        else:
+                            notify_success(output_text[-1000:] or "Update check completed.")
+                    except Exception as exc:
+                        notify_error(f"Could not run the updater: {exc}")
+        with update_col2:
+            updater_root = _find_github_updater_root()
+            result_path = _github_update_state_path() if updater_root else None
+            if result_path and result_path.exists():
+                try:
+                    result = json.loads(result_path.read_text(encoding="utf-8"))
+                    checked = result.get("checked_at", "")
+                    latest = result.get("latest_version", "")
+                    dl = result.get("download_path") or ""
+                    if result.get("downloaded"):
+                        st.caption(f"Latest: v{latest} · installer started: {dl} · checked: {checked}")
+                    elif result.get("error"):
+                        st.caption(f"Last check failed: {result.get('error')} · checked: {checked}")
+                    else:
+                        st.caption(f"Latest checked: v{latest} · checked: {checked}")
+                except Exception:
+                    st.caption("No successful update check recorded yet.")
+            else:
+                st.caption("No manual GitHub update check has been run yet.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.write("")
-    st.markdown('<div class="card settings-card" id="sec-save">', unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
     if st.button("Save settings", type="primary", width="stretch"):
         settings = state.setdefault("settings", {})
         settings["linkedin_profile_url"] = linkedin_profile_url.strip()
@@ -7560,27 +7548,27 @@ elif page == "Settings":
         notify_success("Settings saved locally.")
         st.rerun()
 
-    st.caption("CV and cover-letter generation uses the online AI model you connected above (or a local model if you chose that instead in CV Studio's advanced option).")
+    st.caption("CV and cover-letter generation uses JobSync's local AI by default. The AI generation tab above is only needed for the optional online fallback.")
     st.caption(f"Generated CV folder: {OUTPUT_CV}")
     st.caption(f"Local AI model storage: {OLLAMA_MODELS_DIR}")
     st.caption(f"Generated cover-letter folder: {OUTPUT_CL}")
     st.caption(f"Excel tracker: {TRACKER}")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.write("")
-    st.markdown('<div class="card settings-card danger" id="sec-danger">', unsafe_allow_html=True)
-    st.markdown('<div class="settings-card-head"><div class="settings-icon danger">⚠</div><div class="section-title">Master reset</div></div>', unsafe_allow_html=True)
-    st.caption(
-        "Completely clear JobSync's user data and return the workspace to a clean state."
-    )
-    if st.button(
-        "Delete everything and reset JobSync",
-        type="primary",
-        width="stretch",
-        key="master_reset_button",
-    ):
-        confirm_master_reset()
-    st.markdown('</div>', unsafe_allow_html=True)
+    with tab_danger:
+        st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
+        st.markdown('<div class="settings-card-head"><div class="settings-icon danger">⚠</div><div class="section-title">Master reset</div></div>', unsafe_allow_html=True)
+        st.caption(
+            "Completely clear JobSync's user data and return the workspace to a clean state."
+        )
+        if st.button(
+            "Delete everything and reset JobSync",
+            type="primary",
+            width="stretch",
+            key="master_reset_button",
+        ):
+            confirm_master_reset()
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)  # close .settings-shell
 
