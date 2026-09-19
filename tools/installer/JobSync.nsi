@@ -52,93 +52,33 @@ Unicode True
 ; ── Install section ────────────────────────────────────────────────────────────
 Section "Install" SecMain
 
-  ; -- TRUE CLEAN UPGRADE -----------------------------------------------------
-  ; Every upgrade completely removes the previous application tree from
-  ; Program Files. Persistent user data is moved to a temporary backup OUTSIDE
-  ; Program Files first, then restored after the new files are installed.
-  ; This prevents stale EXEs/DLLs/scripts from older releases from surviving an
-  ; upgrade and causing the recurring installer error.
-  DetailPrint "Stopping JobSync and preparing a clean application replacement..."
+  ; -- IN-PLACE UPDATE ---------------------------------------------------------
+  ; Earlier releases wiped the ENTIRE $INSTDIR tree on every update (including
+  ; the Python venv under runtime\, which then had to be rebuilt from scratch
+  ; every single time — the main reason updates were slow) and moved user data
+  ; out to a temp backup and back in. Since staging only ever contains the
+  ; explicit application-file allow-list built by BUILD_INSTALLER.ps1 (never
+  ; data/uploads/output/config/user_blueprints/ai/.env/runtime), copying it
+  ; straight over an existing $INSTDIR already only touches files that
+  ; actually changed and never disturbs anything else — no backup/restore
+  ; dance needed, and nothing but Uninstall ever removes user data or the venv.
+  DetailPrint "Stopping JobSync before updating..."
   nsExec::ExecToLog `taskkill /F /IM JobSync.exe /T`
   nsExec::ExecToLog `taskkill /F /IM streamlit.exe /T`
   nsExec::ExecToLog `taskkill /F /IM ollama.exe /T`
   Sleep 2000
 
-  ; Use one deterministic recovery directory. If a previous installer crashed
-  ; after moving data out, the next installer can still restore that backup.
-  StrCpy $R0 "$TEMP\JobSync-Upgrade-Backup"
-  CreateDirectory "$R0"
-
-  ; The cleanup script is embedded in THIS installer and runs from $PLUGINSDIR,
-  ; never from the old installed tools directory. It stops JobSync-owned Python
-  ; processes and moves persistent data out of Program Files.
-  InitPluginsDir
-  SetOutPath "$PLUGINSDIR"
-  File /oname=INSTALLER_CLEANUP.ps1 "staging\tools\INSTALLER_CLEANUP.ps1"
-  ExecWait '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\INSTALLER_CLEANUP.ps1" -Root "$INSTDIR" -Backup "$R0"' $R1
-  ${If} $R1 != 0
-    MessageBox MB_OK|MB_ICONSTOP "JobSync could not prepare the existing installation for a clean upgrade. The old application was NOT removed and your data was NOT deleted. Please close JobSync and try again."
-    Abort
-  ${EndIf}
-
-  ; Move the last persistent trees that may have existed in a previous failed
-  ; upgrade into the same backup if they are still present. Then remove the
-  ; ENTIRE old installation tree, including tools, runtime, old launcher DLLs,
-  ; stale scripts, old helpers, and old configuration files.
-  SetOutPath "$TEMP"
-  RMDir /r "$INSTDIR"
-  IfFileExists "$INSTDIR\*.*" clean_remove_failed clean_remove_ok
-clean_remove_failed:
-  MessageBox MB_OK|MB_ICONSTOP "JobSync could not remove the old installation completely. A file is still locked or in use. Your existing installation was left intact."
-  Abort
-clean_remove_ok:
   CreateDirectory "$INSTDIR"
   SetOutPath "$INSTDIR"
 
-  ; -- Copy the COMPLETE fresh application payload ----------------------------
+  ; -- Copy only the application payload — overwrites files that changed and
+  ;    adds new ones; anything already in $INSTDIR that isn't part of staging
+  ;    (user data, the venv, model cache) is left completely untouched.
   File /r "staging\*"
-  ; INSTALLER_CLEANUP.ps1 is an installer-only helper and must never remain in the app.
+  ; These two are installer-only helpers from the old clean-upgrade flow and
+  ; must never remain in the installed app; harmless if already absent.
   Delete "$INSTDIR\tools\INSTALLER_CLEANUP.ps1"
-  ; INSTALLER_SETUP.bat is also installer-only; the installed launcher uses RUN_JOBSYNC.ps1/desktop code.
   Delete "$INSTDIR\tools\INSTALLER_SETUP.bat"
-
-  ; Restore persistent user data AFTER the old Program Files tree is gone.
-  ; These folders are never shipped in staging, so $INSTDIR\<name> should not
-  ; already exist here — but NSIS's Rename silently does nothing if the
-  ; destination DOES already exist, which would leave the user's real backed
-  ; -up data stranded in $R0 while the app runs against an empty/fresh folder
-  ; (accounts.json included) with no visible error. Clear each destination
-  ; first, defensively, so restore can never be silently skipped this way.
-  SetOutPath "$INSTDIR"
-  RMDir /r "$INSTDIR\data"
-  Rename "$R0\data" "$INSTDIR\data"
-  RMDir /r "$INSTDIR\uploads"
-  Rename "$R0\uploads" "$INSTDIR\uploads"
-  RMDir /r "$INSTDIR\output"
-  Rename "$R0\output" "$INSTDIR\output"
-  RMDir /r "$INSTDIR\config"
-  Rename "$R0\config" "$INSTDIR\config"
-  RMDir /r "$INSTDIR\user_blueprints"
-  Rename "$R0\user_blueprints" "$INSTDIR\user_blueprints"
-  RMDir /r "$INSTDIR\ai"
-  Rename "$R0\ai" "$INSTDIR\ai"
-  Delete "$INSTDIR\.env"
-  Rename "$R0\.env" "$INSTDIR\.env"
-
-  ; Verify the account database specifically survived the restore — it is the
-  ; single most important file for this ("users can't log in after an
-  ; update") failure mode. If the backup had it but $INSTDIR doesn't now,
-  ; something went wrong with the restore above; warn instead of continuing
-  ; silently so the user knows to recover it from $R0 before it's cleaned up.
-  IfFileExists "$R0\data\accounts.json" 0 skip_account_check
-    IfFileExists "$INSTDIR\data\accounts.json" skip_account_check 0
-      MessageBox MB_OK|MB_ICONEXCLAMATION "JobSync could not restore your existing accounts after this update. A backup copy was saved at:$\r$\n$\r$\n$R0\data\accounts.json$\r$\n$\r$\nCopy that file into $INSTDIR\data\ before deleting it, then restart JobSync."
-      Return
-  skip_account_check:
-
-  ; A leftover backup from a previous interrupted update may contain only some
-  ; of these trees; missing Rename operations are harmless.
-  RMDir /r "$R0"
 
   ; -- Run setup through an installer-only script embedded in THIS installer.
   ;    The script is extracted to $PLUGINSDIR and receives the real install root

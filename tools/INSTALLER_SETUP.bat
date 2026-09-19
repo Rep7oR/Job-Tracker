@@ -124,9 +124,11 @@ if not defined PYTHON_EXE goto :fail_python
 >>"%LOG_FILE%" echo Python selected: %PYTHON_EXE%
 echo Python selected: %PYTHON_EXE%
 
-rem v1.3.42: NSIS has already removed the complete old application tree and
-rem restored only persistent user data. Therefore runtime\.venv is always a fresh
-rem environment on every upgrade. This prevents stale Python/DLL files from surviving.
+rem NSIS now updates in place (only overwrites application files that
+rem changed) instead of wiping the whole install tree, so an existing venv
+rem from a previous install/update is reused here rather than rebuilt from
+rem scratch every time - this is what makes updates fast. pip below still
+rem runs on every update so a changed requirements.txt is always picked up.
 if not exist "%VENV_PY%" (
     >>"%LOG_FILE%" echo [2/5] Creating Python virtual environment...
 echo [2/5] Creating Python virtual environment...
@@ -148,8 +150,10 @@ if errorlevel 1 goto :fail_pip
 "%VENV_PY%" -m pip install --prefer-binary -r "%PROGRAM_DIR%\requirements.txt" >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto :fail_pip
 
-rem v1.3.42: the old launcher tree was removed by NSIS before this script ran.
-rem Always build a fresh native launcher so no old PyInstaller EXE/DLL can survive.
+rem The native launcher (tools\JobSync\JobSync.exe) is never touched by an
+rem in-place update either, so it's only built once on first install and
+rem reused after that — the guard below just skips rebuilding when it's
+rem already there.
 set "DESKTOP_DIR=%ROOT%\tools\JobSync"
 set "DESKTOP_EXE=%DESKTOP_DIR%\JobSync.exe"
 >>"!LOG_FILE!" echo [4/6] Building fresh native JobSync desktop launcher...
