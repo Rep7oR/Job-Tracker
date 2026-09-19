@@ -403,6 +403,40 @@ st.markdown(
     .stApp { background:var(--jf-bg) !important; }
     .block-container { width:100% !important; max-width:none !important; box-sizing:border-box !important; padding-top:.05rem !important; padding-bottom:3rem; padding-left:clamp(.75rem,2vw,2.5rem) !important; padding-right:clamp(.75rem,2vw,2.5rem) !important; }
 
+    /* ---------- Apple-glass theme, applied app-wide ---------- *
+       Home already used this frosted-panel look (.ag-glass): translucent
+       gradient surface, blurred backdrop, soft border, inset highlight, and
+       a gentle lift on hover. This block gives every other page's panel
+       classes the same treatment via overrides, rather than rewriting each
+       page's layout — a purely cosmetic (background/border/shadow/filter)
+       change that doesn't touch structure or widget behavior, so it can't
+       break the interactive parts of any page the way a layout change would. */
+    .card, .hero, .action-card, .metric-card, .chart-card, .info-card, .jobs-panel,
+    .an-card, .an-hero, .an-kpi,
+    .ux-page-hero,
+    .cvwiz-card, .st-key-cvwiz_step4_panel, .cvwiz-hero, .cvwiz-inline-progress, .cvwiz-modal-status,
+    .p17-identity-card,
+    .jobsync-folder-workspace,
+    .settings-card,
+    .jobsync-generation-dialog, .jobsync-online-panel {
+        background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.025)) !important;
+        border: 1px solid rgba(255,255,255,.16) !important;
+        backdrop-filter: blur(28px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+        box-shadow: 0 24px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.14) !important;
+        transition: transform .45s cubic-bezier(.22,1,.36,1), box-shadow .45s cubic-bezier(.22,1,.36,1), border-color .35s ease !important;
+    }
+    .card:hover, .action-card:hover, .metric-card:hover, .chart-card:hover, .info-card:hover, .jobs-panel:hover,
+    .an-card:hover, .an-kpi:hover,
+    .cvwiz-card:hover, .p17-identity-card:hover, .settings-card:hover {
+        transform: translateY(-2px) !important;
+        border-color: rgba(255,255,255,.24) !important;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .card, .action-card, .metric-card, .chart-card, .info-card, .jobs-panel,
+        .an-card, .an-kpi, .cvwiz-card, .p17-identity-card, .settings-card { transition: none !important; }
+    }
+
     /* Hide Streamlit chrome (Deploy/menu/header) so JobSync controls the top bar. */
     header[data-testid="stHeader"],
     div[data-testid="stToolbar"],
