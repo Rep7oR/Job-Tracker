@@ -7723,6 +7723,16 @@ elif page == "Settings":
         st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
         st.markdown('<div class="settings-card-head"><div class="settings-icon">🤖</div><div class="section-title">AI generation</div></div>', unsafe_allow_html=True)
         st.info("CV and cover-letter generation uses JobSync's built-in local AI (Qwen3 14B) automatically — nothing to connect, no API key, no account. It downloads once (about 9.3 GB) the first time you generate a document.")
+        try:
+            _tags = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=2).json().get("models", [])
+            _installed_names = {str(m.get("name") or "") for m in _tags}
+            _default_model = LOCAL_AI_MODELS[LOCAL_AI_DEFAULT]["model"]
+            if any(_default_model in n for n in _installed_names):
+                st.caption("🟢 Local AI model is installed and ready on this computer.")
+            else:
+                st.caption("⚪ Local AI model has not been downloaded yet — it downloads automatically the first time you generate a document.")
+        except Exception:
+            st.caption("⚪ Local AI engine status unavailable right now (it starts automatically when you generate a document).")
 
         with st.expander("Advanced: connect an online AI instead (optional)"):
             st.caption("Only needed if you want to use an online model instead of the local one. Not required for normal use.")
@@ -7762,7 +7772,10 @@ elif page == "Settings":
         st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
         st.markdown('<div class="settings-card-head"><div class="settings-icon">🔐</div><div class="section-title">Account security</div></div>', unsafe_allow_html=True)
         account_email = str(st.session_state.get("local_user_email") or profile.get("email") or "").strip().lower()
-        st.caption(f"Local account: {account_email or 'Not signed in'}")
+        _account_record = _load_local_accounts().get(account_email, {}) if account_email else {}
+        _joined = str(_account_record.get("created_at") or "")[:10]
+        st.caption(f"Local account: {account_email or 'Not signed in'}" + (f" · Joined {_joined}" if _joined else ""))
+        st.caption(f"Your data is stored locally at: {BASE_DIR / 'data'}")
         with st.form("change_password_form"):
             current_password = st.text_input("Current password", type="password", autocomplete="current-password")
             new_password_settings = st.text_input("New password", type="password", autocomplete="new-password")
@@ -7953,6 +7966,7 @@ elif page == "Settings":
         st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
         st.markdown('<div class="settings-card-head"><div class="settings-icon">⬆</div><div class="section-title">Software updates</div></div>', unsafe_allow_html=True)
         st.caption("Updates are checked when you press the button. If a newer release is available, JobSync downloads the installer, closes the current app, and opens the visible installer. Your local data stays inside the JobSync folder.")
+        st.caption(f"Currently installed: v{APP_VERSION}")
         update_col1, update_col2 = st.columns([1, 2])
         with update_col1:
             if st.button("Check GitHub for updates", key="manual_github_update", type="secondary", width="stretch"):
