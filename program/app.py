@@ -3402,16 +3402,28 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
     map_html=map_html.replace('__PAYLOAD__',payload).replace('__CENTER__',center_json).replace('__ZOOM__',str(zoom))
     return map_html,mapped_jobs,skipped_jobs
 
-def _render_loading_splash(message: str = "Loading…", seconds: float = 3.0) -> None:
+def _render_loading_splash(message: str = "Loading…", seconds: float = 3.0, tips: list[str] | None = None) -> None:
     """Full-screen blurred overlay with the animated JobSync logo.
 
     Used for moments that genuinely take a beat (a new search, rebuilding the
     live map) so the wait reads as an intentional, branded transition instead
     of a frozen page. Blocks for `seconds` — call this right before the slow
-    work, not instead of a spinner during it.
+    work, not instead of a spinner during it. Renders a real elapsed-time
+    progress bar and, when `tips` is given, rotates a short caption through
+    the wait so a longer splash still feels alive rather than frozen.
     """
     slot = st.empty()
-    slot.markdown(f'''<div class="jobsync-loading-overlay">
+    seconds = max(0.0, seconds)
+    step = 0.08
+    steps = max(1, int(round(seconds / step))) if seconds else 1
+    tips = [t for t in (tips or []) if t]
+    for i in range(steps):
+        pct = int(round((i + 1) / steps * 100))
+        tip_html = ""
+        if tips:
+            tip = tips[int((i / steps) * len(tips))]
+            tip_html = f'<div class="jobsync-loading-tip">{html.escape(tip)}</div>'
+        slot.markdown(f'''<div class="jobsync-loading-overlay">
       <div class="jobsync-loading-backdrop"></div>
       <div class="jobsync-loading-card">
         <div class="jobsync-loading-logo" aria-hidden="true">
@@ -3427,22 +3439,27 @@ def _render_loading_splash(message: str = "Loading…", seconds: float = 3.0) ->
           </svg>
         </div>
         <div class="jobsync-loading-text">{html.escape(message)}</div>
+        <div class="jobsync-loading-track"><div class="jobsync-loading-fill" style="width:{pct}%"></div></div>
+        {tip_html}
       </div>
     </div>
     <style>
       .jobsync-loading-overlay{{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;pointer-events:none;}}
       .jobsync-loading-backdrop{{position:absolute;inset:0;background:rgba(2,7,14,.62);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);}}
-      .jobsync-loading-card{{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:16px;padding:34px 42px;border-radius:26px;border:1px solid rgba(111,215,255,.24);background:linear-gradient(150deg,rgba(9,22,39,.92),rgba(10,11,24,.94));box-shadow:0 30px 90px rgba(0,0,0,.5);animation:jobsyncLoadingIn .4s cubic-bezier(.2,.75,.2,1) both;}}
+      .jobsync-loading-card{{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;padding:34px 42px;border-radius:26px;border:1px solid rgba(111,215,255,.24);background:linear-gradient(150deg,rgba(9,22,39,.92),rgba(10,11,24,.94));box-shadow:0 30px 90px rgba(0,0,0,.5);animation:jobsyncLoadingIn .4s cubic-bezier(.2,.75,.2,1) both;min-width:280px;}}
       .jobsync-loading-logo{{width:84px;height:84px;display:grid;place-items:center;border-radius:24px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.26),rgba(86,64,255,.18) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.26);box-shadow:0 0 35px rgba(54,190,255,.16),0 0 90px rgba(119,77,255,.14);animation:bigLogoFloat 1.4s ease-in-out infinite;}}
       .jobsync-loading-logo svg{{width:56px;height:56px;overflow:visible}}
       .jobsync-loading-logo .jobsync-logo-orbit{{fill:none;stroke-width:2.8;stroke-dasharray:95 22;animation:bigOrbit 1.1s linear infinite}}
       .jobsync-loading-logo .jobsync-logo-dot{{fill:#fff;animation:bigDot .7s ease-in-out infinite}}
       .jobsync-loading-logo .jobsync-logo-case{{fill:none;stroke:#cfe9ff;stroke-width:2;animation:bigCase 1s ease-in-out infinite}}
       .jobsync-loading-text{{color:#eef2f7;font-size:.85rem;font-weight:800;letter-spacing:-.01em;}}
+      .jobsync-loading-track{{width:100%;height:5px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;}}
+      .jobsync-loading-fill{{height:100%;border-radius:999px;background:linear-gradient(90deg,#2bb4dd,#6156e8,#b844bd);transition:width .12s linear;box-shadow:0 0 14px rgba(94,89,236,.5);}}
+      .jobsync-loading-tip{{color:#8493aa;font-size:.66rem;text-align:center;max-width:260px;line-height:1.4;animation:jobsyncLoadingIn .3s ease both;}}
       @keyframes jobsyncLoadingIn{{from{{opacity:0;transform:scale(.94)}}to{{opacity:1;transform:none}}}}
       @media (prefers-reduced-motion: reduce){{.jobsync-loading-logo,.jobsync-loading-logo *{{animation:none !important}}}}
     </style>''', unsafe_allow_html=True)
-    time.sleep(max(0.0, seconds))
+        time.sleep(step)
     slot.empty()
 
 
@@ -6263,7 +6280,15 @@ elif page == "New Search":
                 actor_ids = [ACTOR_CATALOG[name]["id"] for name in source_names]
                 if search_mode == "apify" and not actor_ids:
                     raise RuntimeError("Select at least one Apify Actor for the selected search method.")
-                _render_loading_splash("Scanning job sources and building your live map…", seconds=3.0)
+                _render_loading_splash(
+                    "Scanning job sources and building your live map…",
+                    seconds=3.0,
+                    tips=[
+                        "Checking multiple job boards at once…",
+                        "Matching listings to your target roles…",
+                        "Plotting results on the live map…",
+                    ],
+                )
                 os.environ["JOB_TRACKER_DATE_WINDOW_DAYS"] = str(date_options[date_window])
                 results = search_jobs(str(field).strip(), str(location).strip(), str(industry).strip(), experience, language=language, limit=10000, actor_ids=actor_ids, search_mode=search_mode, free_sources=free_source_names, ats_urls=ats_urls)
                 state.setdefault("settings", {})["actor_ids"] = actor_ids
