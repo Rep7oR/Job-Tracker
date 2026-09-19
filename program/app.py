@@ -416,12 +416,16 @@ st.markdown(
        break the interactive parts of any page the way a layout change would. */
     .card, .hero, .action-card, .metric-card, .chart-card, .info-card, .jobs-panel,
     .an-card, .an-hero, .an-kpi,
-    .ux-page-hero,
+    .ux-page-hero, .ux-stat,
     .cvwiz-card, .st-key-cvwiz_step4_panel, .cvwiz-hero, .cvwiz-inline-progress, .cvwiz-modal-status,
-    .p17-identity-card,
-    .jobsync-folder-workspace, .jobsync-folder-pane,
+    .p17-identity-card, .p17-hero, .p17-card, .p17-identity,
+    .jobsync-folder-workspace, .jobsync-folder-pane, .jobsync-folder-item,
     .settings-card,
-    .jobsync-generation-dialog, .jobsync-online-panel {
+    .jobsync-generation-dialog, .jobsync-online-panel,
+    .applied-hero, .applied-stat, .applied-card,
+    .jobsync-search-command,
+    .software-card, .updates-panel,
+    .st-key-login_glass_card, .jobsync-loading-card {
         background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.025)) !important;
         border: 1px solid rgba(255,255,255,.16) !important;
         backdrop-filter: blur(28px) saturate(180%) !important;
@@ -430,14 +434,16 @@ st.markdown(
         transition: transform .45s cubic-bezier(.22,1,.36,1), box-shadow .45s cubic-bezier(.22,1,.36,1), border-color .35s ease !important;
     }
     .card:hover, .action-card:hover, .metric-card:hover, .chart-card:hover, .info-card:hover, .jobs-panel:hover,
-    .an-card:hover, .an-kpi:hover,
-    .cvwiz-card:hover, .p17-identity-card:hover, .settings-card:hover, .jobsync-folder-pane:hover {
+    .an-card:hover, .an-kpi:hover, .ux-stat:hover,
+    .cvwiz-card:hover, .p17-identity-card:hover, .p17-card:hover, .settings-card:hover, .jobsync-folder-pane:hover,
+    .jobsync-folder-item:hover, .applied-card:hover, .applied-stat:hover, .software-card:hover {
         transform: translateY(-2px) !important;
         border-color: rgba(255,255,255,.24) !important;
     }
     @media (prefers-reduced-motion: reduce) {
         .card, .action-card, .metric-card, .chart-card, .info-card, .jobs-panel,
-        .an-card, .an-kpi, .cvwiz-card, .p17-identity-card, .settings-card, .jobsync-folder-pane { transition: none !important; }
+        .an-card, .an-kpi, .ux-stat, .cvwiz-card, .p17-identity-card, .p17-card, .settings-card,
+        .jobsync-folder-pane, .jobsync-folder-item, .applied-card, .applied-stat, .software-card { transition: none !important; }
     }
 
     /* Hide Streamlit chrome (Deploy/menu/header) so JobSync controls the top bar. */
@@ -5745,8 +5751,9 @@ if page == "Login":
         unsafe_allow_html=True,
     )
 
+    st.markdown('<style>.st-key-login_glass_card{padding:1.6rem 1.8rem;border-radius:22px;}</style>', unsafe_allow_html=True)
     login_left, login_card, login_right = st.columns([1, 2.2, 1], gap="large")
-    with login_card:
+    with login_card, st.container(key="login_glass_card"):
         tab_login, tab_signup, tab_forgot = st.tabs(["Sign in", "Create account", "Forgot password"])
 
         with tab_login:
