@@ -5867,6 +5867,17 @@ def _render_home_authenticated_content():
       .st-key-home_content .ag-about,.st-key-home_content .ag-presence{min-height:280px;}
       .st-key-home_content .ag-presence-list{max-height:24vh;overflow-y:auto;}
       @media(prefers-reduced-motion:reduce){.jobsync-launch-greeting{animation:none !important;}}
+      .ag-checklist,.ag-activity{margin-top:12px;}
+      .ag-checklist-icon{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(94,227,255,.14);color:#7fe3ff;font-size:.7rem;font-weight:900;margin-right:2px;}
+      .ag-check-list{margin-top:10px;display:flex;flex-direction:column;gap:7px;}
+      .ag-check-row{display:flex;align-items:center;gap:9px;font-size:.72rem;color:#cdd6e4;}
+      .ag-check-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(148,163,255,.55);flex-shrink:0;}
+      .ag-activity-list{margin-top:10px;display:flex;flex-direction:column;gap:8px;}
+      .ag-activity-row{display:flex;align-items:center;gap:9px;font-size:.72rem;color:#cdd6e4;}
+      .ag-activity-dot{width:6px;height:6px;border-radius:50%;background:#3ce69b;box-shadow:0 0 8px rgba(60,230,155,.6);flex-shrink:0;}
+      .ag-activity-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+      .ag-activity-text b{color:#f0f4fb;}
+      .ag-activity-date{color:#7c879a;font-size:.62rem;flex-shrink:0;}
     </style>''', unsafe_allow_html=True)
 
     with st.container(key="home_shell"):
@@ -5895,6 +5906,61 @@ def _render_home_authenticated_content():
               </aside>
             </div>'''
             st.markdown(markup, unsafe_allow_html=True)
+
+            # Get-started checklist: only shown while the user has real gaps left,
+            # so it naturally disappears once the workspace is actually set up.
+            profile_complete = bool(state.get("settings", {}).get("profile_completed", False))
+            cv_count = len(cv_document_records()) if "cv_document_records" in globals() else 0
+            checklist = [
+                ("Complete your profile", profile_complete, "Profile"),
+                ("Set your target roles", bool(targets), "Profile"),
+                ("Run your first search", bool(jobs), "New Search"),
+                ("Generate a CV or cover letter", cv_count > 0, "CV & Cover Letter"),
+                ("Track your first application", bool(applied), "Applied Jobs"),
+            ]
+            remaining = [c for c in checklist if not c[1]]
+            if remaining:
+                done_n = len(checklist) - len(remaining)
+                rows = "".join(
+                    f'<div class="ag-check-row"><span class="ag-check-dot"></span>{html.escape(label)}</div>'
+                    for label, _done, _dest in remaining[:4]
+                )
+                st.markdown(
+                    f'<section class="ag-glass ag-checklist"><div class="ag-presence-head">'
+                    f'<span class="ag-checklist-icon">✓</span><span class="ag-presence-title">Get set up</span>'
+                    f'<span class="ag-presence-count">{done_n}/{len(checklist)}</span></div>'
+                    f'<div class="ag-presence-sub">A few quick steps to get the most out of JobSync</div>'
+                    f'<div class="ag-check-list">{rows}</div></section>',
+                    unsafe_allow_html=True,
+                )
+                cols = st.columns(len(remaining[:4]))
+                for col, (label, _done, dest) in zip(cols, remaining[:4]):
+                    with col:
+                        if st.button(dest, key=f"home_checklist_{dest}_{label[:8]}", width="stretch"):
+                            go(dest)
+                            st.rerun()
+
+            # Recent activity: the last few tracked applications, so returning
+            # users land on "what did I do last" instead of a static screen.
+            recent = sorted(
+                (r for r in applied if r.get("applied_date")),
+                key=lambda r: str(r.get("applied_date") or ""),
+                reverse=True,
+            )[:4]
+            if recent:
+                activity_rows = "".join(
+                    f'<div class="ag-activity-row"><span class="ag-activity-dot"></span>'
+                    f'<div class="ag-activity-text"><b>{html.escape(str(r.get("title") or "Untitled role"))[:60]}</b>'
+                    f' at {html.escape(str(r.get("company") or "Unknown"))[:40]}</div>'
+                    f'<span class="ag-activity-date">{html.escape(str(r.get("applied_date") or ""))}</span></div>'
+                    for r in recent
+                )
+                st.markdown(
+                    f'<section class="ag-glass ag-activity"><div class="ag-presence-head">'
+                    f'<span class="ag-checklist-icon">↗</span><span class="ag-presence-title">Recent activity</span></div>'
+                    f'<div class="ag-activity-list">{activity_rows}</div></section>',
+                    unsafe_allow_html=True,
+                )
 
 def _render_home_authenticated():
     """Render the authenticated Home overview in a 10-second fragment.
