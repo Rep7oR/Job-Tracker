@@ -8048,6 +8048,7 @@ elif page == "Settings":
         st.markdown('<div class="settings-card-head"><div class="settings-icon">⬆</div><div class="section-title">Software updates</div></div>', unsafe_allow_html=True)
         st.caption("Updates are checked when you press the button. If a newer release is available, JobSync downloads the installer, closes the current app, and opens the visible installer. Your local data stays inside the JobSync folder.")
         st.caption(f"Currently installed: v{APP_VERSION}")
+        st.link_button("View release notes / changelog ↗", "https://github.com/Rep7oR/Job-Tracker/releases", width="stretch")
         update_col1, update_col2 = st.columns([1, 2])
         with update_col1:
             if st.button("Check GitHub for updates", key="manual_github_update", type="secondary", width="stretch"):
