@@ -4807,6 +4807,41 @@ def delete_managed_file(path_value: str | Path) -> bool:
     return False
 
 
+UNDO_DELETE_WINDOW_SECONDS = 8.0
+
+
+def _stage_document_for_deletion(doc: dict) -> None:
+    """Detach a document from the library without touching its files yet.
+
+    Gives the user a short window to undo an accidental delete. The document
+    is only actually removed from disk once the window expires, via
+    `_flush_expired_pending_delete`.
+    """
+    state["documents"] = [d for d in state.get("documents", []) if d is not doc]
+    save_state(state)
+    st.session_state["_pending_delete_doc"] = doc
+    st.session_state["_pending_delete_expires"] = time.time() + UNDO_DELETE_WINDOW_SECONDS
+
+
+def _flush_expired_pending_delete() -> None:
+    """Permanently delete a staged document once its undo window has passed."""
+    doc = st.session_state.get("_pending_delete_doc")
+    if not doc:
+        return
+    if time.time() < float(st.session_state.get("_pending_delete_expires") or 0):
+        return
+    remove_document(doc)
+    if st.session_state.get("_pending_delete_is_cv"):
+        try:
+            create_cv_library_backup("delete")
+        except Exception:
+            pass
+    st.session_state.pop("_pending_delete_doc", None)
+    st.session_state.pop("_pending_delete_expires", None)
+    st.session_state.pop("_pending_delete_is_cv", None)
+    st.session_state.pop("_pending_delete_name", None)
+
+
 def remove_document(doc: dict) -> None:
     """Remove a document record and any managed companion PDF, then clear tracker links."""
     doc_path = doc.get("path", "")
@@ -7335,6 +7370,24 @@ elif page == "CV & Cover Letter":
 elif page == "Folders":
     render_modern_page_header("Folders")
 
+    _flush_expired_pending_delete()
+    if st.session_state.get("_pending_delete_doc"):
+        remaining = max(0, int(st.session_state.get("_pending_delete_expires", 0) - time.time()))
+        undo_col, spacer_col = st.columns([0.7, 0.3])
+        with undo_col:
+            st.warning(f"Deleted \"{st.session_state.get('_pending_delete_name', 'document')}\" · removing permanently in {remaining}s.")
+        with spacer_col:
+            if st.button("↺ Undo", key="folders_undo_delete", type="primary", width="stretch"):
+                restored = st.session_state.pop("_pending_delete_doc", None)
+                st.session_state.pop("_pending_delete_expires", None)
+                st.session_state.pop("_pending_delete_is_cv", None)
+                st.session_state.pop("_pending_delete_name", None)
+                if restored:
+                    state.setdefault("documents", []).append(restored)
+                    save_state(state)
+                    notify_success("Restored.")
+                st.rerun()
+
     if "folders_doc_type" not in st.session_state:
         st.session_state["folders_doc_type"] = "CV"
 
@@ -7585,12 +7638,9 @@ elif page == "Folders":
                                         st.session_state[f"cvfolder_preview_pdf_{doc_type}_{idx}"] = not st.session_state.get(f"cvfolder_preview_pdf_{doc_type}_{idx}", False)
                                         st.rerun()
                                 if st.button("Delete", key=f"folder_delete_menu_v9_{doc_type}_{idx}", width="stretch"):
-                                    remove_document(doc)
-                                    if is_cv:
-                                        try:
-                                            create_cv_library_backup("delete")
-                                        except Exception:
-                                            pass
+                                    _stage_document_for_deletion(doc)
+                                    st.session_state["_pending_delete_is_cv"] = is_cv
+                                    st.session_state["_pending_delete_name"] = name_value
                                     st.rerun()
                             else:
                                 st.caption("File is no longer available.")
