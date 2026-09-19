@@ -103,17 +103,39 @@ clean_remove_ok:
   Delete "$INSTDIR\tools\INSTALLER_SETUP.bat"
 
   ; Restore persistent user data AFTER the old Program Files tree is gone.
-  ; These folders are never shipped in staging, so the installer cannot replace
-  ; or erase the user's accounts, state, uploads, generated CV/PDF files,
-  ; settings, templates, configuration, or local AI model cache.
+  ; These folders are never shipped in staging, so $INSTDIR\<name> should not
+  ; already exist here — but NSIS's Rename silently does nothing if the
+  ; destination DOES already exist, which would leave the user's real backed
+  ; -up data stranded in $R0 while the app runs against an empty/fresh folder
+  ; (accounts.json included) with no visible error. Clear each destination
+  ; first, defensively, so restore can never be silently skipped this way.
   SetOutPath "$INSTDIR"
+  RMDir /r "$INSTDIR\data"
   Rename "$R0\data" "$INSTDIR\data"
+  RMDir /r "$INSTDIR\uploads"
   Rename "$R0\uploads" "$INSTDIR\uploads"
+  RMDir /r "$INSTDIR\output"
   Rename "$R0\output" "$INSTDIR\output"
+  RMDir /r "$INSTDIR\config"
   Rename "$R0\config" "$INSTDIR\config"
+  RMDir /r "$INSTDIR\user_blueprints"
   Rename "$R0\user_blueprints" "$INSTDIR\user_blueprints"
+  RMDir /r "$INSTDIR\ai"
   Rename "$R0\ai" "$INSTDIR\ai"
+  Delete "$INSTDIR\.env"
   Rename "$R0\.env" "$INSTDIR\.env"
+
+  ; Verify the account database specifically survived the restore — it is the
+  ; single most important file for this ("users can't log in after an
+  ; update") failure mode. If the backup had it but $INSTDIR doesn't now,
+  ; something went wrong with the restore above; warn instead of continuing
+  ; silently so the user knows to recover it from $R0 before it's cleaned up.
+  IfFileExists "$R0\data\accounts.json" 0 skip_account_check
+    IfFileExists "$INSTDIR\data\accounts.json" skip_account_check 0
+      MessageBox MB_OK|MB_ICONEXCLAMATION "JobSync could not restore your existing accounts after this update. A backup copy was saved at:$\r$\n$\r$\n$R0\data\accounts.json$\r$\n$\r$\nCopy that file into $INSTDIR\data\ before deleting it, then restart JobSync."
+      Return
+  skip_account_check:
+
   ; A leftover backup from a previous interrupted update may contain only some
   ; of these trees; missing Rename operations are harmless.
   RMDir /r "$R0"
