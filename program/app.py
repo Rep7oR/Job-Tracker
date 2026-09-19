@@ -3198,6 +3198,91 @@ def go(page: str):
     st.rerun()
 
 
+SETTINGS_SEARCH_INDEX = {
+    "AI generation": "ai gemini groq openai claude anthropic model api key local ollama qwen",
+    "Account": "password recovery code email change",
+    "Job sources": "apify free sources ats career urls weekly goal search mode",
+    "LinkedIn": "linkedin profile url",
+    "Monitoring": "notifications monitor interval live",
+    "Gmail OAuth": "gmail oauth google client id secret",
+    "Updates": "version changelog update github release",
+    "Danger zone": "reset delete account master",
+}
+
+
+@st.dialog("Search JobSync")
+def _global_search_dialog():
+    query = st.text_input(
+        "Search",
+        key="global_search_query",
+        placeholder='Search jobs, documents, applications, pages, settings…',
+        label_visibility="collapsed",
+    )
+    q = query.strip().lower()
+    if not q:
+        st.caption("Start typing to search across your entire workspace.")
+        return
+
+    found_any = False
+
+    page_matches = [p for p in PAGES if q in p.lower()]
+    if page_matches:
+        found_any = True
+        st.markdown("**Pages**")
+        for p in page_matches[:5]:
+            if st.button(f"→ {p}", key=f"gsearch_page_{p}", width="stretch"):
+                go(p)
+
+    job_matches = [
+        j for j in (state.get("jobs") or [])
+        if q in str(j.get("title") or "").lower() or q in str(j.get("company") or "").lower()
+    ][:5]
+    if job_matches:
+        found_any = True
+        st.markdown("**Jobs**")
+        for i, j in enumerate(job_matches):
+            label = f"{str(j.get('title') or 'Untitled')[:40]} · {str(j.get('company') or 'Unknown')[:24]}"
+            if st.button(f"⌕ {label}", key=f"gsearch_job_{i}", width="stretch"):
+                go("New Search")
+
+    applied_matches = [
+        a for a in (state.get("applied") or [])
+        if q in str(a.get("title") or "").lower() or q in str(a.get("company") or "").lower()
+    ][:5]
+    if applied_matches:
+        found_any = True
+        st.markdown("**Applications**")
+        for i, a in enumerate(applied_matches):
+            label = f"{str(a.get('title') or 'Untitled')[:40]} · {str(a.get('status') or 'Applied')}"
+            if st.button(f"✓ {label}", key=f"gsearch_applied_{i}", width="stretch"):
+                go("Applied Jobs")
+
+    doc_matches = [
+        d for d in (state.get("documents") or [])
+        if q in str(d.get("display_name") or "").lower() or q in str(d.get("job_title") or "").lower()
+    ][:5]
+    if doc_matches:
+        found_any = True
+        st.markdown("**Documents**")
+        for i, d in enumerate(doc_matches):
+            is_cv_doc = "cv" in str(d.get("kind") or "")
+            label = f"{'CV' if is_cv_doc else 'CL'} · {str(d.get('display_name') or 'Document')[:44]}"
+            if st.button(f"▣ {label}", key=f"gsearch_doc_{i}", width="stretch"):
+                st.session_state["folders_doc_type"] = "CV" if is_cv_doc else "Letter"
+                go("Folders")
+
+    settings_matches = [k for k, v in SETTINGS_SEARCH_INDEX.items() if q in k.lower() or q in v]
+    if settings_matches:
+        found_any = True
+        st.markdown("**Settings**")
+        for k in settings_matches[:5]:
+            if st.button(f"⚙ Settings → {k}", key=f"gsearch_settings_{k}", width="stretch"):
+                go("Settings")
+
+    if not found_any:
+        st.caption("No matches. Try a different keyword.")
+
+
 # ── Live job map helpers (v1.6.0) ─────────────────────────────────────────────
 @st.cache_data(ttl=7 * 24 * 60 * 60, show_spinner=False)
 def _geocode_job_location(location: str) -> tuple[float, float] | None:
@@ -5468,6 +5553,9 @@ with st.sidebar:
     # Render the signed-in navigation as spaced category groups. Login/onboarding
     # states keep their existing compact navigation.
     if is_authed:
+        if st.button("⌕   Search", key="nav_global_search", width="stretch"):
+            _global_search_dialog()
+        st.markdown('<div class="nav-category-gap"></div>', unsafe_allow_html=True)
         for group_index, (group_label, group_items) in enumerate(navigation_groups):
             if group_index:
                 st.markdown('<div class="nav-category-gap"></div>', unsafe_allow_html=True)
