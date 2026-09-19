@@ -385,22 +385,22 @@ st.markdown(
     """
     <style>
     :root {
-        --jf-bg:#050505;
-        --jf-surface:#0d0f12;
-        --jf-card:#111418;
-        --jf-card-2:#15181d;
-        --jf-text:#f5f7fa;
-        --jf-muted:#a7afb9;
-        --jf-border:#252a31;
-        --jf-red:#ef4444;
-        --jf-red-hover:#dc2626;
-        --jf-green:#22c55e;
-        --jf-green-hover:#16a34a;
-        --jf-yellow:#f59e0b;
+        --jf-bg:#12100c;
+        --jf-surface:#18150f;
+        --jf-card:#1c1913;
+        --jf-card-2:#211d16;
+        --jf-text:#f6f3ec;
+        --jf-muted:#a89d8a;
+        --jf-border:#2c2820;
+        --jf-red:#e0574f;
+        --jf-red-hover:#c8453e;
+        --jf-green:#6fbf8b;
+        --jf-green-hover:#5aab77;
+        --jf-yellow:#d98c3f;
     }
 
     html, body, [data-testid="stAppViewContainer"], .stApp {
-        background:#050505 !important;
+        background:#12100c !important;
         color:var(--jf-text) !important;
     }
     .stApp { background:var(--jf-bg) !important; }
@@ -1905,26 +1905,29 @@ st.markdown(
 st.markdown(r"""
 <style>
   :root {
-    --v60-bg:#070b18;
-    --v60-surface:#0d1326;
-    --v60-surface-2:#111832;
-    --v60-surface-3:#151b3a;
-    --v60-border:rgba(150,164,255,.14);
-    --v60-text:#f5f7ff;
-    --v60-muted:#8e99b3;
-    --v60-cyan:#38d8ff;
-    --v60-violet:#7c5cff;
-    --v60-pink:#ec4fd1;
-    --v60-coral:#ff6470;
-    --v60-green:#50e39a;
+    /* v1.8.0 warm-glass palette: charcoal/olive surfaces with an amber
+       primary accent and a soft green for success/positive states, in
+       place of the earlier navy/cyan/violet/pink neon system. */
+    --v60-bg:#15130f;
+    --v60-surface:#1c1a15;
+    --v60-surface-2:#211e18;
+    --v60-surface-3:#28241c;
+    --v60-border:rgba(214,180,130,.14);
+    --v60-text:#f6f3ec;
+    --v60-muted:#a89d8a;
+    --v60-cyan:#e0a458;
+    --v60-violet:#d98c3f;
+    --v60-pink:#c97b3a;
+    --v60-coral:#e8b06a;
+    --v60-green:#6fbf8b;
   }
 
   html, body, [data-testid="stAppViewContainer"], .stApp,
   [data-testid="stAppViewContainer"] > .main {
     background:
-      radial-gradient(circle at 78% 7%, rgba(124,92,255,.12), transparent 27%),
-      radial-gradient(circle at 16% 86%, rgba(56,216,255,.08), transparent 28%),
-      linear-gradient(145deg,#060a15 0%,#080d1b 48%,#0a0b1d 100%) !important;
+      radial-gradient(circle at 78% 7%, rgba(216,150,63,.10), transparent 27%),
+      radial-gradient(circle at 16% 86%, rgba(111,191,139,.07), transparent 28%),
+      linear-gradient(145deg,#12100c 0%,#171410 48%,#141210 100%) !important;
   }
 
   .block-container {
@@ -2339,6 +2342,69 @@ _js_engine = r"""
 </script>
 """
 components.html(_js_engine, height=0)
+
+# ===== v1.8.0 WARM-GLASS PALETTE OVERRIDE =====
+# Recolors the app's core accent language (primary buttons, kickers/badges,
+# active nav state, live/status pills, focus glow, hero outline) from the
+# earlier cyan/violet/pink neon system to a warm charcoal + amber/green
+# palette matching the reference design, without hand-editing every one of
+# the hundreds of individual chart/gradient hex values scattered across
+# per-page KPI, gauge and bar-chart markup (those keep their current colors
+# on purpose — they encode distinct data categories, not brand accent).
+st.markdown(r"""
+<style>
+  :root {
+    --wg-amber:#d98c3f; --wg-amber-2:#e0a458; --wg-amber-3:#c97b3a;
+    --wg-green:#6fbf8b; --wg-green-2:#5aab77;
+    --wg-text:#f6f3ec;
+  }
+  .stButton > button[kind="primary"], .stFormSubmitButton > button[kind="primary"],
+  .stDownloadButton > button[kind="primary"], .stLinkButton > a[kind="primary"],
+  section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, var(--wg-amber-2), var(--wg-amber) 58%, var(--wg-amber-3)) !important;
+    border-color: rgba(224,164,88,.55) !important;
+    color: #1a140c !important;
+    box-shadow: 0 10px 28px rgba(180,120,50,.22), inset 0 1px 0 rgba(255,255,255,.18) !important;
+  }
+  .stButton > button[kind="primary"] p, .stFormSubmitButton > button[kind="primary"] p,
+  .stDownloadButton > button[kind="primary"] p, .stLinkButton > a[kind="primary"] p {
+    color: #1a140c !important; font-weight: 900 !important;
+  }
+  section[data-testid="stSidebar"] .stButton > button[kind="primary"] p { color: #1a140c !important; }
+  section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+    box-shadow: inset 3px 0 0 var(--wg-amber-2), inset 0 1px 0 rgba(255,255,255,.10) !important;
+    animation: none !important;
+  }
+
+  /* Kickers / small uppercase labels used as section eyebrows app-wide */
+  [class*="-kicker"] { color: var(--wg-amber-2) !important; }
+
+  /* Live/status pill dots and "LIVE"/"NOW"/"WORKSPACE LIVE" badges */
+  .an-live, .ux-live-pill, .jobsync-folder-live { color: var(--wg-green) !important; border-color: rgba(111,191,139,.24) !important; background: rgba(111,191,139,.07) !important; }
+  .an-live i, .ux-live-pill span, .jobsync-folder-live::before { background: var(--wg-green) !important; box-shadow: 0 0 10px rgba(111,191,139,.75) !important; }
+  .an-tag { color: var(--wg-amber-2) !important; border-color: rgba(224,164,88,.20) !important; background: rgba(224,164,88,.06) !important; }
+
+  /* Focus glow + rotating hero outline (added by the animation layer above) */
+  input:focus, textarea:focus, select:focus,
+  div[data-baseweb="select"]:focus-within,
+  div[data-testid="stTextInput"]:focus-within,
+  div[data-testid="stTextArea"]:focus-within,
+  div[data-testid="stDateInput"]:focus-within,
+  div[data-testid="stNumberInput"]:focus-within {
+    box-shadow: 0 0 0 3px rgba(224,164,88,.20) !important;
+  }
+  :is(.hero,.cvwiz-hero,.p17-hero,.an-hero,.ux-page-hero,.jobsync-search-command)::before {
+    background: linear-gradient(120deg, rgba(224,164,88,.5), rgba(111,191,139,.35), rgba(201,123,58,.4), rgba(224,164,88,.5)) !important;
+  }
+
+  /* Presence live-dot + generic accent dots that were cyan/green mixes */
+  .ag-live-dot { background: var(--wg-green) !important; box-shadow: 0 0 10px rgba(111,191,139,.8) !important; }
+
+  /* Progress/generation bar fill: keep the sweep shimmer, warm the base gradient */
+  .jobsync-generation-track div, .p17-track > div { background: linear-gradient(90deg,#c97b3a,#d98c3f,#e0a458) !important; }
+  .an-fill { background: linear-gradient(90deg,#c97b3a,#d98c3f,#6fbf8b) !important; }
+</style>
+""", unsafe_allow_html=True)
 
 st.session_state.sidebar_collapsed = False
 if "cv_studio_cycle" not in st.session_state:
