@@ -7479,9 +7479,47 @@ elif page == "Folders":
             unsafe_allow_html=True,
         )
 
+        # Search + sort controls above the scrollable library, so a growing
+        # collection stays navigable instead of just a long static list.
+        search_col, sort_col = st.columns([0.62, 0.38], gap="small")
+        with search_col:
+            folder_search = st.text_input(
+                "Search",
+                key=f"folders_search_{doc_type}",
+                placeholder="Search by name or role…",
+                label_visibility="collapsed",
+            )
+        with sort_col:
+            folder_sort = st.selectbox(
+                "Sort",
+                ["Newest first", "Oldest first", "Name A–Z"],
+                key=f"folders_sort_{doc_type}",
+                label_visibility="collapsed",
+            )
+        had_any_docs = bool(current_docs)
+        if folder_search.strip():
+            needle = folder_search.strip().lower()
+            current_docs = [
+                d for d in current_docs
+                if needle in str(d.get("display_name") or "").lower()
+                or needle in str(d.get("job_title") or "").lower()
+            ]
+        if folder_sort == "Oldest first":
+            current_docs = sorted(current_docs, key=lambda d: str(d.get("created_at") or ""))
+        elif folder_sort == "Name A–Z":
+            current_docs = sorted(current_docs, key=lambda d: str(d.get("display_name") or "").lower())
+
         # Only this container scrolls. The rest of the page remains fixed.
         with st.container(height=640, border=True):
-            if not current_docs:
+            if not current_docs and had_any_docs:
+                st.markdown(
+                    f'<div class="jobsync-folder-empty jobsync-folder-empty-large">'
+                    f'<div class="jobsync-folder-empty-icon">?</div>'
+                    f'<div><b>No documents match your search</b><span>Try a different name or role, or clear the search box.</span></div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            elif not current_docs:
                 st.markdown(
                     f'<div class="jobsync-folder-empty jobsync-folder-empty-large">'
                     f'<div class="jobsync-folder-empty-icon">{icon_label}</div>'
@@ -7520,6 +7558,14 @@ elif page == "Folders":
                     # Compact per-file action menu immediately beside the filename.
                     with action_col:
                         with st.popover("⋯", use_container_width=False):
+                            rename_key = f"folder_rename_input_v9_{doc_type}_{idx}"
+                            new_name = st.text_input("Rename", value=name_value, key=rename_key, label_visibility="collapsed")
+                            if new_name.strip() and new_name.strip() != name_value:
+                                if st.button("✎ Save name", key=f"folder_rename_save_v9_{doc_type}_{idx}", width="stretch"):
+                                    doc["display_name"] = new_name.strip()[:120]
+                                    save_state(state)
+                                    notify_success("Renamed.")
+                                    st.rerun()
                             if file_path.exists():
                                 st.download_button(
                                     "↓ Download",
