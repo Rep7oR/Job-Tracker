@@ -2411,6 +2411,31 @@ st.markdown(r"""
   /* Progress/generation bar fill: keep the sweep shimmer, warm the base gradient */
   .jobsync-generation-track div, .p17-track > div { background: linear-gradient(90deg,#c97b3a,#d98c3f,#e0a458) !important; }
   .an-fill { background: linear-gradient(90deg,#c97b3a,#d98c3f,#6fbf8b) !important; }
+
+  /* ===== v2.0 LOGO: liquid-glass orbital mark ===== */
+  @keyframes jsyncOrbitSpin { to { transform: rotate(360deg); } }
+  @keyframes jsyncOrbitSpinRev { to { transform: rotate(-360deg); } }
+  @keyframes jsyncCoreBreathe {
+    0%,100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(224,164,88,.45)); }
+    50% { transform: scale(1.07); filter: drop-shadow(0 0 16px rgba(111,191,139,.5)); }
+  }
+  .jsync-orbit-outer { transform-origin: 32px 32px; animation: jsyncOrbitSpin 7s linear infinite; }
+  .jsync-orbit-inner { transform-origin: 32px 32px; animation: jsyncOrbitSpinRev 4.6s linear infinite; }
+  .jsync-core { transform-origin: 32px 32px; animation: jsyncCoreBreathe 3.2s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .jsync-orbit-outer, .jsync-orbit-inner, .jsync-core { animation: none !important; }
+  }
+
+  /* ===== v2.0 PAGE TRANSITION: liquid morph-in on every navigation ===== */
+  @keyframes jsyncPageMorph {
+    0% { opacity: 0; filter: blur(10px) saturate(60%); transform: scale(.985) translateY(6px); }
+    60% { opacity: 1; filter: blur(1px) saturate(120%); }
+    100% { opacity: 1; filter: blur(0) saturate(100%); transform: scale(1) translateY(0); }
+  }
+  .main .block-container { animation: jsyncPageMorph .5s cubic-bezier(.2,.85,.25,1) both; }
+  @media (prefers-reduced-motion: reduce) {
+    .main .block-container { animation: none !important; }
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -3290,6 +3315,36 @@ def go(page: str):
     st.rerun()
 
 
+def _jsync_logo_svg(uid: str) -> str:
+    """The JobSync mark: a liquid-glass core with two counter-rotating orbit
+    rings, each carrying a single light particle. `uid` must be unique per
+    render (it namespaces the SVG gradient ids) so multiple copies of the
+    logo on one page — sidebar + hero, for instance — never collide.
+    """
+    return f'''<svg viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <radialGradient id="{uid}Core" cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stop-color="#fff6e8"/>
+          <stop offset="42%" stop-color="#e6ab63"/>
+          <stop offset="100%" stop-color="#6fbf8b"/>
+        </radialGradient>
+        <linearGradient id="{uid}Ring" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#f0c383"/>
+          <stop offset="100%" stop-color="#7fd1a0"/>
+        </linearGradient>
+      </defs>
+      <g class="jsync-orbit-outer">
+        <ellipse cx="32" cy="32" rx="29" ry="12" fill="none" stroke="url(#{uid}Ring)" stroke-width="1.4" opacity=".5"/>
+        <circle cx="61" cy="32" r="2.3" fill="#fff"/>
+      </g>
+      <g class="jsync-orbit-inner">
+        <circle cx="32" cy="32" r="14" fill="none" stroke="url(#{uid}Ring)" stroke-width="1" opacity=".38"/>
+        <circle cx="46" cy="32" r="1.7" fill="#fff"/>
+      </g>
+      <circle class="jsync-core" cx="32" cy="32" r="11.5" fill="url(#{uid}Core)"/>
+    </svg>'''
+
+
 SETTINGS_SEARCH_INDEX = {
     "AI generation": "ai gemini groq openai claude anthropic model api key local ollama qwen",
     "Account": "password recovery code email change",
@@ -3594,6 +3649,7 @@ def _render_loading_splash(message: str = "Loading…", seconds: float = 3.0, ti
     step = 0.08
     steps = max(1, int(round(seconds / step))) if seconds else 1
     tips = [t for t in (tips or []) if t]
+    logo_svg = _jsync_logo_svg("jsyncSplash")
     for i in range(steps):
         pct = int(round((i + 1) / steps * 100))
         tip_html = ""
@@ -3601,40 +3657,33 @@ def _render_loading_splash(message: str = "Loading…", seconds: float = 3.0, ti
             tip = tips[int((i / steps) * len(tips))]
             tip_html = f'<div class="jobsync-loading-tip">{html.escape(tip)}</div>'
         slot.markdown(f'''<div class="jobsync-loading-overlay">
-      <div class="jobsync-loading-backdrop"></div>
+      <div class="jobsync-loading-backdrop">
+        <div class="jsync-blob jsync-blob-a"></div>
+        <div class="jsync-blob jsync-blob-b"></div>
+      </div>
       <div class="jobsync-loading-card">
-        <div class="jobsync-loading-logo" aria-hidden="true">
-          <svg viewBox="0 0 48 48">
-            <defs>
-              <linearGradient id="jsyncLoadingJ" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ff1ff"/><stop offset=".48" stop-color="#3fb8ff"/><stop offset="1" stop-color="#8b62ff"/></linearGradient>
-              <linearGradient id="jsyncLoadingOrbit" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#35e1ff"/><stop offset=".48" stop-color="#765cff"/><stop offset="1" stop-color="#f05bd9"/></linearGradient>
-            </defs>
-            <path class="jobsync-logo-j" style="fill:url(#jsyncLoadingJ)" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/>
-            <ellipse class="jobsync-logo-orbit" style="stroke:url(#jsyncLoadingOrbit)" cx="24" cy="24" rx="18" ry="10" transform="rotate(-19 24 24)"/>
-            <circle class="jobsync-logo-dot" cx="37" cy="15" r="2.2"/>
-            <path class="jobsync-logo-case" d="M29 22h12v9H29z M32 22v-2.3c0-.9.7-1.7 1.7-1.7h2.6c.9 0 1.7.8 1.7 1.7V22"/>
-          </svg>
-        </div>
+        <div class="jobsync-loading-logo" aria-hidden="true">{logo_svg}</div>
         <div class="jobsync-loading-text">{html.escape(message)}</div>
         <div class="jobsync-loading-track"><div class="jobsync-loading-fill" style="width:{pct}%"></div></div>
         {tip_html}
       </div>
     </div>
     <style>
-      .jobsync-loading-overlay{{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;pointer-events:none;}}
-      .jobsync-loading-backdrop{{position:absolute;inset:0;background:rgba(2,7,14,.62);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);}}
-      .jobsync-loading-card{{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;padding:34px 42px;border-radius:26px;border:1px solid rgba(111,215,255,.24);background:linear-gradient(150deg,rgba(9,22,39,.92),rgba(10,11,24,.94));box-shadow:0 30px 90px rgba(0,0,0,.5);animation:jobsyncLoadingIn .4s cubic-bezier(.2,.75,.2,1) both;min-width:280px;}}
-      .jobsync-loading-logo{{width:84px;height:84px;display:grid;place-items:center;border-radius:24px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.26),rgba(86,64,255,.18) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.26);box-shadow:0 0 35px rgba(54,190,255,.16),0 0 90px rgba(119,77,255,.14);animation:bigLogoFloat 1.4s ease-in-out infinite;}}
-      .jobsync-loading-logo svg{{width:56px;height:56px;overflow:visible}}
-      .jobsync-loading-logo .jobsync-logo-orbit{{fill:none;stroke-width:2.8;stroke-dasharray:95 22;animation:bigOrbit 1.1s linear infinite}}
-      .jobsync-loading-logo .jobsync-logo-dot{{fill:#fff;animation:bigDot .7s ease-in-out infinite}}
-      .jobsync-loading-logo .jobsync-logo-case{{fill:none;stroke:#cfe9ff;stroke-width:2;animation:bigCase 1s ease-in-out infinite}}
-      .jobsync-loading-text{{color:#eef2f7;font-size:.85rem;font-weight:800;letter-spacing:-.01em;}}
+      .jobsync-loading-overlay{{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;}}
+      .jobsync-loading-backdrop{{position:absolute;inset:0;background:rgba(10,8,5,.6);backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);overflow:hidden;}}
+      .jsync-blob{{position:absolute;border-radius:50%;filter:blur(60px);opacity:.35;animation:jsyncBlobDrift 9s ease-in-out infinite;}}
+      .jsync-blob-a{{width:340px;height:340px;left:8%;top:12%;background:radial-gradient(circle,#e0a458,transparent 70%);}}
+      .jsync-blob-b{{width:300px;height:300px;right:10%;bottom:10%;background:radial-gradient(circle,#6fbf8b,transparent 70%);animation-delay:2.4s;animation-duration:11s;}}
+      @keyframes jsyncBlobDrift{{0%,100%{{transform:translate(0,0) scale(1);}}50%{{transform:translate(30px,-24px) scale(1.12);}}}}
+      .jobsync-loading-card{{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;padding:34px 42px;border-radius:26px;border:1px solid rgba(224,164,88,.22);background:linear-gradient(150deg,rgba(24,20,15,.85),rgba(15,13,10,.9));box-shadow:0 30px 90px rgba(0,0,0,.5);animation:jobsyncLoadingIn .4s cubic-bezier(.2,.75,.2,1) both;min-width:280px;}}
+      .jobsync-loading-logo{{width:84px;height:84px;display:grid;place-items:center;}}
+      .jobsync-loading-logo svg{{width:76px;height:76px;overflow:visible}}
+      .jobsync-loading-text{{color:#f6f1e8;font-size:.85rem;font-weight:800;letter-spacing:-.01em;}}
       .jobsync-loading-track{{width:100%;height:5px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;}}
-      .jobsync-loading-fill{{height:100%;border-radius:999px;background:linear-gradient(90deg,#2bb4dd,#6156e8,#b844bd);transition:width .12s linear;box-shadow:0 0 14px rgba(94,89,236,.5);}}
-      .jobsync-loading-tip{{color:#8493aa;font-size:.66rem;text-align:center;max-width:260px;line-height:1.4;animation:jobsyncLoadingIn .3s ease both;}}
+      .jobsync-loading-fill{{height:100%;border-radius:999px;background:linear-gradient(90deg,#c97b3a,#e0a458,#7fd1a0);transition:width .12s linear;box-shadow:0 0 14px rgba(224,164,88,.5);}}
+      .jobsync-loading-tip{{color:#a89d8a;font-size:.66rem;text-align:center;max-width:260px;line-height:1.4;animation:jobsyncLoadingIn .3s ease both;}}
       @keyframes jobsyncLoadingIn{{from{{opacity:0;transform:scale(.94)}}to{{opacity:1;transform:none}}}}
-      @media (prefers-reduced-motion: reduce){{.jobsync-loading-logo,.jobsync-loading-logo *{{animation:none !important}}}}
+      @media (prefers-reduced-motion: reduce){{.jsync-blob{{animation:none !important}}}}
     </style>''', unsafe_allow_html=True)
         time.sleep(step)
     slot.empty()
@@ -5840,14 +5889,10 @@ if page == "Login":
     # Modern, focused authentication screen. The underlying local account
     # behavior and forms remain unchanged.
     st.markdown(
-        """
+        f"""
         <div class="jobsync-login-shell">
           <div class="jobsync-login-brand">
-            <div class="jobsync-login-logo jobsync-logo-mark">
-              <svg viewBox="0 0 48 48" aria-hidden="true">
-              <defs><linearGradient id="jobsyncJGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7deaff"/><stop offset=".55" stop-color="#35a9ff"/><stop offset="1" stop-color="#7c5cff"/></linearGradient><linearGradient id="jobsyncOrbitGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#35d8ff"/><stop offset=".55" stop-color="#7c5cff"/><stop offset="1" stop-color="#ec4fd1"/></linearGradient></defs>
-              <path class="jobsync-logo-j" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/><ellipse class="jobsync-logo-orbit" cx="24" cy="24" rx="18" ry="10" transform="rotate(-19 24 24)"/><circle class="jobsync-logo-dot" cx="37" cy="15" r="2.2"/><path class="jobsync-logo-case" d="M29 22h12v9H29z M32 22v-2.3c0-.9.7-1.7 1.7-1.7h2.6c.9 0 1.7.8 1.7 1.7V22"/>
-              </svg></div>
+            <div class="jobsync-login-logo jobsync-logo-mark">{_jsync_logo_svg("jsyncLogin")}</div>
             <div>
               <div class="jobsync-login-name jobsync-logo-wordmark">Job<span class="sync">Sync</span></div>
               <div class="jobsync-login-tagline">Your local job-search workspace</div>
@@ -6113,10 +6158,7 @@ def _render_home_authenticated_content():
 
     with st.container(key="home_shell"):
         st.markdown(f'''<div class="jobsync-launch-hero">
-          <div class="jobsync-launch-logo" aria-hidden="true">
-            <svg viewBox="0 0 48 48"><defs><linearGradient id="jsyncLaunchJ" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ff1ff"/><stop offset=".48" stop-color="#3fb8ff"/><stop offset="1" stop-color="#8b62ff"/></linearGradient></defs>
-            <path style="fill:url(#jsyncLaunchJ)" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/></svg>
-          </div>
+          <div class="jobsync-launch-logo" aria-hidden="true">{_jsync_logo_svg("jsyncLaunch")}</div>
           <div class="jobsync-launch-greeting">{html.escape(greeting)}, {html.escape(display_name)}.</div>
           <div class="jobsync-launch-sub">{search_hint} · {location_hint}</div>
         </div>''', unsafe_allow_html=True)
@@ -6364,21 +6406,10 @@ if page == "Home":
     # existing responsive workspace donut and Online Now overview.
     if not st.session_state.get("_authed"):
         st.markdown(
-            """
+            f"""
             <div class="jobsync-public-landing">
               <div class="jobsync-public-card">
-                <div class="jobsync-big-logo" aria-label="Animated JobSync logo">
-                  <svg viewBox="0 0 48 48" aria-hidden="true">
-                    <defs>
-                      <linearGradient id="jobsyncBigJGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ff1ff"/><stop offset=".48" stop-color="#3fb8ff"/><stop offset="1" stop-color="#8b62ff"/></linearGradient>
-                      <linearGradient id="jobsyncBigOrbitGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#35e1ff"/><stop offset=".48" stop-color="#765cff"/><stop offset="1" stop-color="#f05bd9"/></linearGradient>
-                    </defs>
-                    <path class="jobsync-logo-j" style="fill:url(#jobsyncBigJGradient)" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/>
-                    <ellipse class="jobsync-logo-orbit" style="stroke:url(#jobsyncBigOrbitGradient)" cx="24" cy="24" rx="18" ry="10" transform="rotate(-19 24 24)"/>
-                    <circle class="jobsync-logo-dot" cx="37" cy="15" r="2.2"/>
-                    <path class="jobsync-logo-case" d="M29 22h12v9H29z M32 22v-2.3c0-.9.7-1.7 1.7-1.7h2.6c.9 0 1.7.8 1.7 1.7V22"/>
-                  </svg>
-                </div>
+                <div class="jobsync-big-logo" aria-label="Animated JobSync logo">{_jsync_logo_svg("jsyncPublic")}</div>
                 <div class="jobsync-public-kicker">JOBSYNC · LOCAL WORKSPACE</div>
                 <div class="jobsync-public-title">Your job search.<br>One intelligent workspace.</div>
                 <div class="jobsync-public-copy">Discover opportunities, track applications, build tailored CVs and keep everything organized in one private desktop workspace.</div>

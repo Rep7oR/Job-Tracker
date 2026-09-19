@@ -93,11 +93,55 @@ def wait_for_app(port: int, timeout: float = 90.0) -> bool:
 SPLASH_HTML = """<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071126;color:#eef3ff;font-family:Segoe UI,Arial,sans-serif}
-body{display:flex;align-items:center;justify-content:center}
-.wrap{text-align:center;width:420px}.mark{width:92px;height:92px;margin:0 auto 22px;border-radius:26px;background:linear-gradient(135deg,#18d8ff,#5968ff 55%,#b24cff);box-shadow:0 0 45px rgba(75,120,255,.42);display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:800;animation:pulse 1.6s ease-in-out infinite}
-h1{margin:0;font-size:30px;letter-spacing:.4px}.sub{margin-top:9px;color:#91a1c3;font-size:14px}.bar{height:6px;background:#152340;border-radius:10px;margin-top:30px;overflow:hidden}.fill{height:100%;width:0;background:linear-gradient(90deg,#18d8ff,#8b5cf6);animation:load 5s linear forwards}.status{margin-top:14px;color:#aab8d4;font-size:13px}@keyframes load{to{width:100%}}@keyframes pulse{50%{transform:scale(1.05);box-shadow:0 0 65px rgba(75,120,255,.58)}}
-</style></head><body><div class="wrap"><div class="mark">J</div><h1>JobSync</h1><div class="sub">Your next opportunity, in sync.</div><div class="bar"><div class="fill"></div></div><div class="status">Preparing your workspace…</div></div></body></html>"""
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#12100c;color:#f6f1e8;font-family:Segoe UI,Arial,sans-serif}
+body{display:flex;align-items:center;justify-content:center;position:relative}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.32;animation:drift 9s ease-in-out infinite}
+.blob-a{width:380px;height:380px;left:6%;top:10%;background:radial-gradient(circle,#e0a458,transparent 70%)}
+.blob-b{width:340px;height:340px;right:8%;bottom:8%;background:radial-gradient(circle,#6fbf8b,transparent 70%);animation-delay:2.4s;animation-duration:11s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(28px,-22px) scale(1.1)}}
+.wrap{position:relative;z-index:1;text-align:center;width:420px}
+.mark{width:104px;height:104px;margin:0 auto 20px}
+.mark svg{width:104px;height:104px;overflow:visible}
+.orbit-outer{transform-origin:32px 32px;animation:spin 7s linear infinite}
+.orbit-inner{transform-origin:32px 32px;animation:spinrev 4.6s linear infinite}
+.core{transform-origin:32px 32px;animation:breathe 3.2s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinrev{to{transform:rotate(-360deg)}}
+@keyframes breathe{0%,100%{transform:scale(1);filter:drop-shadow(0 0 8px rgba(224,164,88,.45))}50%{transform:scale(1.07);filter:drop-shadow(0 0 16px rgba(111,191,139,.5))}}
+h1{margin:0;font-size:30px;letter-spacing:.4px;font-weight:800}
+.sub{margin-top:9px;color:#a89d8a;font-size:14px}
+.bar{height:6px;background:rgba(255,255,255,.08);border-radius:10px;margin-top:30px;overflow:hidden}
+.fill{height:100%;width:0;background:linear-gradient(90deg,#c97b3a,#e0a458,#7fd1a0);animation:load 5s linear forwards;box-shadow:0 0 14px rgba(224,164,88,.5)}
+.status{margin-top:14px;color:#a89d8a;font-size:13px}
+@keyframes load{to{width:100%}}
+</style></head><body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+<div class="wrap">
+  <div class="mark"><svg viewBox="0 0 64 64" aria-hidden="true">
+    <defs>
+      <radialGradient id="splashCore" cx="35%" cy="30%" r="75%">
+        <stop offset="0%" stop-color="#fff6e8"/><stop offset="42%" stop-color="#e6ab63"/><stop offset="100%" stop-color="#6fbf8b"/>
+      </radialGradient>
+      <linearGradient id="splashRing" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#f0c383"/><stop offset="100%" stop-color="#7fd1a0"/>
+      </linearGradient>
+    </defs>
+    <g class="orbit-outer">
+      <ellipse cx="32" cy="32" rx="29" ry="12" fill="none" stroke="url(#splashRing)" stroke-width="1.4" opacity=".5"/>
+      <circle cx="61" cy="32" r="2.3" fill="#fff"/>
+    </g>
+    <g class="orbit-inner">
+      <circle cx="32" cy="32" r="14" fill="none" stroke="url(#splashRing)" stroke-width="1" opacity=".38"/>
+      <circle cx="46" cy="32" r="1.7" fill="#fff"/>
+    </g>
+    <circle class="core" cx="32" cy="32" r="11.5" fill="url(#splashCore)"/>
+  </svg></div>
+  <h1>JobSync</h1>
+  <div class="sub">Your next opportunity, in sync.</div>
+  <div class="bar"><div class="fill"></div></div>
+  <div class="status">Preparing your workspace…</div>
+</div>
+</body></html>"""
 
 def main() -> int:
     # The installer grants Modify access to JobSync's writable trees. If an
