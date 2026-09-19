@@ -1467,10 +1467,10 @@ st.markdown(
                    linear-gradient(135deg,rgba(13,20,31,.97),rgba(18,13,42,.93));
         box-shadow:0 18px 50px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.025);
     }
-    .cv29-hero:after { content:""; position:absolute; width:210px; height:210px; right:-72px; top:-125px; border-radius:50%; border:1px solid rgba(144,113,255,.20); box-shadow:0 0 0 28px rgba(144,113,255,.035),0 0 0 58px rgba(144,113,255,.018); pointer-events:none; }
+    .cv29-hero:after { content:""; position:absolute; width:210px; height:210px; right:-72px; top:-125px; border-radius:50%; border:1px solid rgba(224,164,88,.20); box-shadow:0 0 0 28px rgba(224,164,88,.035),0 0 0 58px rgba(111,191,139,.03); pointer-events:none; }
     .cv29-kicker { color:#8aa4ff; font-size:.58rem; font-weight:900; letter-spacing:.17em; margin-bottom:.28rem; }
     .cv29-title-row { display:flex; align-items:center; gap:.72rem; }
-    .cv29-orb { width:40px; height:40px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; border-radius:13px; color:#fff; font-size:.72rem; font-weight:950; background:linear-gradient(135deg,#38bdf8,#7c3aed); box-shadow:0 8px 25px rgba(83,105,255,.25); }
+    .cv29-orb { width:40px; height:40px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; border-radius:13px; color:#1a140c; font-size:.72rem; font-weight:950; background:linear-gradient(135deg,#e0a458,#7fd1a0); box-shadow:0 8px 25px rgba(224,164,88,.25); }
     .cv29-title { color:#f8fafc; font-size:1.55rem; line-height:1; font-weight:900; letter-spacing:-.04em; }
     .cv29-subtitle { color:#8e9aaa; margin-top:.22rem; font-size:.72rem; }
     .cv29-status { position:absolute; right:1rem; bottom:.9rem; color:#9ba7b8; font-size:.57rem; font-weight:850; letter-spacing:.08em; }
@@ -1483,7 +1483,7 @@ st.markdown(
     .cv29-panel-head { display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.5rem; }
     .cv29-panel-title { color:#f2f5f9; font-size:.76rem; font-weight:850; }
     .cv29-panel-hint { color:#687487; font-size:.56rem; }
-    .cv29-chip { display:inline-flex; align-items:center; gap:.28rem; padding:.2rem .45rem; border-radius:999px; color:#b9c7ff; background:rgba(111,105,255,.10); border:1px solid rgba(111,105,255,.17); font-size:.55rem; font-weight:850; letter-spacing:.04em; }
+    .cv29-chip { display:inline-flex; align-items:center; gap:.28rem; padding:.2rem .45rem; border-radius:999px; color:#f0c383; background:rgba(224,164,88,.10); border:1px solid rgba(224,164,88,.17); font-size:.55rem; font-weight:850; letter-spacing:.04em; }
     .cv29-target { margin:.35rem 0 .5rem; padding:.58rem .62rem; border-radius:13px; background:rgba(5,9,14,.56); border:1px solid rgba(255,255,255,.05); }
     .cv29-target-kicker { color:#5f6b7c; font-size:.52rem; font-weight:900; letter-spacing:.13em; }
     .cv29-target-title { color:#f1f5f9; font-size:.83rem; font-weight:850; margin-top:.16rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1506,7 +1506,7 @@ st.markdown(
     .cv29-prompt-head { display:flex; align-items:center; gap:.5rem; padding:.45rem .58rem; border-bottom:1px solid rgba(255,255,255,.055); background:#0e131a; }
     .cv29-prompt-head b { color:#dfe6ef; font-size:.61rem; }
     .cv29-prompt-head span { color:#657181; font-size:.52rem; }
-    .cv29-prompt-head .cv29-copy-label { margin-left:auto; color:#8ea5ff; font-weight:850; }
+    .cv29-prompt-head .cv29-copy-label { margin-left:auto; color:#e0a458; font-weight:850; }
     .cv29-prompt textarea { display:block; box-sizing:border-box; width:100%; height:145px; resize:none; border:0; outline:0; padding:.55rem .62rem; background:#090d12; color:#dce4ee; font:10px/1.38 Consolas,monospace; }
     .cv29-final-actions { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; align-items:end; }
     .cv29-final-actions > div { min-width:0; }
@@ -7189,8 +7189,8 @@ elif page == "CV & Cover Letter":
     <style>
       .cvwiz { max-width:980px; margin:0 auto; }
       .cvwiz-hero { position:relative; padding:15px 20px 12px; border:1px solid rgba(255,255,255,.075); border-radius:20px; background:linear-gradient(110deg,rgba(8,20,31,.96),rgba(27,15,57,.94)); overflow:hidden; }
-      .cvwiz-hero:after { content:""; position:absolute; width:250px; height:250px; right:-105px; top:-145px; border-radius:50%; border:1px solid rgba(144,113,255,.18); box-shadow:0 0 0 34px rgba(144,113,255,.035),0 0 0 70px rgba(144,113,255,.018); pointer-events:none; }
-      .cvwiz-kicker { color:#8aa4ff; font-size:.55rem; font-weight:900; letter-spacing:.18em; }
+      .cvwiz-hero:after { content:""; position:absolute; width:250px; height:250px; right:-105px; top:-145px; border-radius:50%; border:1px solid rgba(224,164,88,.18); box-shadow:0 0 0 34px rgba(224,164,88,.035),0 0 0 70px rgba(111,191,139,.03); pointer-events:none; }
+      .cvwiz-kicker { color:#e0a458; font-size:.55rem; font-weight:900; letter-spacing:.18em; }
       .cvwiz-title { margin-top:4px; color:#f8fafc; font-size:1.3rem; font-weight:900; letter-spacing:-.04em; }
       .cvwiz-sub { color:#8995a6; font-size:.65rem; margin-top:3px; }
       /* min-height was 470px with justify-content:center — on the short
@@ -7207,15 +7207,15 @@ elif page == "CV & Cover Letter":
       .cvwiz-card .stButton > button:hover { border-color:rgba(117,104,255,.55) !important; background:rgba(30,24,55,.92) !important; transform:translateY(-1px); }
       .cvwiz-progress { display:flex; justify-content:center; gap:8px; margin:18px 0 0; }
       .cvwiz-dot { width:7px; height:7px; border-radius:50%; background:#303744; }
-      .cvwiz-dot.active { background:#6f59e8; box-shadow:0 0 0 4px rgba(111,89,232,.12); }
+      .cvwiz-dot.active { background:#e0a458; box-shadow:0 0 0 4px rgba(224,164,88,.15); }
       .cvwiz-ready { width:100%; max-width:720px; margin:20px auto 0; padding:16px 18px; border:1px solid rgba(55,211,153,.20); background:rgba(16,31,31,.60); border-radius:15px; display:flex; flex-direction:column; gap:4px; }
       .cvwiz-ready b { color:#e9f3ef; font-size:.72rem; }
       .cvwiz-ready span { color:#718b86; font-size:.58rem; }
       .cvwiz-status { width:100%; max-width:720px; margin:14px auto 0; padding:9px 13px; border-radius:999px; border:1px solid rgba(255,255,255,.065); background:rgba(255,255,255,.018); color:#8190a4; font-size:.55rem; text-align:center; }
       .cvwiz-inline-progress{width:100%;max-width:760px;margin:14px auto 0;padding:15px 17px;border:1px solid rgba(105,91,235,.28);border-radius:16px;background:linear-gradient(145deg,rgba(11,18,30,.96),rgba(28,15,48,.95));box-shadow:0 18px 45px rgba(0,0,0,.18),0 0 28px rgba(90,82,220,.10)}
-      .cvwiz-inline-progress-head{display:flex;align-items:center;gap:10px}.cvwiz-inline-orbit{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-weight:950;color:#fff;background:linear-gradient(135deg,#2bb9e6,#7057e8,#c24eb9);box-shadow:0 0 22px rgba(91,103,255,.34);animation:cvwizOrbitPulse 1.8s ease-in-out infinite}.cvwiz-inline-title{color:#f1f5fb;font-size:.78rem;font-weight:900}.cvwiz-inline-sub{color:#75859b;font-size:.56rem;margin-top:2px}.cvwiz-inline-percent{margin-left:auto;color:#a9b9d0;font-size:.7rem;font-weight:850}.cvwiz-inline-track{height:9px;margin-top:13px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.05)}.cvwiz-inline-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#2bb4dd,#6255e8,#b946bd);box-shadow:0 0 18px rgba(93,87,235,.42);background-size:200% 100%;animation:cvwizShimmerMove 1.6s linear infinite;transition:width .25s ease}.cvwiz-inline-stages{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:11px}.cvwiz-inline-stage{padding:7px 4px;text-align:center;border:1px solid rgba(255,255,255,.055);border-radius:9px;color:#58667a;font-size:.43rem;font-weight:900;letter-spacing:.11em;background:rgba(255,255,255,.018)}.cvwiz-inline-stage.active{color:#bac8ff;border-color:rgba(106,93,235,.42);background:rgba(99,80,214,.12);animation:cvwizStageGlow 1.2s ease-in-out infinite alternate}.cvwiz-inline-stage.done{color:#75d8be;border-color:rgba(55,211,153,.18)}.cvwiz-inline-now{display:flex;align-items:center;gap:8px;margin-top:10px;color:#a9b7ca;font-size:.57rem}.cvwiz-inline-spinner{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.16);border-top-color:#5cdbff;border-right-color:#7d62ff;animation:cvwizSpin .8s linear infinite}@keyframes cvwizSpin{to{transform:rotate(360deg)}}@keyframes cvwizOrbitPulse{50%{transform:translateY(-1px) scale(1.04);box-shadow:0 0 30px rgba(104,96,255,.42)}}@keyframes cvwizShimmerMove{to{background-position:-200% 0}}@keyframes cvwizStageGlow{to{box-shadow:0 0 16px rgba(103,90,234,.12)}}.cvwiz-blueprint{width:100%;max-width:760px;margin-top:9px;color:#64748a;font-size:.5rem;text-align:left;letter-spacing:.07em;text-transform:uppercase}.cvwiz-source-label{width:100%;max-width:760px;margin:14px auto 6px;color:#93a6bf;font-size:.52rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.cvwiz-source-help{width:100%;max-width:760px;margin:0 auto 8px;color:#67778e;font-size:.56rem;line-height:1.45}
+      .cvwiz-inline-progress-head{display:flex;align-items:center;gap:10px}.cvwiz-inline-orbit{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-weight:950;color:#1a140c;background:linear-gradient(135deg,#c97b3a,#e0a458,#7fd1a0);box-shadow:0 0 22px rgba(224,164,88,.34);animation:cvwizOrbitPulse 1.8s ease-in-out infinite}.cvwiz-inline-title{color:#f1f5fb;font-size:.78rem;font-weight:900}.cvwiz-inline-sub{color:#75859b;font-size:.56rem;margin-top:2px}.cvwiz-inline-percent{margin-left:auto;color:#a9b9d0;font-size:.7rem;font-weight:850}.cvwiz-inline-track{height:9px;margin-top:13px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.05)}.cvwiz-inline-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#c97b3a,#e0a458,#7fd1a0);box-shadow:0 0 18px rgba(224,164,88,.42);background-size:200% 100%;animation:cvwizShimmerMove 1.6s linear infinite;transition:width .25s ease}.cvwiz-inline-stages{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:11px}.cvwiz-inline-stage{padding:7px 4px;text-align:center;border:1px solid rgba(255,255,255,.055);border-radius:9px;color:#58667a;font-size:.43rem;font-weight:900;letter-spacing:.11em;background:rgba(255,255,255,.018)}.cvwiz-inline-stage.active{color:#f0c383;border-color:rgba(224,164,88,.42);background:rgba(224,164,88,.12);animation:cvwizStageGlow 1.2s ease-in-out infinite alternate}.cvwiz-inline-stage.done{color:#75d8be;border-color:rgba(55,211,153,.18)}.cvwiz-inline-now{display:flex;align-items:center;gap:8px;margin-top:10px;color:#a9b7ca;font-size:.57rem}.cvwiz-inline-spinner{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.16);border-top-color:#e0a458;border-right-color:#7fd1a0;animation:cvwizSpin .8s linear infinite}@keyframes cvwizSpin{to{transform:rotate(360deg)}}@keyframes cvwizOrbitPulse{50%{transform:translateY(-1px) scale(1.04);box-shadow:0 0 30px rgba(224,164,88,.42)}}@keyframes cvwizShimmerMove{to{background-position:-200% 0}}@keyframes cvwizStageGlow{to{box-shadow:0 0 16px rgba(224,164,88,.12)}}.cvwiz-blueprint{width:100%;max-width:760px;margin-top:9px;color:#64748a;font-size:.5rem;text-align:left;letter-spacing:.07em;text-transform:uppercase}.cvwiz-source-label{width:100%;max-width:760px;margin:14px auto 6px;color:#93a6bf;font-size:.52rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.cvwiz-source-help{width:100%;max-width:760px;margin:0 auto 8px;color:#67778e;font-size:.56rem;line-height:1.45}
       .cvwiz-inline-snippet{margin-top:11px;padding:9px 11px;border-radius:10px;background:#090d13;border:1px solid rgba(255,255,255,.06);color:#7fe0b8;font:10px/1.5 Consolas,Menlo,monospace;white-space:pre-wrap;word-break:break-word;max-height:64px;overflow:hidden;}
-      .cvwiz-inline-cursor{display:inline-block;color:#5cdbff;animation:cvwizCursorBlink 1s step-end infinite;margin-right:1px;}
+      .cvwiz-inline-cursor{display:inline-block;color:#e0a458;animation:cvwizCursorBlink 1s step-end infinite;margin-right:1px;}
       @keyframes cvwizCursorBlink{50%{opacity:0}}
       .st-key-cvwiz_latex_box{width:100%;max-width:760px;margin:0 auto;}
       .st-key-cvwiz_latex_box [data-testid="stCode"]{font-size:.68rem!important;}
@@ -7223,7 +7223,7 @@ elif page == "CV & Cover Letter":
       .cvwiz-mini { width:100%; max-width:720px; margin:12px auto 0; color:#6f7d90; font-size:.58rem; text-align:center; }
       .cvwiz-modal-status { padding:14px 16px; border:1px solid rgba(111,89,232,.25); border-radius:14px; background:linear-gradient(145deg,rgba(10,17,28,.96),rgba(22,13,42,.96)); }
       .cvwiz-modal-stage { display:flex; justify-content:space-between; gap:16px; color:#eef2f7; font-size:.82rem; }
-      .cvwiz-modal-stage span { color:#8aa4ff; font-weight:900; }
+      .cvwiz-modal-stage span { color:#e0a458; font-weight:900; }
       .cvwiz-modal-eta { margin-top:7px; color:#8290a4; font-size:.66rem; }
       .cvwiz-modal-lock { margin-top:10px; color:#6f8096; font-size:.60rem; }
       .jobsync-generation-overlay { position:fixed; inset:0; z-index:2147483647; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; pointer-events:auto; }
