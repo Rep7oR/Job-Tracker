@@ -89,7 +89,7 @@ foreach ($f in @('START_JOB_TRACKER.bat','VERSION.txt','UPDATE_VERSION.json')) {
 foreach ($f in @('cv_base.tex','cover_letter_base.tex','master_cv.tex')) { Copy-Required "blueprint\$f" }
 foreach ($f in @('app.py','requirements.txt','requirements-browser.txt')) { Copy-Required "program\$f" }
 Copy-Required 'program\.streamlit\config.toml'
-foreach ($f in @('app_paths.py','cv_engine.py','cv_prompt.py','excel_export.py','free_job_sources.py','gmail.py','jobs.py','job_monitor.py','linkedin_browser.py','messaging.py','notifications.py','presence.py','storage.py','ai_cv_generation_prompt.txt')) {
+foreach ($f in @('app_paths.py','application_status_agent.py','cv_engine.py','cv_prompt.py','excel_export.py','free_job_sources.py','gmail.py','jobs.py','job_monitor.py','linkedin_browser.py','messaging.py','notifications.py','presence.py','storage.py','ai_cv_generation_prompt.txt')) {
     Copy-Required "program\services\$f"
 }
 # GitHub updater is part of the installed application so existing users can

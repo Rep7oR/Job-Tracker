@@ -149,14 +149,21 @@ def _monitor_once() -> bool:
 
 
 def run_forever() -> None:
-    _log("Live job monitor started.")
+    _log("Live job monitor + application status agent started.")
     # Run immediately when the monitor process starts. It no longer waits 24 hours
-    # for its first check. After that, run every 24 hours.
+    # for its first check. After that, run every 24 hours. The application status
+    # agent (Gmail auto-sync + stale-application follow-up flags) shares this same
+    # long-running background process and cadence rather than a second process.
+    from services.application_status_agent import run_once as _status_agent_once
     while True:
         try:
             _monitor_once()
         except Exception as exc:
             _log(f"Unexpected monitor error: {exc}")
+        try:
+            _status_agent_once()
+        except Exception as exc:
+            _log(f"Unexpected application status agent error: {exc}")
         time.sleep(INTERVAL_SECONDS)
 
 

@@ -6226,6 +6226,27 @@ def _render_home_authenticated_content():
                     unsafe_allow_html=True,
                 )
 
+            # Assistant activity: what the background agents (job monitor,
+            # application status agent) have found on their own, so their
+            # work is actually visible instead of silently updating state.
+            assistant_feed = (state.get("assistant_activity") or [])[:5]
+            if assistant_feed:
+                icon_by_kind = {"status_update": "✉", "follow_up": "🔔"}
+                assistant_rows = "".join(
+                    f'<div class="ag-activity-row"><span class="ag-activity-dot"></span>'
+                    f'<div class="ag-activity-text"><b>{html.escape(icon_by_kind.get(ev.get("kind"), "•"))} {html.escape(str(ev.get("agent") or "Assistant"))}</b> — '
+                    f'{html.escape(str(ev.get("text") or ""))[:90]}</div>'
+                    f'<span class="ag-activity-date">{html.escape(str(ev.get("at") or ""))[:16].replace("T"," ")}</span></div>'
+                    for ev in assistant_feed
+                )
+                st.markdown(
+                    f'<section class="ag-glass ag-activity" style="margin-top:12px;"><div class="ag-presence-head">'
+                    f'<span class="ag-checklist-icon">🤖</span><span class="ag-presence-title">Assistant activity</span></div>'
+                    f'<div class="ag-presence-sub">What your background agents found</div>'
+                    f'<div class="ag-activity-list">{assistant_rows}</div></section>',
+                    unsafe_allow_html=True,
+                )
+
 def _render_home_authenticated():
     """Render the authenticated Home overview in a 10-second fragment.
 
@@ -6809,7 +6830,15 @@ elif page == "Applied Jobs":
             source = html.escape(row.get("source", "") or "Source not specified")
             date_applied = html.escape(row.get("applied_date", "") or "Date not specified")
             url = html.escape(row.get("url", "") or "")
-            st.markdown(f'''<div class="applied-card"><div class="applied-card-top"><div><div class="applied-card-index">APPLICATION {idx + 1:02d}</div><div class="applied-card-title">{title}</div><div class="applied-card-company"><b>{company}</b> · {location}</div><div class="applied-card-meta"><span class="applied-mini-chip">Applied {date_applied}</span><span class="applied-mini-chip">{source}</span>{'<span class="applied-mini-chip">URL linked</span>' if url else ''}</div></div><div class="applied-card-status"><div class="applied-card-status-label">Current stage</div><span class="status-pill {status_class(old_status)}">{html.escape(old_status)}</span></div></div><div class="applied-card-controls">''', unsafe_allow_html=True)
+            followup_chip = '<span class="applied-mini-chip" style="border-color:rgba(224,164,88,.4);color:var(--wg-amber-2,#e0a458);">🔔 Needs follow-up</span>' if row.get("_followup_flagged") else ''
+            status_source_chip = '<span class="applied-mini-chip" style="border-color:rgba(111,191,139,.35);color:var(--wg-green,#6fbf8b);">✉ Auto-detected</span>' if row.get("status_source") == "email-auto" else ''
+            st.markdown(f'''<div class="applied-card"><div class="applied-card-top"><div><div class="applied-card-index">APPLICATION {idx + 1:02d}</div><div class="applied-card-title">{title}</div><div class="applied-card-company"><b>{company}</b> · {location}</div><div class="applied-card-meta"><span class="applied-mini-chip">Applied {date_applied}</span><span class="applied-mini-chip">{source}</span>{'<span class="applied-mini-chip">URL linked</span>' if url else ''}{followup_chip}{status_source_chip}</div></div><div class="applied-card-status"><div class="applied-card-status-label">Current stage</div><span class="status-pill {status_class(old_status)}">{html.escape(old_status)}</span></div></div><div class="applied-card-controls">''', unsafe_allow_html=True)
+            if row.get("_followup_flagged"):
+                if st.button("✓ Mark followed up", key=f"followup_clear_{idx}", width="stretch"):
+                    row.pop("_followup_flagged", None)
+                    save_state(state)
+                    notify_success("Follow-up cleared.")
+                    st.rerun()
             h1, h2, h3 = st.columns([1.05, 1.05, .7])
             with h1:
                 status = st.selectbox("Pipeline status", status_values, index=status_values.index(old_status) if old_status in status_values else 0, key=f"status_{idx}")
@@ -6819,6 +6848,7 @@ elif page == "Applied Jobs":
                 cl_path = st.selectbox("Cover letter", cl_options, index=cl_options.index(row.get("cover_letter_path", "")) if row.get("cover_letter_path", "") in cl_options else 0, key=f"clused_{idx}")
             if status != old_status:
                 row["status"] = status
+                row.pop("_followup_flagged", None)
                 save_state(state)
             if cv_path != row.get("cv_path") or cl_path != row.get("cover_letter_path"):
                 row["cv_path"] = cv_path
@@ -8223,6 +8253,37 @@ elif page == "Settings":
             st.error(f"Last monitor error: {last_error}")
         st.markdown('</div>', unsafe_allow_html=True)
 
+        st.write("")
+        st.markdown('<div class="settings-card-head"><div class="settings-icon">🤝</div><div class="section-title">Application status agent</div></div>', unsafe_allow_html=True)
+        status_agent_enabled = st.checkbox(
+            "Auto-detect application status changes and follow-up reminders",
+            value=bool(state.get("settings", {}).get("application_status_agent_enabled", True)),
+            help="Runs alongside the job monitor. Auto-syncs Gmail and applies a status change only when the email-to-application match is very confident; everything else stays a manual suggestion on Gmail Updates. Also flags applications with no movement in 14+ days as needing a follow-up.",
+        )
+        st.info("Requires Gmail to be connected (Gmail OAuth tab) for the email half. The follow-up flag works even without Gmail, using each application's applied date.")
+        sa_col1, sa_col2 = st.columns([1, 3])
+        with sa_col1:
+            if st.button("▶ Run now", key="run_status_agent_now", width="stretch"):
+                try:
+                    from services.application_status_agent import run_once as _status_agent_run_once
+                    result = _status_agent_run_once()
+                    refresh_state()
+                    if result.get("enabled"):
+                        notify_success(f"Checked: {result.get('email_updates', 0)} auto-updates, {result.get('stale_flags', 0)} new follow-up flags.")
+                    else:
+                        notify_error("Application status agent is turned off.")
+                except Exception as exc:
+                    notify_error(f"Status agent check failed: {exc}")
+                st.rerun()
+        with sa_col2:
+            st.caption("Runs automatically in the same background process as the job monitor, every 24 hours.")
+        sa_last_check = state.get("settings", {}).get("status_agent_last_check", "")
+        sa_last_emails = state.get("settings", {}).get("status_agent_last_email_updates", 0)
+        sa_last_stale = state.get("settings", {}).get("status_agent_last_stale_flags", 0)
+        if sa_last_check:
+            st.caption(f"Last check: {sa_last_check} · Auto-updated from email: {sa_last_emails} · New follow-up flags: {sa_last_stale}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
     with tab_oauth:
         st.markdown('<div class="settings-tabpanel">', unsafe_allow_html=True)
         st.markdown('<div class="settings-card-head"><div class="settings-icon">✉</div><div class="section-title">Google OAuth setup (for Gmail sync)</div></div>', unsafe_allow_html=True)
@@ -8348,6 +8409,7 @@ elif page == "Settings":
         settings["free_sources"] = free_sources_setting
         settings["ats_urls"] = ats_urls_setting
         settings["live_monitor_enabled"] = bool(monitor_enabled)
+        settings["application_status_agent_enabled"] = bool(status_agent_enabled)
         settings["monitor_interval_hours"] = 24
         settings["weekly_application_goal"] = int(weekly_goal_setting)
         content = "\n".join([
