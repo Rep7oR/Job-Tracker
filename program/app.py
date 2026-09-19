@@ -3581,20 +3581,52 @@ def _ensure_local_ai(provider: str, progress=None) -> None:
     _start_ollama(executable, progress=progress)
     tags = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=10).json().get("models", [])
     model_names = {str(item.get("name", "")) for item in tags if isinstance(item, dict)}
+    st.session_state["cv_local_ai_downloading"] = False
     if model not in model_names:
-        if progress: progress(f"Downloading {provider} ({model}, {cfg['size']}) for first use…")
+        # This only ever happens once per model, ever — after this it's cached
+        # on disk and every later generation skips straight past this block.
+        # Ollama's own status strings are things like "pulling a8cc361f314",
+        # a manifest-layer hash that means nothing to a user watching it —
+        # translate to plain language and a real byte-based percent instead.
+        st.session_state["cv_local_ai_downloading"] = True
+        st.session_state["cv_local_ai_download_started_at"] = time.time()
+        if progress: progress(f"Downloading {provider} — one-time setup, about {cfg['size']}…", percent=10)
         pull = requests.post(f"{OLLAMA_BASE_URL}/api/pull", json={"name": model, "stream": True}, stream=True, timeout=3600)
         pull.raise_for_status()
         for raw in pull.iter_lines(decode_unicode=True):
             if not raw: continue
             try:
                 data = json.loads(raw)
-                status = str(data.get("status") or "Downloading local AI model…")
                 if data.get("error"): raise RuntimeError(str(data["error"]))
-                st.session_state["cv_local_ai_status"] = status
-                if progress: progress(status)
+                raw_status = str(data.get("status") or "")
+                completed = data.get("completed")
+                total = data.get("total")
+                if raw_status.startswith("pulling") and isinstance(completed, (int, float)) and isinstance(total, (int, float)) and total > 0:
+                    frac = max(0.0, min(1.0, completed / total))
+                    done_gb = completed / (1024 ** 3)
+                    total_gb = total / (1024 ** 3)
+                    elapsed = max(0.1, time.time() - st.session_state.get("cv_local_ai_download_started_at", time.time()))
+                    rate = completed / elapsed
+                    remaining_s = (total - completed) / rate if rate > 0 else 0
+                    eta_txt = f"{int(remaining_s // 60)} min {int(remaining_s % 60):02d} sec left" if remaining_s >= 60 else f"{max(1, int(remaining_s))} sec left"
+                    status = f"Downloading local AI model (one-time only) — {done_gb:.1f} GB of {total_gb:.1f} GB · {eta_txt}"
+                    st.session_state["cv_local_ai_status"] = status
+                    if progress: progress(status, percent=int(10 + frac * 80))
+                elif raw_status.startswith("verifying"):
+                    status = "Verifying the downloaded model…"
+                    st.session_state["cv_local_ai_status"] = status
+                    if progress: progress(status, percent=92)
+                elif raw_status.startswith("writing manifest") or raw_status == "success":
+                    status = "Finishing one-time model setup…"
+                    st.session_state["cv_local_ai_status"] = status
+                    if progress: progress(status, percent=97)
+                elif raw_status:
+                    status = raw_status[:1].upper() + raw_status[1:]
+                    st.session_state["cv_local_ai_status"] = status
+                    if progress: progress(status)
             except json.JSONDecodeError:
                 continue
+        st.session_state["cv_local_ai_downloading"] = False
 
 
 def _repair_local_cv_structure(data: dict, template: str, source_prompt: str, progress=None, model: str | None = None) -> dict:
@@ -4255,6 +4287,10 @@ complete document. Then output only the final LaTeX.
                     chunks.append(piece)
                     total_chars = sum(len(x) for x in chunks)
                     st.session_state["cv_local_ai_chars"] = total_chars
+                    # Last ~180 characters written so far, for a live "typing"
+                    # preview strip — actual visible progress beats a percent
+                    # number during a wait this long.
+                    st.session_state["cv_local_ai_snippet"] = "".join(chunks)[-180:]
                     if progress and (len(chunks) == 1 or len(chunks) % 12 == 0):
                         progress(f"{local_key} is writing the complete LaTeX CV… ({total_chars:,} characters)")
                 if streamed.get("done"):
@@ -6465,6 +6501,9 @@ elif page == "CV & Cover Letter":
       .cvwiz-status { width:100%; max-width:720px; margin:14px auto 0; padding:9px 13px; border-radius:999px; border:1px solid rgba(255,255,255,.065); background:rgba(255,255,255,.018); color:#8190a4; font-size:.55rem; text-align:center; }
       .cvwiz-inline-progress{width:100%;max-width:760px;margin:14px auto 0;padding:15px 17px;border:1px solid rgba(105,91,235,.28);border-radius:16px;background:linear-gradient(145deg,rgba(11,18,30,.96),rgba(28,15,48,.95));box-shadow:0 18px 45px rgba(0,0,0,.18),0 0 28px rgba(90,82,220,.10)}
       .cvwiz-inline-progress-head{display:flex;align-items:center;gap:10px}.cvwiz-inline-orbit{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-weight:950;color:#fff;background:linear-gradient(135deg,#2bb9e6,#7057e8,#c24eb9);box-shadow:0 0 22px rgba(91,103,255,.34);animation:cvwizOrbitPulse 1.8s ease-in-out infinite}.cvwiz-inline-title{color:#f1f5fb;font-size:.78rem;font-weight:900}.cvwiz-inline-sub{color:#75859b;font-size:.56rem;margin-top:2px}.cvwiz-inline-percent{margin-left:auto;color:#a9b9d0;font-size:.7rem;font-weight:850}.cvwiz-inline-track{height:9px;margin-top:13px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.05)}.cvwiz-inline-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#2bb4dd,#6255e8,#b946bd);box-shadow:0 0 18px rgba(93,87,235,.42);background-size:200% 100%;animation:cvwizShimmerMove 1.6s linear infinite;transition:width .25s ease}.cvwiz-inline-stages{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:11px}.cvwiz-inline-stage{padding:7px 4px;text-align:center;border:1px solid rgba(255,255,255,.055);border-radius:9px;color:#58667a;font-size:.43rem;font-weight:900;letter-spacing:.11em;background:rgba(255,255,255,.018)}.cvwiz-inline-stage.active{color:#bac8ff;border-color:rgba(106,93,235,.42);background:rgba(99,80,214,.12);animation:cvwizStageGlow 1.2s ease-in-out infinite alternate}.cvwiz-inline-stage.done{color:#75d8be;border-color:rgba(55,211,153,.18)}.cvwiz-inline-now{display:flex;align-items:center;gap:8px;margin-top:10px;color:#a9b7ca;font-size:.57rem}.cvwiz-inline-spinner{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.16);border-top-color:#5cdbff;border-right-color:#7d62ff;animation:cvwizSpin .8s linear infinite}@keyframes cvwizSpin{to{transform:rotate(360deg)}}@keyframes cvwizOrbitPulse{50%{transform:translateY(-1px) scale(1.04);box-shadow:0 0 30px rgba(104,96,255,.42)}}@keyframes cvwizShimmerMove{to{background-position:-200% 0}}@keyframes cvwizStageGlow{to{box-shadow:0 0 16px rgba(103,90,234,.12)}}.cvwiz-blueprint{width:100%;max-width:760px;margin-top:9px;color:#64748a;font-size:.5rem;text-align:left;letter-spacing:.07em;text-transform:uppercase}.cvwiz-source-label{width:100%;max-width:760px;margin:14px auto 6px;color:#93a6bf;font-size:.52rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.cvwiz-source-help{width:100%;max-width:760px;margin:0 auto 8px;color:#67778e;font-size:.56rem;line-height:1.45}
+      .cvwiz-inline-snippet{margin-top:11px;padding:9px 11px;border-radius:10px;background:#090d13;border:1px solid rgba(255,255,255,.06);color:#7fe0b8;font:10px/1.5 Consolas,Menlo,monospace;white-space:pre-wrap;word-break:break-word;max-height:64px;overflow:hidden;}
+      .cvwiz-inline-cursor{display:inline-block;color:#5cdbff;animation:cvwizCursorBlink 1s step-end infinite;margin-right:1px;}
+      @keyframes cvwizCursorBlink{50%{opacity:0}}
       .st-key-cvwiz_latex_box{width:100%;max-width:760px;margin:0 auto;}
       .st-key-cvwiz_latex_box [data-testid="stCode"]{font-size:.68rem!important;}
       .st-key-cvwiz_latex_box pre{max-height:140px!important;}
@@ -6639,7 +6678,20 @@ elif page == "CV & Cover Letter":
         cv_blueprint_name = st.session_state.get("cv_blueprint_name") or ("cv_base.tex" if doc == "CV" else "cover_letter_base.tex")
         pdf_path = str(st.session_state.get("cv_saved_pdf") or st.session_state.get("cv_compiled_pdf") or "")
 
-        def _progress_markup(percent: int, message: str, detail: str) -> str:
+        # Rotating captions shown while content is being written, so the wait
+        # reads as visible progress instead of a stuck percentage — cycles by
+        # how much has been generated so far rather than a wall-clock timer,
+        # since generation speed varies with CPU/GPU.
+        _content_captions = [
+            "Reading your reference CV…",
+            f"Matching your experience to {html.escape(str(title))}…",
+            "Rewriting your Profile summary…",
+            "Selecting the strongest bullet points…",
+            "Tailoring your skills section…",
+            "Checking every claim against your evidence…",
+        ]
+
+        def _progress_markup(percent: int, message: str, detail: str, snippet: str = "") -> str:
             p = max(0, min(100, int(percent)))
             safe_msg = html.escape(str(message or "Working…"))
             safe_detail = html.escape(str(detail or "JobSync is processing your document."))
@@ -6651,6 +6703,9 @@ elif page == "CV & Cover Letter":
                 )
                 for label, start, end in stages
             )
+            snippet_html = ""
+            if snippet:
+                snippet_html = f'<div class="cvwiz-inline-snippet">…{html.escape(snippet)}<span class="cvwiz-inline-cursor">▍</span></div>'
             return (
                 '<div class="cvwiz-inline-progress">'
                 '<div class="cvwiz-inline-progress-head">'
@@ -6661,51 +6716,73 @@ elif page == "CV & Cover Letter":
                 f'<div class="cvwiz-inline-track"><span style="width:{p}%"></span></div>'
                 f'<div class="cvwiz-inline-stages">{stage_html}</div>'
                 f'<div class="cvwiz-inline-now"><span class="cvwiz-inline-spinner"></span><span>{safe_msg}</span></div>'
+                f'{snippet_html}'
                 '</div>'
             )
 
         def _run_generation_inline() -> None:
-            started = time.time()
+            gen_started = time.time()
             slot = st.empty()
             last_percent = 0
 
-            def _eta(p: int) -> str:
-                elapsed = max(0.1, time.time() - started)
-                if p <= 5:
-                    return "Calculating remaining time…"
-                total = elapsed * 100.0 / max(p, 1)
-                remaining = max(0.0, total - elapsed)
+            def _eta(p: int, phase_started: float, floor_pct: int) -> str:
+                # ETA is computed within the CURRENT phase only (download vs.
+                # generation), timed from when that phase actually started —
+                # extrapolating from a single start-of-run timestamp across
+                # both a multi-minute one-time download and a normal ~30s
+                # generation produced wildly wrong estimates on every run
+                # after the first (the exact "3 min remaining" complaint).
+                span = max(1, 100 - floor_pct)
+                progressed = max(1, p - floor_pct)
+                elapsed = max(0.1, time.time() - phase_started)
+                remaining = max(0.0, elapsed * (span - progressed) / progressed)
                 if remaining < 60:
-                    return f"About {max(1, int(remaining))} seconds remaining"
+                    return f"About {max(1, int(remaining))} sec remaining"
                 return f"About {int(remaining // 60)} min {int(remaining % 60):02d} sec remaining"
 
-            def _render_inline(message: str, percent: int, detail: str = "") -> None:
+            def _render_inline(message: str, percent: int, detail: str = "", eta_text: str | None = None) -> None:
                 nonlocal last_percent
                 p = max(last_percent, min(100, int(percent)))
                 last_percent = p
-                eta = "Complete" if p >= 100 else _eta(p)
-                slot.markdown(_progress_markup(p, message, f"{detail} · {eta}"), unsafe_allow_html=True)
+                downloading_now = bool(st.session_state.get("cv_local_ai_downloading"))
+                if eta_text is None and not downloading_now:
+                    eta_text = "Complete" if p >= 100 else _eta(p, gen_started, 39) if p >= 39 else "Usually just a few seconds"
+                snippet = str(st.session_state.get("cv_local_ai_snippet") or "") if p >= 39 and not downloading_now else ""
+                full_detail = detail if not eta_text else f"{detail} · {eta_text}"
+                slot.markdown(_progress_markup(p, message, full_detail, snippet), unsafe_allow_html=True)
                 time.sleep(0.035)
 
             def _show_ai_progress(message: str, percent: int | None = None) -> None:
+                nonlocal gen_started
                 text_now = str(message or "Working…")
                 generated = int(st.session_state.get("cv_local_ai_chars", 0))
+                downloading = bool(st.session_state.get("cv_local_ai_downloading"))
+                eta_text = None
                 if percent is None:
-                    lower = text_now.lower()
-                    if "download" in lower and "qwen" in lower:
-                        percent = min(38, max(10, int(st.session_state.get("cv_generation_percent", 10))))
-                    elif "writing" in lower or "content" in lower:
+                    if downloading:
+                        percent = int(st.session_state.get("cv_generation_percent", 10))
+                    elif "writing" in text_now.lower() or "content" in text_now.lower():
                         percent = min(72, max(39, 39 + int(generated / 900)))
+                        # First moment past the download stage: reset the
+                        # generation-phase ETA clock so it isn't poisoned by
+                        # however long the (possibly multi-minute, one-time)
+                        # model download took.
+                        if last_percent < 39:
+                            gen_started = time.time()
+                        text_now = _content_captions[(generated // 350) % len(_content_captions)]
                     else:
                         percent = int(st.session_state.get("cv_generation_percent", 10))
+                if downloading:
+                    eta_text = None  # the download message already states its own ETA
                 st.session_state["cv_generation_percent"] = int(percent)
-                _render_inline(text_now, int(percent), "Local AI is tailoring the document")
+                _render_inline(text_now, int(percent), "Local AI is tailoring the document" if not downloading else "One-time setup — this only happens once", eta_text)
 
             st.session_state["cv_ai_progress_callback"] = _show_ai_progress
             st.session_state["cv_local_ai_chars"] = 0
+            st.session_state["cv_local_ai_snippet"] = ""
             st.session_state["cv_generation_percent"] = 5
             try:
-                _render_inline("Preparing the local AI engine…", 8, "Checking the private JobSync AI runtime")
+                _render_inline("Preparing the local AI engine…", 8, "Checking the private JobSync AI runtime", "Usually just a few seconds")
                 template_text = st.session_state.get("external_template_snapshot") or ""
                 latex = _generate_latex_with_ai(provider, prompt, document_type=doc, template=template_text)
                 _render_inline("AI content received. Validating the document…", 76, "Checking the locked blueprint structure")
