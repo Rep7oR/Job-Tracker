@@ -9,6 +9,10 @@ create table if not exists public.jobsync_presence (
     last_seen timestamptz not null default now()
 );
 
+-- v1.8: adds the account email so "Online now" can be clicked to start a
+-- direct message. Safe to re-run on an existing table.
+alter table public.jobsync_presence add column if not exists contact_email text not null default '';
+
 alter table public.jobsync_presence enable row level security;
 
 drop policy if exists "jobsync_presence_select" on public.jobsync_presence;

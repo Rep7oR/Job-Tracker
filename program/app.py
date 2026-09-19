@@ -1574,7 +1574,7 @@ st.markdown(
 
     /* Glass panel base — used by the "about" card, the presence card and the
        quick-actions row so the whole page reads as one coherent material. */
-    .ag-glass{position:relative;border-radius:28px;background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.025));border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);box-shadow:0 24px 60px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(0,0,0,.14);overflow:hidden;transition:transform .45s cubic-bezier(.22,1,.36,1),box-shadow .45s cubic-bezier(.22,1,.36,1),border-color .35s ease;}
+    .ag-glass,.st-key-ag_presence{position:relative;border-radius:28px;background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.025));border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);box-shadow:0 24px 60px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(0,0,0,.14);overflow:hidden;transition:transform .45s cubic-bezier(.22,1,.36,1),box-shadow .45s cubic-bezier(.22,1,.36,1),border-color .35s ease;}
     .ag-glass:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 16% -10%,rgba(255,255,255,.20),transparent 46%);pointer-events:none;}
     .ag-glass:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.24);box-shadow:0 32px 80px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.14);}
 
@@ -1591,7 +1591,7 @@ st.markdown(
     .ag-feature-sub{margin-top:3px;color:rgba(222,229,242,.6);font-size:.6rem;line-height:1.45;}
 
     /* Presence card */
-    .ag-presence{padding:20px 20px 16px;display:flex;flex-direction:column;min-height:0;}
+    .ag-presence,.st-key-ag_presence{padding:20px 20px 16px;display:flex;flex-direction:column;min-height:0;}
     .ag-presence-head{display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
     .ag-live-dot{width:8px;height:8px;border-radius:50%;background:#39e58c;box-shadow:0 0 0 0 rgba(57,229,140,.55);animation:agPulse 2.2s ease-out infinite;flex:0 0 auto;}
     @keyframes agPulse{0%{box-shadow:0 0 0 0 rgba(57,229,140,.55)}70%{box-shadow:0 0 0 11px rgba(57,229,140,0)}100%{box-shadow:0 0 0 0 rgba(57,229,140,0)}}
@@ -2979,11 +2979,12 @@ def _presence_heartbeat(max_age: float = 25.0):
         if (now - st.session_state.get("_presence_beat", 0.0)) < max_age:
             return
         st.session_state["_presence_beat"] = now
-        name, _email = _identity()
+        name, email = _identity()
         heartbeat_presence(
             user_id=_presence_session_id(),
             display_name=name,
             avatar_seed=name,
+            contact_email=email,
         )
         st.session_state["_presence_error"] = ""
     except Exception as exc:
@@ -3240,7 +3241,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- Navigation helpers ----------------
-BASE_PAGES = ["Home", "Dashboard", "New Search", "Applied Jobs", "Messages", "Updates", "CV & Cover Letter", "Folders", "Profile", "Settings"]
+BASE_PAGES = ["Home", "Dashboard", "New Search", "Applied Jobs", "Updates", "CV & Cover Letter", "Folders", "Profile", "Settings"]
 
 def custom_sections() -> list[dict]:
     raw = state.get("settings", {}).get("custom_sections") or []
@@ -5622,7 +5623,6 @@ with st.sidebar:
                 ("New Search", "🔍", "New Search"),
                 ("Applied Jobs", "✓", "Applied Jobs"),
                 ("Folders", "📁", "Folders"),
-                ("Messages", "💬", "Messages"),
             ]),
             ("SETTINGS", [
                 ("Updates", "↗", "Updates"),
@@ -5986,6 +5986,7 @@ def _render_home_authenticated_content():
     location_hint = html.escape(location or "Set your preferred location")
 
     _presence_heartbeat(); _refresh_online_cache()
+    _my_name, my_email = _identity()
     raw_online_users = st.session_state.get("_online_users") or []
     online_users = []
     seen_presence = set()
@@ -5998,7 +5999,8 @@ def _render_home_authenticated_content():
         if not raw_nm or raw_nm.lower() in {"user", "unknown", "none"}:
             seed = str(user.get("avatar_seed") or "").strip()
             raw_nm = seed.split("@", 1)[0].strip() if seed else "User"
-        online_users.append({"display_name": raw_nm or "User", "presence_id": uid})
+        contact_email = str(user.get("contact_email") or "").strip().lower()
+        online_users.append({"display_name": raw_nm or "User", "presence_id": uid, "contact_email": contact_email})
 
     # Overlapping avatar stack (up to 6, Apple-presence style) + a "+N" bubble
     # for the rest, plus the full scrollable name list below it.
@@ -6008,17 +6010,7 @@ def _render_home_authenticated_content():
     )
     if len(online_users) > 6:
         avatar_stack += f'<div class="ag-avatar-more">+{len(online_users) - 6}</div>'
-    presence_rows = "".join(
-        f'<div class="ag-presence-row"><div class="ag-presence-avatar">{html.escape(_presence_initials(str(u["display_name"])))}</div>'
-        f'<div class="ag-presence-name">{html.escape(str(u["display_name"]))[:60]}</div></div>'
-        for u in online_users
-    )
     presence_body = avatar_stack or ""
-    presence_error = str(st.session_state.get("_presence_error") or "").strip()
-    if presence_error:
-        presence_list_html = f'<div class="ag-presence-empty">Presence is unavailable right now.<br><span style="opacity:.6;font-size:.85em">{html.escape(presence_error)}</span></div>'
-    else:
-        presence_list_html = presence_rows or '<div class="ag-presence-empty">No one else online right now — you have JobSync to yourself.</div>'
 
     features = [
         ("⌕", "Discover", "Search real listings across your configured job sources."),
@@ -6069,7 +6061,7 @@ def _render_home_authenticated_content():
       @keyframes jobsyncGreetingShimmer{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
       .jobsync-launch-sub{margin-top:6px;color:rgba(226,233,247,.6);font-size:.82rem;}
       .st-key-home_content{animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) .1s both;}
-      .st-key-home_content .ag-about,.st-key-home_content .ag-presence{min-height:280px;}
+      .st-key-home_content .ag-about,.st-key-home_content .ag-presence,.st-key-home_content .st-key-ag_presence{min-height:280px;}
       .st-key-home_content .ag-presence-list{max-height:24vh;overflow-y:auto;}
       @media(prefers-reduced-motion:reduce){.jobsync-launch-greeting{animation:none !important;}}
       .ag-checklist,.ag-activity{margin-top:12px;}
@@ -6096,21 +6088,53 @@ def _render_home_authenticated_content():
         </div>''', unsafe_allow_html=True)
 
         with st.container(key="home_content"):
-            markup = f'''<div class="ag-grid">
-              <section class="ag-glass ag-about">
-                <div class="ag-about-kicker">WHAT THIS IS</div>
-                <div class="ag-about-title">Your private job-search command center</div>
-                <div class="ag-about-copy">JobSync keeps discovery, tailored documents and application tracking in one calm, local workspace — no scattered tabs, no copy-pasting between five different tools.</div>
-                <div class="ag-feature-row">{feature_html}</div>
-              </section>
-              <aside class="ag-glass ag-presence">
-                <div class="ag-presence-head"><span class="ag-live-dot"></span><span class="ag-presence-title">Online now</span><span class="ag-presence-count">{len(online_users)}</span></div>
-                <div class="ag-presence-sub">People currently using JobSync</div>
-                <div class="ag-avatar-stack">{presence_body}</div>
-                <div class="ag-presence-list">{presence_list_html}</div>
-              </aside>
-            </div>'''
-            st.markdown(markup, unsafe_allow_html=True)
+            st.markdown(
+                '<style>.st-key-ag_grid_wrap{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;align-items:stretch;}'
+                '@media(max-width:1100px){.st-key-ag_grid_wrap{grid-template-columns:minmax(0,1fr) 280px}}'
+                '@media(max-width:900px){.st-key-ag_grid_wrap{grid-template-columns:1fr}}'
+                '.st-key-ag_presence_rows .stButton{margin:0 0 2px;}'
+                '.st-key-ag_presence_rows .stButton>button{width:100%;justify-content:flex-start;gap:9px;'
+                'background:transparent!important;border:1px solid transparent!important;box-shadow:none!important;'
+                'padding:.4rem .5rem!important;border-radius:12px!important;font-size:.74rem!important;font-weight:700!important;'
+                'color:#e6ecf7!important;text-align:left!important;}'
+                '.st-key-ag_presence_rows .stButton>button:hover{background:rgba(255,255,255,.06)!important;}'
+                '</style>',
+                unsafe_allow_html=True,
+            )
+            with st.container(key="ag_grid_wrap"):
+                st.markdown(
+                    f'''<section class="ag-glass ag-about">
+                    <div class="ag-about-kicker">WHAT THIS IS</div>
+                    <div class="ag-about-title">Your private job-search command center</div>
+                    <div class="ag-about-copy">JobSync keeps discovery, tailored documents and application tracking in one calm, local workspace — no scattered tabs, no copy-pasting between five different tools.</div>
+                    <div class="ag-feature-row">{feature_html}</div>
+                  </section>''',
+                    unsafe_allow_html=True,
+                )
+                with st.container(key="ag_presence"):
+                    st.markdown(
+                        f'''<div class="ag-presence-head"><span class="ag-live-dot"></span><span class="ag-presence-title">Online now</span><span class="ag-presence-count">{len(online_users)}</span></div>
+                        <div class="ag-presence-sub">Click someone to start a chat</div>
+                        <div class="ag-avatar-stack">{presence_body}</div>''',
+                        unsafe_allow_html=True,
+                    )
+                    presence_error = str(st.session_state.get("_presence_error") or "").strip()
+                    if presence_error:
+                        st.markdown(f'<div class="ag-presence-empty">Presence is unavailable right now.<br><span style="opacity:.6;font-size:.85em">{html.escape(presence_error)}</span></div>', unsafe_allow_html=True)
+                    elif not online_users:
+                        st.markdown('<div class="ag-presence-empty">No one else online right now — you have JobSync to yourself.</div>', unsafe_allow_html=True)
+                    else:
+                        with st.container(key="ag_presence_rows"):
+                            for u in online_users:
+                                nm = str(u["display_name"])[:60]
+                                initials = _presence_initials(nm)
+                                can_chat = bool(u.get("contact_email")) and u["contact_email"] != my_email
+                                if can_chat:
+                                    if st.button(f"{initials}   {nm}", key=f"home_chat_{u['presence_id']}", width="stretch"):
+                                        st.session_state["messenger_open_with"] = {"email": u["contact_email"], "name": nm}
+                                        st.rerun()
+                                else:
+                                    st.caption(f"{initials}   {nm}" + ("  (you)" if u.get("contact_email") == my_email else ""))
 
             # Get-started checklist: only shown while the user has real gaps left,
             # so it naturally disappears once the workspace is actually set up.
@@ -6245,7 +6269,6 @@ def render_modern_page_header(page_name: str) -> None:
         "LinkedIn Updates": ("NETWORK SIGNAL", "See what changed", "A compact space for LinkedIn notification and profile signals.", [("JOBS", len(jobs), "in workspace"), ("TRACKED", len(applied), "applications"), ("CVS", len(cvs), "ready"), ("STATUS", "LIVE", "workspace")]),
         "CV & Cover Letter": ("DOCUMENT STUDIO", "Create application documents", "Generate tailored LaTeX, inspect the source, and continue to Overleaf when ready.", [("CVS", len(cvs), "saved"), ("LETTERS", len(letters), "saved"), ("PDF", "READY", "download"), ("ENGINE", "ONLINE", "generation")]),
         "Folders": ("DOCUMENT LIBRARY", "Everything in one place", "Browse your generated documents with compact actions beside each file.", [("CVS", len(cvs), "documents"), ("LETTERS", len(letters), "documents"), ("PDF", "READY", "preview"), ("STORAGE", "LOCAL", "workspace")]),
-        "Messages": ("DIRECT MESSAGES", "Chat with other JobSync users", "Send messages, links, PDFs and images to other registered users.", [("JOBS", len(jobs), "available"), ("TRACKED", len(applied), "applications"), ("DOCS", len(cvs) + len(letters), "ready"), ("STATUS", "LIVE" if messaging_configured() else "OFFLINE", "messaging")]),
         "Profile": ("PROFILE CONTROL", "Tune your job-search identity", "Keep the information JobSync uses to match opportunities accurate and current.", [("TARGET", profile.get("field") or "NOT SET", "role"), ("CITY", profile.get("city") or profile.get("location") or "NOT SET", "location"), ("LANG", profile.get("language") or "ANY", "preference"), ("SIGNAL", "READY" if profile.get("field") else "INCOMPLETE", "match quality")]),
         "Settings": ("CONTROL CENTER", "Configure JobSync", "Manage integrations, updates, notifications and workspace behavior from one place.", [("VERSION", APP_VERSION, "current"), ("DATA", "LOCAL", "workspace"), ("BROWSER", "READY", "automation"), ("UPDATE", "READY", "software")]),
     }
@@ -6770,130 +6793,6 @@ elif page == "Applied Jobs":
             if row.get("url"):
                 st.link_button("Open original job ↗", row["url"], width="stretch")
             st.markdown('</div></div></div>', unsafe_allow_html=True)
-
-# ---------------- MESSAGES ----------------
-elif page == "Messages":
-    render_modern_page_header("Messages")
-
-    st.markdown('''<style>
-      .msg-shell{width:100%;max-width:1240px;margin:0 auto;}
-      .msg-layout{display:grid;grid-template-columns:0.9fr 1.5fr;gap:12px;align-items:start;}
-      @media(max-width:900px){.msg-layout{grid-template-columns:1fr;}}
-      .msg-thread-item{padding:.65rem .7rem;border-radius:14px;margin-bottom:.35rem;cursor:pointer;}
-      .msg-thread-name{font-size:.78rem;font-weight:850;color:#f0f4fb;}
-      .msg-thread-preview{font-size:.62rem;color:#8a95a8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-      .msg-bubble{max-width:78%;padding:.55rem .75rem;border-radius:16px;margin:.3rem 0;font-size:.78rem;line-height:1.45;word-wrap:break-word;}
-      .msg-bubble a{color:inherit;text-decoration:underline;}
-      .msg-bubble-mine{margin-left:auto;background:linear-gradient(135deg,var(--wg-amber-2,#e0a458),var(--wg-amber,#d98c3f));color:#1a140c;}
-      .msg-bubble-theirs{margin-right:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#eef2f7;}
-      .msg-bubble-meta{font-size:.52rem;opacity:.65;margin-top:3px;}
-      .msg-attachment{display:block;margin-top:5px;font-size:.68rem;text-decoration:underline;}
-      .msg-empty{padding:2rem 1rem;text-align:center;color:#7c879a;font-size:.72rem;}
-    </style>''', unsafe_allow_html=True)
-
-    if not messaging_configured():
-        st.warning("Messaging is not configured on this installation. It uses the same shared connection as Online presence in Settings.")
-        st.stop()
-
-    my_name, my_email = _identity()
-    if not my_email:
-        st.info("Add your email in Profile to start messaging other JobSync users.")
-        st.stop()
-
-    st.markdown('<div class="msg-shell"><div class="msg-layout">', unsafe_allow_html=True)
-    conv_col, thread_col = st.columns([0.38, 0.62], gap="large")
-
-    with conv_col:
-        st.markdown('<div class="card"><div class="section-title">Conversations</div>', unsafe_allow_html=True)
-        with st.form("msg_new_thread_form"):
-            new_recipient = st.text_input("Start a new conversation", placeholder="Recipient's JobSync email")
-            start_new = st.form_submit_button("Open chat", width="stretch")
-        if start_new and new_recipient.strip() and "@" in new_recipient:
-            st.session_state["messaging_active_thread"] = new_recipient.strip().lower()
-            st.rerun()
-
-        try:
-            conversations = fetch_conversations(my_email)
-        except Exception as exc:
-            conversations = []
-            st.caption(f"Could not load conversations: {exc}")
-
-        if not conversations:
-            st.markdown('<div class="msg-empty">No conversations yet. Start one above with another registered user\'s email.</div>', unsafe_allow_html=True)
-        else:
-            for conv in conversations:
-                other = conv["other_email"]
-                active = st.session_state.get("messaging_active_thread") == other
-                label = f"{conv.get('other_name') or other}\n{conv.get('preview') or 'No messages yet'}"
-                if st.button(f"{'●' if active else '○'}  {other}", key=f"msg_thread_{other}", width="stretch", type="primary" if active else "secondary"):
-                    st.session_state["messaging_active_thread"] = other
-                    st.rerun()
-                st.caption(conv.get("preview") or "")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with thread_col:
-        active_thread = st.session_state.get("messaging_active_thread")
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        if not active_thread:
-            st.markdown('<div class="msg-empty">Select a conversation on the left, or start a new one by email.</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="section-title">Chat with {html.escape(active_thread)}</div>', unsafe_allow_html=True)
-            try:
-                messages = fetch_thread(my_email, active_thread)
-            except Exception as exc:
-                messages = []
-                st.caption(f"Could not load messages: {exc}")
-
-            with st.container(height=420, border=True):
-                if not messages:
-                    st.markdown('<div class="msg-empty">No messages yet. Say hello 👋</div>', unsafe_allow_html=True)
-                for m in messages:
-                    mine = str(m.get("sender_email") or "").lower() == my_email.lower()
-                    body_html = _linkify_message(html.escape(str(m.get("body") or "")))
-                    attach_html = ""
-                    if m.get("attachment_url"):
-                        att_name = html.escape(str(m.get("attachment_name") or "Attachment"))
-                        attach_html = f'<a class="msg-attachment" href="{html.escape(str(m["attachment_url"]))}" target="_blank" rel="noopener">📎 {att_name}</a>'
-                    when = str(m.get("created_at") or "")[:16].replace("T", " ")
-                    st.markdown(
-                        f'<div class="msg-bubble {"msg-bubble-mine" if mine else "msg-bubble-theirs"}">'
-                        f'{body_html}{attach_html}<div class="msg-bubble-meta">{"You" if mine else html.escape(str(m.get("sender_name") or active_thread))} · {html.escape(when)}</div></div>',
-                        unsafe_allow_html=True,
-                    )
-
-            with st.form("msg_send_form", clear_on_submit=True):
-                msg_text = st.text_area("Message", placeholder="Type a message or paste a link…", label_visibility="collapsed", height=80)
-                msg_file = st.file_uploader("Attach a PDF or image", type=["pdf", "jpg", "jpeg", "png"], key=f"msg_attach_{active_thread}")
-                send_clicked = st.form_submit_button("Send", type="primary", width="stretch")
-            if send_clicked:
-                attachment_url, attachment_name, attachment_type = "", "", ""
-                if msg_file is not None:
-                    with st.spinner("Uploading attachment..."):
-                        attachment_url, upload_err = _upload_chat_attachment(msg_file.getvalue(), msg_file.name, msg_file.type or "")
-                    if upload_err:
-                        notify_error(upload_err)
-                        attachment_url = ""
-                    else:
-                        attachment_name = msg_file.name
-                        attachment_type = Path(msg_file.name).suffix.lstrip(".").lower()
-                if not msg_text.strip() and not attachment_url:
-                    notify_error("Write a message or attach a file first.")
-                else:
-                    try:
-                        _send_chat_message(
-                            sender_email=my_email,
-                            sender_name=my_name,
-                            recipient_email=active_thread,
-                            text=msg_text.strip(),
-                            attachment_url=attachment_url,
-                            attachment_name=attachment_name,
-                            attachment_type=attachment_type,
-                        )
-                        st.rerun()
-                    except Exception as exc:
-                        notify_error(f"Could not send message: {exc}")
-        st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div></div>', unsafe_allow_html=True)
 
 # ---------------- UPDATES CENTER ----------------
 elif page == "Updates":
@@ -8470,3 +8369,105 @@ if page in {x["name"] for x in custom_sections()}:
         unsafe_allow_html=True,
     )
     st.markdown('<div class="card"><div class="section-title">Ready for your workflow</div><div class="muted">This section has been added by an administrator and is ready to be connected to a future JobSync feature.</div></div>', unsafe_allow_html=True)
+
+
+# ---------------- FLOATING MESSENGER WIDGET ----------------
+# A Facebook-Messenger-style popup, not a page: clicking someone in Home's
+# "Online now" list opens this fixed-position panel over whatever page is
+# currently showing, and it stays open across navigation until closed.
+def _render_messenger_widget() -> None:
+    target = st.session_state.get("messenger_open_with")
+    if not target or not st.session_state.get("_authed"):
+        return
+    if not messaging_configured():
+        return
+
+    other_email = str(target.get("email") or "").strip().lower()
+    other_name = str(target.get("name") or other_email).strip()
+    my_name, my_email = _identity()
+    if not other_email or not my_email:
+        return
+
+    st.markdown('''<style>
+      .st-key-messenger_widget{position:fixed!important;right:22px;bottom:22px;width:340px;max-width:calc(100vw - 32px);
+        z-index:2147483000;border-radius:20px;overflow:hidden;
+        background:linear-gradient(135deg,rgba(28,25,19,.97),rgba(18,16,12,.98));
+        border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);
+        box-shadow:0 28px 70px rgba(0,0,0,.5);animation:jobsync-home-fade .35s cubic-bezier(.22,1,.36,1) both;}
+      .msngr-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);}
+      .msngr-title{font-size:.8rem;font-weight:850;color:#f5f1e8;}
+      .msngr-sub{font-size:.58rem;color:#a89d8a;margin-top:1px;}
+      .st-key-messenger_widget .msngr-body .stButton>button{padding:2px 8px!important;min-height:26px!important;height:26px!important;font-size:.85rem!important;background:transparent!important;border:none!important;box-shadow:none!important;}
+      .msngr-bubble{max-width:80%;padding:.5rem .68rem;border-radius:15px;margin:.28rem 0;font-size:.74rem;line-height:1.4;word-wrap:break-word;}
+      .msngr-bubble a{color:inherit;text-decoration:underline;}
+      .msngr-mine{margin-left:auto;background:linear-gradient(135deg,var(--wg-amber-2,#e0a458),var(--wg-amber,#d98c3f));color:#1a140c;}
+      .msngr-theirs{margin-right:auto;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);color:#eef2f7;}
+      .msngr-attach{display:block;margin-top:4px;font-size:.65rem;text-decoration:underline;}
+      .msngr-empty{padding:1.2rem;text-align:center;color:#8a95a8;font-size:.68rem;}
+    </style>''', unsafe_allow_html=True)
+
+    with st.container(key="messenger_widget"):
+        head_col, close_col = st.columns([0.85, 0.15])
+        with head_col:
+            st.markdown(f'<div class="msngr-head"><div><div class="msngr-title">💬 {html.escape(other_name)}</div><div class="msngr-sub">{html.escape(other_email)}</div></div></div>', unsafe_allow_html=True)
+        with close_col:
+            st.markdown('<div class="msngr-body">', unsafe_allow_html=True)
+            if st.button("✕", key="messenger_close"):
+                st.session_state.pop("messenger_open_with", None)
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        try:
+            messages = fetch_thread(my_email, other_email)
+        except Exception as exc:
+            messages = []
+            st.caption(f"Could not load messages: {exc}")
+
+        with st.container(height=260, border=False):
+            if not messages:
+                st.markdown('<div class="msngr-empty">No messages yet. Say hello 👋</div>', unsafe_allow_html=True)
+            for m in messages:
+                mine = str(m.get("sender_email") or "").lower() == my_email.lower()
+                body_html = _linkify_message(html.escape(str(m.get("body") or "")))
+                attach_html = ""
+                if m.get("attachment_url"):
+                    att_name = html.escape(str(m.get("attachment_name") or "Attachment"))
+                    attach_html = f'<a class="msngr-attach" href="{html.escape(str(m["attachment_url"]))}" target="_blank" rel="noopener">📎 {att_name}</a>'
+                st.markdown(
+                    f'<div class="msngr-bubble {"msngr-mine" if mine else "msngr-theirs"}">{body_html}{attach_html}</div>',
+                    unsafe_allow_html=True,
+                )
+
+        with st.form("messenger_send_form", clear_on_submit=True):
+            msg_text = st.text_input("Message", placeholder="Type a message or paste a link…", label_visibility="collapsed")
+            attach_col, send_col = st.columns([0.5, 0.5])
+            with attach_col:
+                msg_file = st.file_uploader("📎", type=["pdf", "jpg", "jpeg", "png"], key=f"messenger_attach_{other_email}", label_visibility="collapsed")
+            with send_col:
+                send_clicked = st.form_submit_button("Send", type="primary", width="stretch")
+        if send_clicked:
+            attachment_url, attachment_name, attachment_type = "", "", ""
+            if msg_file is not None:
+                with st.spinner("Uploading..."):
+                    attachment_url, upload_err = _upload_chat_attachment(msg_file.getvalue(), msg_file.name, msg_file.type or "")
+                if upload_err:
+                    notify_error(upload_err)
+                    attachment_url = ""
+                else:
+                    attachment_name = msg_file.name
+                    attachment_type = Path(msg_file.name).suffix.lstrip(".").lower()
+            if not msg_text.strip() and not attachment_url:
+                notify_error("Write a message or attach a file first.")
+            else:
+                try:
+                    _send_chat_message(
+                        sender_email=my_email, sender_name=my_name, recipient_email=other_email,
+                        text=msg_text.strip(), attachment_url=attachment_url,
+                        attachment_name=attachment_name, attachment_type=attachment_type,
+                    )
+                    st.rerun()
+                except Exception as exc:
+                    notify_error(f"Could not send message: {exc}")
+
+
+_render_messenger_widget()

@@ -41,6 +41,7 @@ def heartbeat_presence(
     user_id: str,
     display_name: str,
     avatar_seed: str = "",
+    contact_email: str = "",
 ) -> bool:
     if not configured() or not user_id:
         return False
@@ -49,6 +50,7 @@ def heartbeat_presence(
         "presence_id": user_id[:120],
         "display_name": (display_name or "User")[:120],
         "avatar_seed": (avatar_seed or display_name or "User")[:240],
+        "contact_email": (contact_email or "")[:240],
         "last_seen": datetime.now(timezone.utc).isoformat(),
     }
     response = requests.post(
@@ -70,7 +72,7 @@ def list_online_users() -> list[dict[str, Any]]:
     response = requests.get(
         f"{SUPABASE_REST_URL}/{TABLE}",
         params={
-            "select": "presence_id,display_name,avatar_seed,last_seen",
+            "select": "presence_id,display_name,avatar_seed,contact_email,last_seen",
             "last_seen": f"gte.{cutoff}",
             "order": "display_name.asc",
         },
