@@ -41,6 +41,33 @@ def log(message: str) -> None:
         pass
 
 
+def ensure_background_agents_running() -> None:
+    """Launch the background job monitor + application status agent, if not already running.
+
+    START_JOB_MONITOR.bat already contains its own "is it running?" check
+    (via a CIM process query), so it's always safe to call here -- this just
+    makes sure it actually gets called at all. Previously nothing in the
+    startup chain (Windows sign-in task, desktop shortcut, or this launcher)
+    ever invoked it, so the background agents only ever ran if a user
+    manually clicked "Run now" in Settings while the app happened to be open.
+    """
+    monitor_bat = ROOT / "tools" / "START_JOB_MONITOR.bat"
+    if not monitor_bat.is_file():
+        log(f"Background agents not started: {monitor_bat} not found.")
+        return
+    try:
+        subprocess.Popen(
+            ["cmd.exe", "/c", str(monitor_bat)],
+            cwd=str(ROOT),
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        log("Ensured background agents (job monitor + application status agent) are running.")
+    except Exception as exc:
+        log(f"Could not start background agents: {exc}")
+
+
 def free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
@@ -93,6 +120,8 @@ def main() -> int:
     if not APP.exists():
         log(f"Application not found: {APP}")
         return 1
+
+    ensure_background_agents_running()
 
     port = free_port()
     env = os.environ.copy()
