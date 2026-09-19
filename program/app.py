@@ -416,7 +416,7 @@ st.markdown(
     .ux-page-hero,
     .cvwiz-card, .st-key-cvwiz_step4_panel, .cvwiz-hero, .cvwiz-inline-progress, .cvwiz-modal-status,
     .p17-identity-card,
-    .jobsync-folder-workspace,
+    .jobsync-folder-workspace, .jobsync-folder-pane,
     .settings-card,
     .jobsync-generation-dialog, .jobsync-online-panel {
         background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.025)) !important;
@@ -428,13 +428,13 @@ st.markdown(
     }
     .card:hover, .action-card:hover, .metric-card:hover, .chart-card:hover, .info-card:hover, .jobs-panel:hover,
     .an-card:hover, .an-kpi:hover,
-    .cvwiz-card:hover, .p17-identity-card:hover, .settings-card:hover {
+    .cvwiz-card:hover, .p17-identity-card:hover, .settings-card:hover, .jobsync-folder-pane:hover {
         transform: translateY(-2px) !important;
         border-color: rgba(255,255,255,.24) !important;
     }
     @media (prefers-reduced-motion: reduce) {
         .card, .action-card, .metric-card, .chart-card, .info-card, .jobs-panel,
-        .an-card, .an-kpi, .cvwiz-card, .p17-identity-card, .settings-card { transition: none !important; }
+        .an-card, .an-kpi, .cvwiz-card, .p17-identity-card, .settings-card, .jobsync-folder-pane { transition: none !important; }
     }
 
     /* Hide Streamlit chrome (Deploy/menu/header) so JobSync controls the top bar. */
@@ -1683,8 +1683,17 @@ st.markdown(
     .jobsync-folder-upload-note span { color:#77859a; font-size:.55rem; font-weight:900; letter-spacing:.12em; }
     .jobsync-folder-upload-note p { color:#687587; font-size:.65rem; line-height:1.4; margin:.22rem 0 0; }
     .jobsync-folder-scroll-note { color:#667386; font-size:.58rem; text-align:right; margin:-.35rem 0 .45rem; }
-    .jobsync-folder-item { padding:.8rem .75rem .72rem; margin:0 0 .65rem; border:1px solid rgba(255,255,255,.065); border-radius:15px; background:linear-gradient(135deg,rgba(19,24,32,.9),rgba(10,14,21,.84)); }
+    .jobsync-folder-item { padding:.8rem .75rem .72rem; margin:0 0 .65rem; border:1px solid rgba(255,255,255,.065); border-radius:15px; background:linear-gradient(135deg,rgba(19,24,32,.9),rgba(10,14,21,.84)); transition:transform .25s cubic-bezier(.22,1,.36,1),border-color .25s ease,box-shadow .25s ease; animation:jobsync-home-fade .4s cubic-bezier(.22,1,.36,1) both; }
+    .jobsync-folder-item:hover { transform:translateY(-2px); border-color:rgba(111,131,255,.32); box-shadow:0 14px 32px rgba(0,0,0,.22); }
     .jobsync-folder-item:last-child { margin-bottom:.1rem; }
+    .jobsync-folder-toggle-row { max-width:420px; margin:.9rem 0 .8rem; }
+    .jobsync-folder-toggle-row [data-testid="stHorizontalBlock"] { gap:8px !important; }
+    .jobsync-folder-stat { padding:.7rem .85rem; border:1px solid rgba(255,255,255,.08); border-radius:14px; background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.015)); color:#8592a4; font-size:.62rem; font-weight:700; text-align:center; transition:transform .25s ease,border-color .25s ease; }
+    .jobsync-folder-stat:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.18); }
+    .jobsync-folder-stat span { display:block; color:#f0f3f8; font-size:1.15rem; font-weight:950; margin-bottom:2px; }
+    .jobsync-folder-upload-note code { color:#8ea5ff; font-size:.6rem; word-break:break-all; }
+    .jobsync-folder-live { animation:jobsyncFolderLivePulse 2.4s ease-in-out infinite; }
+    @keyframes jobsyncFolderLivePulse { 0%,100% { box-shadow:0 0 0 0 rgba(52,211,153,.0); } 50% { box-shadow:0 0 14px 1px rgba(52,211,153,.22); } }
     .jobsync-folder-item-head { display:flex; align-items:center; gap:.65rem; min-width:0; }
     .jobsync-folder-file-icon { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border-radius:12px; background:linear-gradient(135deg,rgba(53,179,224,.16),rgba(104,74,230,.18)); border:1px solid rgba(111,131,255,.18); color:#aab9ff; font-size:.48rem; font-weight:950; letter-spacing:.04em; }
     .jobsync-folder-item-main { min-width:0; }
@@ -4796,6 +4805,12 @@ def cv_document_records() -> list[dict]:
     return [d for d in state.get("documents", []) if d.get("kind") in allowed]
 
 
+def letter_document_records() -> list[dict]:
+    """Return every locally managed cover letter record, generated or uploaded."""
+    allowed = {"generated_coverletter", "reference_coverletter", "uploaded_coverletter"}
+    return [d for d in state.get("documents", []) if d.get("kind") in allowed]
+
+
 def application_for_cv(doc: dict) -> dict | None:
     """Find the most recent application associated with a CV path or job metadata."""
     doc_path = str(doc.get("path") or "")
@@ -4829,9 +4844,9 @@ def cv_position_and_date(doc: dict) -> tuple[str, str]:
 
 def cv_kind_label(doc: dict) -> str:
     kind = doc.get("kind")
-    if kind == "generated_cv":
+    if kind in ("generated_cv", "generated_coverletter"):
         return "Generated"
-    if kind == "uploaded_cv":
+    if kind in ("uploaded_cv", "uploaded_coverletter"):
         return "Uploaded"
     return "Reference"
 
@@ -6969,10 +6984,65 @@ elif page == "CV & Cover Letter":
                 st.session_state["cv_generation_running"] = False
                 st.rerun()
 
+
 elif page == "Folders":
     render_modern_page_header("Folders")
-    library_path = cv_library_location()
-    sync_cv_library()
+
+    if "folders_doc_type" not in st.session_state:
+        st.session_state["folders_doc_type"] = "CV"
+
+    st.markdown('<div class="jobsync-folder-toggle-row">', unsafe_allow_html=True)
+    toggle_cols = st.columns(2, gap="small")
+    with toggle_cols[0]:
+        if st.button("CVs", key="folders_toggle_cv", type="primary" if st.session_state["folders_doc_type"] == "CV" else "secondary", width="stretch"):
+            st.session_state["folders_doc_type"] = "CV"; st.rerun()
+    with toggle_cols[1]:
+        if st.button("Cover Letters", key="folders_toggle_letter", type="primary" if st.session_state["folders_doc_type"] == "Letter" else "secondary", width="stretch"):
+            st.session_state["folders_doc_type"] = "Letter"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    doc_type = st.session_state["folders_doc_type"]
+    is_cv = doc_type == "CV"
+
+    if is_cv:
+        library_path = cv_library_location()
+        sync_cv_library()
+        current_docs = sorted(cv_document_records(), key=lambda d: str(d.get("created_at") or ""), reverse=True)
+        upload_dir = UPLOAD_CV
+        kicker_add, title_add = "01 • ADD", "Upload a CV"
+        kicker_lib, title_lib = "02 • LIBRARY", "Saved CVs"
+        copy_add = "Add a PDF, DOCX, LaTeX or TXT. JobSync stores it in your local CV folder automatically."
+        copy_lib = "Open, download or delete a CV from the ⋯ menu beside its filename. Scroll inside this library when there are more files."
+        icon_label = "CV"
+    else:
+        library_path = UPLOAD_CL
+        library_path.mkdir(parents=True, exist_ok=True)
+        current_docs = sorted(letter_document_records(), key=lambda d: str(d.get("created_at") or ""), reverse=True)
+        upload_dir = UPLOAD_CL
+        kicker_add, title_add = "01 • ADD", "Upload a cover letter"
+        kicker_lib, title_lib = "02 • LIBRARY", "Saved cover letters"
+        copy_add = "Add a PDF, DOCX, LaTeX or TXT. JobSync stores it in your local cover-letter folder automatically."
+        copy_lib = "Open, download or delete a cover letter from the ⋯ menu beside its filename. Scroll inside this library when there are more files."
+        icon_label = "CL"
+
+    # Quick stats + a real shortcut into the actual folder on disk, so "local
+    # storage" is something the user can go look at, not just a claim in a
+    # caption. Also fills the dead space below the two panels instead of
+    # leaving it empty.
+    total_bytes = sum(f.stat().st_size for f in library_path.rglob("*") if f.is_file()) if library_path.exists() else 0
+    total_mb = total_bytes / (1024 * 1024)
+    last_added = max((str(d.get("created_at") or "") for d in current_docs), default="")
+    stat_cols = st.columns(4, gap="small")
+    with stat_cols[0]:
+        st.markdown(f'<div class="jobsync-folder-stat"><span>{len(current_docs)}</span>{html.escape(doc_type if is_cv else "Letter")}{"s" if len(current_docs) != 1 else ""}</div>', unsafe_allow_html=True)
+    with stat_cols[1]:
+        st.markdown(f'<div class="jobsync-folder-stat"><span>{total_mb:.1f} MB</span>on disk</div>', unsafe_allow_html=True)
+    with stat_cols[2]:
+        st.markdown(f'<div class="jobsync-folder-stat"><span>{html.escape(last_added[:10] or "—")}</span>last added</div>', unsafe_allow_html=True)
+    with stat_cols[3]:
+        if st.button("📂 Open folder", key=f"folders_open_{doc_type}", width="stretch"):
+            if not _open_local_path(str(library_path)):
+                st.error("Could not open the folder.")
 
     # Two-panel folder workspace. The library is deliberately a fixed-height
     # Streamlit container so only the document list scrolls, never the page.
@@ -6981,29 +7051,29 @@ elif page == "Folders":
 
     with left_col:
         st.markdown(
-            '<div class="jobsync-folder-pane jobsync-folder-upload-pane">'
-            '<div class="jobsync-folder-pane-kicker">01 • ADD</div>'
-            '<div class="jobsync-folder-pane-title">Upload a CV</div>'
-            '<div class="jobsync-folder-pane-copy">Add a PDF, DOCX, LaTeX or TXT. JobSync stores it in your local CV folder automatically.</div>'
-            '</div>',
+            f'<div class="jobsync-folder-pane jobsync-folder-upload-pane">'
+            f'<div class="jobsync-folder-pane-kicker">{kicker_add}</div>'
+            f'<div class="jobsync-folder-pane-title">{html.escape(title_add)}</div>'
+            f'<div class="jobsync-folder-pane-copy">{html.escape(copy_add)}</div>'
+            f'</div>',
             unsafe_allow_html=True,
         )
-        folder_upload_key = f"folder_cv_uploads_v5_{st.session_state.folder_upload_cycle}"
+        folder_upload_key = f"folder_uploads_v6_{doc_type}_{st.session_state.folder_upload_cycle}"
         folder_upload = st.file_uploader(
-            "Choose CV files",
+            f"Choose {'CV' if is_cv else 'cover letter'} files",
             type=["pdf", "docx", "tex", "txt"],
             accept_multiple_files=True,
             key=folder_upload_key,
             label_visibility="collapsed",
         )
         st.markdown('<div class="jobsync-folder-upload-hint">SELECTED FILES ARE READY TO ADD</div>', unsafe_allow_html=True)
-        if st.button("＋  Add to CV library", type="primary", width="stretch", key="folders_upload_cv_v5"):
+        if st.button(f"＋  Add to {'CV' if is_cv else 'cover letter'} library", type="primary", width="stretch", key=f"folders_upload_v6_{doc_type}"):
             count = 0
             for uploaded in folder_upload or []:
                 original_name = Path(uploaded.name).name
                 suffix = Path(original_name).suffix or ".bin"
                 stem = Path(original_name).stem
-                target = unique_doc_path(UPLOAD_CV, stem, suffix)
+                target = unique_doc_path(upload_dir, stem, suffix)
                 target.write_bytes(uploaded.getbuffer())
                 try:
                     text = extract_text(target).strip()
@@ -7011,75 +7081,74 @@ elif page == "Folders":
                     text = ""
 
                 display_name = stem
-                library_target = library_path / f"{safe_name(display_name)}{suffix}"
-                counter = 2
-                while library_target.exists():
-                    library_target = library_path / f"{safe_name(display_name)}_{counter}{suffix}"
-                    counter += 1
-                shutil.copy2(target, library_target)
                 created_at = datetime.now().isoformat(timespec="seconds")
-                state.setdefault("documents", []).append({
-                    "name": target.name,
-                    "display_name": display_name,
-                    "job_title": "",
-                    "kind": "uploaded_cv",
-                    "reference_type": "cv",
-                    "path": str(target),
-                    "library_path": str(library_target),
-                    "pdf_path": "",
-                    "pdf_text_path": "",
-                    "text_chars": len(text),
-                    "created_at": created_at,
-                    "date_applied": "",
-                })
+                if is_cv:
+                    library_target = library_path / f"{safe_name(display_name)}{suffix}"
+                    counter = 2
+                    while library_target.exists():
+                        library_target = library_path / f"{safe_name(display_name)}_{counter}{suffix}"
+                        counter += 1
+                    shutil.copy2(target, library_target)
+                    state.setdefault("documents", []).append({
+                        "name": target.name, "display_name": display_name, "job_title": "",
+                        "kind": "uploaded_cv", "reference_type": "cv", "path": str(target),
+                        "library_path": str(library_target), "pdf_path": "", "pdf_text_path": "",
+                        "text_chars": len(text), "created_at": created_at, "date_applied": "",
+                    })
+                else:
+                    state.setdefault("documents", []).append({
+                        "name": target.name, "display_name": display_name, "job_title": "",
+                        "kind": "uploaded_coverletter", "reference_type": "coverletter", "path": str(target),
+                        "library_path": str(target), "pdf_path": "", "pdf_text_path": "",
+                        "text_chars": len(text), "created_at": created_at, "date_applied": "",
+                    })
                 count += 1
             if count:
-                create_cv_library_backup("upload")
-                notify_success(f"Added {count} CV(s) to your library.")
+                if is_cv:
+                    create_cv_library_backup("upload")
+                save_state(state)
+                notify_success(f"Added {count} document(s) to your library.")
                 st.session_state.folder_upload_cycle += 1
                 st.rerun()
             else:
-                notify_error("Choose at least one CV file first.")
+                notify_error("Choose at least one file first.")
 
         st.markdown(
             '<div class="jobsync-folder-upload-note">'
             '<span>LOCAL STORAGE</span>'
-            '<p>Your files stay in JobSync. Nothing is uploaded to an external service by this folder.</p>'
+            f'<p>Your files stay in JobSync — nothing is uploaded to an external service by this folder. Files live at <code>{html.escape(str(library_path))}</code>.</p>'
             '</div>',
             unsafe_allow_html=True,
         )
 
     with right_col:
-        current_docs = sorted(
-            cv_document_records(),
-            key=lambda d: str(d.get("created_at") or ""),
-            reverse=True,
-        )
         st.markdown(
             f'<div class="jobsync-folder-pane jobsync-folder-library-pane">'
-            f'<div><div class="jobsync-folder-pane-kicker">02 • LIBRARY</div>'
-            f'<div class="jobsync-folder-pane-title">Saved CVs <span>{len(current_docs)}</span></div>'
-            f'<div class="jobsync-folder-pane-copy">Open, download or delete a CV from the ⋯ menu beside its filename. Scroll inside this library when there are more files.</div></div>'
+            f'<div><div class="jobsync-folder-pane-kicker">{kicker_lib}</div>'
+            f'<div class="jobsync-folder-pane-title">{html.escape(title_lib)} <span>{len(current_docs)}</span></div>'
+            f'<div class="jobsync-folder-pane-copy">{html.escape(copy_lib)}</div></div>'
             f'<div class="jobsync-folder-live">● LOCAL</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
 
         # Only this container scrolls. The rest of the page remains fixed.
-        with st.container(height=610, border=True):
+        with st.container(height=640, border=True):
             if not current_docs:
                 st.markdown(
-                    '<div class="jobsync-folder-empty jobsync-folder-empty-large">'
-                    '<div class="jobsync-folder-empty-icon">CV</div>'
-                    '<div><b>Your library is empty</b><span>Upload your first CV from the panel on the left.</span></div>'
-                    '</div>',
+                    f'<div class="jobsync-folder-empty jobsync-folder-empty-large">'
+                    f'<div class="jobsync-folder-empty-icon">{icon_label}</div>'
+                    f'<div><b>Your library is empty</b><span>Upload one from the panel on the left, or generate one in CV Studio.</span></div>'
+                    f'</div>',
                     unsafe_allow_html=True,
                 )
+                if st.button("▣ Go to CV Studio →", key=f"folders_empty_cta_{doc_type}"):
+                    go("CV & Cover Letter"); st.rerun()
             else:
                 for idx, doc in enumerate(current_docs):
                     inferred_position, inferred_date = cv_position_and_date(doc)
-                    position_value = str(doc.get("job_title") or inferred_position or "General CV")
-                    name_value = str(doc.get("display_name") or Path(str(doc.get("path") or "CV")).stem)
+                    position_value = str(doc.get("job_title") or inferred_position or "General document")
+                    name_value = str(doc.get("display_name") or Path(str(doc.get("path") or "Document")).stem)
                     kind_label = cv_kind_label(doc)
                     file_path = Path(str(doc.get("library_path") or doc.get("path") or ""))
                     if not file_path.exists():
@@ -7110,32 +7179,34 @@ elif page == "Folders":
                                     data=file_path.read_bytes(),
                                     file_name=file_path.name,
                                     mime="application/pdf" if file_path.suffix.lower()==".pdf" else "application/octet-stream",
-                                    key=f"folder_download_menu_v8_{idx}",
+                                    key=f"folder_download_menu_v9_{doc_type}_{idx}",
                                     on_click=_cv_download_clicked,
                                     args=(file_path.name,),
                                     width="stretch",
                                 )
-                                if st.button("📂 Folder", key=f"folder_open_menu_v8_{idx}", width="stretch"):
+                                if st.button("📂 Folder", key=f"folder_open_menu_v9_{doc_type}_{idx}", width="stretch"):
                                     if not _open_local_path(str(file_path.parent)):
                                         st.error("Could not open the folder.")
                                 if file_path.suffix.lower() == ".pdf":
-                                    if st.button("👁 View PDF", key=f"folder_view_pdf_menu_v8_{idx}", width="stretch"):
-                                        st.session_state[f"cvfolder_preview_pdf_{idx}"] = not st.session_state.get(f"cvfolder_preview_pdf_{idx}", False)
+                                    if st.button("👁 View PDF", key=f"folder_view_pdf_menu_v9_{doc_type}_{idx}", width="stretch"):
+                                        st.session_state[f"cvfolder_preview_pdf_{doc_type}_{idx}"] = not st.session_state.get(f"cvfolder_preview_pdf_{doc_type}_{idx}", False)
                                         st.rerun()
-                                if st.button("Delete", key=f"folder_delete_menu_v8_{idx}", width="stretch"):
+                                if st.button("Delete", key=f"folder_delete_menu_v9_{doc_type}_{idx}", width="stretch"):
                                     remove_document(doc)
-                                    try:
-                                        create_cv_library_backup("delete")
-                                    except Exception:
-                                        pass
+                                    if is_cv:
+                                        try:
+                                            create_cv_library_backup("delete")
+                                        except Exception:
+                                            pass
                                     st.rerun()
                             else:
                                 st.caption("File is no longer available.")
-                    if st.session_state.get(f"cvfolder_preview_pdf_{idx}") and file_path.exists() and file_path.suffix.lower() == ".pdf":
+                    if st.session_state.get(f"cvfolder_preview_pdf_{doc_type}_{idx}") and file_path.exists() and file_path.suffix.lower() == ".pdf":
                         _render_pdf_preview(str(file_path), f"{name_value} — PDF preview")
                     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
+
 
 elif page == "Profile":
     # v1.7.0 profile refinement: a completed identity is presented as one calm,
