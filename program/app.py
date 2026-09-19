@@ -54,6 +54,14 @@ from services.presence import (
     heartbeat_presence,
     list_online_users,
 )
+from services.messaging import (
+    configured as messaging_configured,
+    fetch_conversations,
+    fetch_thread,
+    linkify as _linkify_message,
+    send_message as _send_chat_message,
+    upload_attachment as _upload_chat_attachment,
+)
 PROGRAM_DIR = Path(__file__).resolve().parent
 PACKAGE_DIR = PROGRAM_DIR.parent.resolve()
 
@@ -3232,7 +3240,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- Navigation helpers ----------------
-BASE_PAGES = ["Home", "Dashboard", "New Search", "Applied Jobs", "Updates", "CV & Cover Letter", "Folders", "Profile", "Settings"]
+BASE_PAGES = ["Home", "Dashboard", "New Search", "Applied Jobs", "Messages", "Updates", "CV & Cover Letter", "Folders", "Profile", "Settings"]
 
 def custom_sections() -> list[dict]:
     raw = state.get("settings", {}).get("custom_sections") or []
@@ -5614,6 +5622,7 @@ with st.sidebar:
                 ("New Search", "🔍", "New Search"),
                 ("Applied Jobs", "✓", "Applied Jobs"),
                 ("Folders", "📁", "Folders"),
+                ("Messages", "💬", "Messages"),
             ]),
             ("SETTINGS", [
                 ("Updates", "↗", "Updates"),
@@ -6236,6 +6245,7 @@ def render_modern_page_header(page_name: str) -> None:
         "LinkedIn Updates": ("NETWORK SIGNAL", "See what changed", "A compact space for LinkedIn notification and profile signals.", [("JOBS", len(jobs), "in workspace"), ("TRACKED", len(applied), "applications"), ("CVS", len(cvs), "ready"), ("STATUS", "LIVE", "workspace")]),
         "CV & Cover Letter": ("DOCUMENT STUDIO", "Create application documents", "Generate tailored LaTeX, inspect the source, and continue to Overleaf when ready.", [("CVS", len(cvs), "saved"), ("LETTERS", len(letters), "saved"), ("PDF", "READY", "download"), ("ENGINE", "ONLINE", "generation")]),
         "Folders": ("DOCUMENT LIBRARY", "Everything in one place", "Browse your generated documents with compact actions beside each file.", [("CVS", len(cvs), "documents"), ("LETTERS", len(letters), "documents"), ("PDF", "READY", "preview"), ("STORAGE", "LOCAL", "workspace")]),
+        "Messages": ("DIRECT MESSAGES", "Chat with other JobSync users", "Send messages, links, PDFs and images to other registered users.", [("JOBS", len(jobs), "available"), ("TRACKED", len(applied), "applications"), ("DOCS", len(cvs) + len(letters), "ready"), ("STATUS", "LIVE" if messaging_configured() else "OFFLINE", "messaging")]),
         "Profile": ("PROFILE CONTROL", "Tune your job-search identity", "Keep the information JobSync uses to match opportunities accurate and current.", [("TARGET", profile.get("field") or "NOT SET", "role"), ("CITY", profile.get("city") or profile.get("location") or "NOT SET", "location"), ("LANG", profile.get("language") or "ANY", "preference"), ("SIGNAL", "READY" if profile.get("field") else "INCOMPLETE", "match quality")]),
         "Settings": ("CONTROL CENTER", "Configure JobSync", "Manage integrations, updates, notifications and workspace behavior from one place.", [("VERSION", APP_VERSION, "current"), ("DATA", "LOCAL", "workspace"), ("BROWSER", "READY", "automation"), ("UPDATE", "READY", "software")]),
     }
@@ -6760,6 +6770,130 @@ elif page == "Applied Jobs":
             if row.get("url"):
                 st.link_button("Open original job ↗", row["url"], width="stretch")
             st.markdown('</div></div></div>', unsafe_allow_html=True)
+
+# ---------------- MESSAGES ----------------
+elif page == "Messages":
+    render_modern_page_header("Messages")
+
+    st.markdown('''<style>
+      .msg-shell{width:100%;max-width:1240px;margin:0 auto;}
+      .msg-layout{display:grid;grid-template-columns:0.9fr 1.5fr;gap:12px;align-items:start;}
+      @media(max-width:900px){.msg-layout{grid-template-columns:1fr;}}
+      .msg-thread-item{padding:.65rem .7rem;border-radius:14px;margin-bottom:.35rem;cursor:pointer;}
+      .msg-thread-name{font-size:.78rem;font-weight:850;color:#f0f4fb;}
+      .msg-thread-preview{font-size:.62rem;color:#8a95a8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .msg-bubble{max-width:78%;padding:.55rem .75rem;border-radius:16px;margin:.3rem 0;font-size:.78rem;line-height:1.45;word-wrap:break-word;}
+      .msg-bubble a{color:inherit;text-decoration:underline;}
+      .msg-bubble-mine{margin-left:auto;background:linear-gradient(135deg,var(--wg-amber-2,#e0a458),var(--wg-amber,#d98c3f));color:#1a140c;}
+      .msg-bubble-theirs{margin-right:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#eef2f7;}
+      .msg-bubble-meta{font-size:.52rem;opacity:.65;margin-top:3px;}
+      .msg-attachment{display:block;margin-top:5px;font-size:.68rem;text-decoration:underline;}
+      .msg-empty{padding:2rem 1rem;text-align:center;color:#7c879a;font-size:.72rem;}
+    </style>''', unsafe_allow_html=True)
+
+    if not messaging_configured():
+        st.warning("Messaging is not configured on this installation. It uses the same shared connection as Online presence in Settings.")
+        st.stop()
+
+    my_name, my_email = _identity()
+    if not my_email:
+        st.info("Add your email in Profile to start messaging other JobSync users.")
+        st.stop()
+
+    st.markdown('<div class="msg-shell"><div class="msg-layout">', unsafe_allow_html=True)
+    conv_col, thread_col = st.columns([0.38, 0.62], gap="large")
+
+    with conv_col:
+        st.markdown('<div class="card"><div class="section-title">Conversations</div>', unsafe_allow_html=True)
+        with st.form("msg_new_thread_form"):
+            new_recipient = st.text_input("Start a new conversation", placeholder="Recipient's JobSync email")
+            start_new = st.form_submit_button("Open chat", width="stretch")
+        if start_new and new_recipient.strip() and "@" in new_recipient:
+            st.session_state["messaging_active_thread"] = new_recipient.strip().lower()
+            st.rerun()
+
+        try:
+            conversations = fetch_conversations(my_email)
+        except Exception as exc:
+            conversations = []
+            st.caption(f"Could not load conversations: {exc}")
+
+        if not conversations:
+            st.markdown('<div class="msg-empty">No conversations yet. Start one above with another registered user\'s email.</div>', unsafe_allow_html=True)
+        else:
+            for conv in conversations:
+                other = conv["other_email"]
+                active = st.session_state.get("messaging_active_thread") == other
+                label = f"{conv.get('other_name') or other}\n{conv.get('preview') or 'No messages yet'}"
+                if st.button(f"{'●' if active else '○'}  {other}", key=f"msg_thread_{other}", width="stretch", type="primary" if active else "secondary"):
+                    st.session_state["messaging_active_thread"] = other
+                    st.rerun()
+                st.caption(conv.get("preview") or "")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with thread_col:
+        active_thread = st.session_state.get("messaging_active_thread")
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        if not active_thread:
+            st.markdown('<div class="msg-empty">Select a conversation on the left, or start a new one by email.</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="section-title">Chat with {html.escape(active_thread)}</div>', unsafe_allow_html=True)
+            try:
+                messages = fetch_thread(my_email, active_thread)
+            except Exception as exc:
+                messages = []
+                st.caption(f"Could not load messages: {exc}")
+
+            with st.container(height=420, border=True):
+                if not messages:
+                    st.markdown('<div class="msg-empty">No messages yet. Say hello 👋</div>', unsafe_allow_html=True)
+                for m in messages:
+                    mine = str(m.get("sender_email") or "").lower() == my_email.lower()
+                    body_html = _linkify_message(html.escape(str(m.get("body") or "")))
+                    attach_html = ""
+                    if m.get("attachment_url"):
+                        att_name = html.escape(str(m.get("attachment_name") or "Attachment"))
+                        attach_html = f'<a class="msg-attachment" href="{html.escape(str(m["attachment_url"]))}" target="_blank" rel="noopener">📎 {att_name}</a>'
+                    when = str(m.get("created_at") or "")[:16].replace("T", " ")
+                    st.markdown(
+                        f'<div class="msg-bubble {"msg-bubble-mine" if mine else "msg-bubble-theirs"}">'
+                        f'{body_html}{attach_html}<div class="msg-bubble-meta">{"You" if mine else html.escape(str(m.get("sender_name") or active_thread))} · {html.escape(when)}</div></div>',
+                        unsafe_allow_html=True,
+                    )
+
+            with st.form("msg_send_form", clear_on_submit=True):
+                msg_text = st.text_area("Message", placeholder="Type a message or paste a link…", label_visibility="collapsed", height=80)
+                msg_file = st.file_uploader("Attach a PDF or image", type=["pdf", "jpg", "jpeg", "png"], key=f"msg_attach_{active_thread}")
+                send_clicked = st.form_submit_button("Send", type="primary", width="stretch")
+            if send_clicked:
+                attachment_url, attachment_name, attachment_type = "", "", ""
+                if msg_file is not None:
+                    with st.spinner("Uploading attachment..."):
+                        attachment_url, upload_err = _upload_chat_attachment(msg_file.getvalue(), msg_file.name, msg_file.type or "")
+                    if upload_err:
+                        notify_error(upload_err)
+                        attachment_url = ""
+                    else:
+                        attachment_name = msg_file.name
+                        attachment_type = Path(msg_file.name).suffix.lstrip(".").lower()
+                if not msg_text.strip() and not attachment_url:
+                    notify_error("Write a message or attach a file first.")
+                else:
+                    try:
+                        _send_chat_message(
+                            sender_email=my_email,
+                            sender_name=my_name,
+                            recipient_email=active_thread,
+                            text=msg_text.strip(),
+                            attachment_url=attachment_url,
+                            attachment_name=attachment_name,
+                            attachment_type=attachment_type,
+                        )
+                        st.rerun()
+                    except Exception as exc:
+                        notify_error(f"Could not send message: {exc}")
+        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div></div>', unsafe_allow_html=True)
 
 # ---------------- UPDATES CENTER ----------------
 elif page == "Updates":
