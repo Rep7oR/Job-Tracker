@@ -599,7 +599,8 @@ st.markdown(
     .jobsync-public-landing{min-height:calc(100vh - 30px);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:18px 24px 40px;box-sizing:border-box}
     .jobsync-public-landing::before{content:"";position:absolute;width:720px;height:720px;border-radius:50%;background:radial-gradient(circle,rgba(224,164,88,.13),rgba(111,191,139,.09) 34%,rgba(201,123,58,.05) 52%,transparent 70%);filter:blur(8px);animation:landingAura 8s ease-in-out infinite alternate;pointer-events:none}
     .jobsync-public-card{width:min(980px,92vw);text-align:center;position:relative;z-index:2;padding:22px 20px 30px}
-    .jobsync-big-logo{width:210px;height:210px;margin:0 auto 26px;position:relative;display:grid;place-items:center;border-radius:54px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.26),rgba(86,64,255,.18) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.26);box-shadow:0 0 35px rgba(54,190,255,.16),0 0 90px rgba(119,77,255,.14),inset 0 1px 0 rgba(255,255,255,.14);animation:bigLogoFloat 4.2s ease-in-out infinite}
+    .jobsync-big-logo{width:210px;height:210px;margin:0 auto 26px;position:relative;display:grid;place-items:center;animation:bigLogoFloat 4.2s ease-in-out infinite}
+    .jobsync-big-logo svg{width:210px;height:210px;overflow:visible;}
     .jobsync-big-logo::before,.jobsync-big-logo::after{content:"";position:absolute;inset:-15px;border-radius:66px;border:1px solid rgba(55,216,255,.24);animation:bigLogoRing 3.8s linear infinite}.jobsync-big-logo::after{inset:-31px;border-color:rgba(219,75,209,.14);animation-duration:6s;animation-direction:reverse}
     .jobsync-big-logo svg{width:168px;height:168px;overflow:visible;filter:drop-shadow(0 12px 22px rgba(0,0,0,.25))}.jobsync-big-logo .jobsync-logo-orbit{stroke-width:2.8;stroke-dasharray:95 22;animation:bigOrbit 2.2s linear infinite}.jobsync-big-logo .jobsync-logo-dot{animation:bigDot 1.15s ease-in-out infinite}.jobsync-big-logo .jobsync-logo-case{animation:bigCase 1.8s ease-in-out infinite}
     .jobsync-public-kicker{color:var(--wg-amber-2,#e0a458);font-size:.66rem;font-weight:950;letter-spacing:.28em;text-transform:uppercase}.jobsync-public-title{margin-top:10px;font-size:clamp(2.7rem,6vw,5.5rem);font-weight:950;line-height:.94;letter-spacing:-.075em;background:linear-gradient(90deg,#fff6e8 5%,#f0c383 36%,#7fd1a0 65%,#fff6e8 96%);-webkit-background-clip:text;background-clip:text;color:transparent}.jobsync-public-copy{max-width:700px;margin:17px auto 0;color:#a89d8a;font-size:.86rem;line-height:1.7}
@@ -6105,11 +6106,11 @@ def _render_home_authenticated_content():
         align-items: stretch !important;
       }
       .jobsync-launch-hero{text-align:center; margin: 9vh 0 5vh; animation: jobsync-home-fade .6s cubic-bezier(.22,1,.36,1) both;}
-      .jobsync-launch-logo{width:56px;height:56px;margin:0 auto 12px;display:grid;place-items:center;border-radius:16px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.24),rgba(86,64,255,.16) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.24);box-shadow:0 0 20px rgba(54,190,255,.14);animation:bigLogoFloat 4.2s ease-in-out infinite;}
-      .jobsync-launch-logo svg{width:32px;height:32px;}
+      .jobsync-launch-logo{width:56px;height:56px;margin:0 auto 12px;display:grid;place-items:center;}
+      .jobsync-launch-logo svg{width:56px;height:56px;overflow:visible;}
       .jobsync-launch-greeting{
         font-size:clamp(1.3rem,2.3vw,1.75rem);font-weight:700;letter-spacing:-.02em;
-        background:linear-gradient(90deg,#eef2f7,#9fd8ff,#c9a9ff,#eef2f7);
+        background:linear-gradient(90deg,#eef2f7,#f0c383,#7fd1a0,#eef2f7);
         background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
         animation: jobsyncGreetingShimmer 6s ease-in-out infinite;
       }
