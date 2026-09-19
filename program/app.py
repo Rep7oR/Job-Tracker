@@ -2048,7 +2048,7 @@ st.markdown(r"""
   }
   .main .block-container {
     width:100% !important; margin:0 auto !important;
-    padding-left:clamp:.65rem,2vw,2.5rem) !important;
+    padding-left:clamp(.65rem, 2vw, 2.5rem) !important;
     padding-right:clamp(.65rem, 2vw, 2.5rem) !important;
   }
   [data-testid="stHorizontalBlock"] {
@@ -2056,7 +2056,7 @@ st.markdown(r"""
     flex-wrap:wrap !important; align-items:stretch !important;
     gap:clamp(.45rem, 1.2vw, 1rem) !important;
   }
-  [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+  [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
     min-width:0 !important; max-width:100% !important;
   }
   [data-testid="stHorizontalBlock"] img,
@@ -2081,7 +2081,7 @@ st.markdown(r"""
      they become single-column, preventing cramped cards at medium widths. */
   @media (max-width:1100px) {
     .main .block-container { padding-left:1rem !important; padding-right:1rem !important; }
-    [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-child(4)) > [data-testid="column"] {
+    [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]:nth-child(4)) > [data-testid="stColumn"] {
       flex:1 1 calc(50% - .6rem) !important; width:calc(50% - .6rem) !important;
     }
     section[data-testid="stSidebar"] { max-width:250px !important; }
@@ -2097,7 +2097,7 @@ st.markdown(r"""
     [data-testid="stHorizontalBlock"] {
       flex-direction:column !important; flex-wrap:nowrap !important; gap:.65rem !important;
     }
-    [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
       flex:1 1 100% !important; width:100% !important;
     }
     section[data-testid="stSidebar"] { max-width:220px !important; }
