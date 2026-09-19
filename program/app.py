@@ -3179,6 +3179,50 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
     map_html=map_html.replace('__PAYLOAD__',payload).replace('__CENTER__',center_json).replace('__ZOOM__',str(zoom))
     return map_html,mapped_jobs,skipped_jobs
 
+def _render_loading_splash(message: str = "Loading…", seconds: float = 3.0) -> None:
+    """Full-screen blurred overlay with the animated JobSync logo.
+
+    Used for moments that genuinely take a beat (a new search, rebuilding the
+    live map) so the wait reads as an intentional, branded transition instead
+    of a frozen page. Blocks for `seconds` — call this right before the slow
+    work, not instead of a spinner during it.
+    """
+    slot = st.empty()
+    slot.markdown(f'''<div class="jobsync-loading-overlay">
+      <div class="jobsync-loading-backdrop"></div>
+      <div class="jobsync-loading-card">
+        <div class="jobsync-loading-logo" aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <defs>
+              <linearGradient id="jsyncLoadingJ" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ff1ff"/><stop offset=".48" stop-color="#3fb8ff"/><stop offset="1" stop-color="#8b62ff"/></linearGradient>
+              <linearGradient id="jsyncLoadingOrbit" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#35e1ff"/><stop offset=".48" stop-color="#765cff"/><stop offset="1" stop-color="#f05bd9"/></linearGradient>
+            </defs>
+            <path class="jobsync-logo-j" style="fill:url(#jsyncLoadingJ)" d="M17 8h8v20.5c0 5.9-3.7 9.5-9.2 9.5-4.4 0-7.5-2.2-8.8-5.8l6.1-3.2c.7 1.6 1.6 2.3 2.9 2.3 1.9 0 3-1.1 3-3.2V8z"/>
+            <ellipse class="jobsync-logo-orbit" style="stroke:url(#jsyncLoadingOrbit)" cx="24" cy="24" rx="18" ry="10" transform="rotate(-19 24 24)"/>
+            <circle class="jobsync-logo-dot" cx="37" cy="15" r="2.2"/>
+            <path class="jobsync-logo-case" d="M29 22h12v9H29z M32 22v-2.3c0-.9.7-1.7 1.7-1.7h2.6c.9 0 1.7.8 1.7 1.7V22"/>
+          </svg>
+        </div>
+        <div class="jobsync-loading-text">{html.escape(message)}</div>
+      </div>
+    </div>
+    <style>
+      .jobsync-loading-overlay{{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;pointer-events:none;}}
+      .jobsync-loading-backdrop{{position:absolute;inset:0;background:rgba(2,7,14,.62);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);}}
+      .jobsync-loading-card{{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:16px;padding:34px 42px;border-radius:26px;border:1px solid rgba(111,215,255,.24);background:linear-gradient(150deg,rgba(9,22,39,.92),rgba(10,11,24,.94));box-shadow:0 30px 90px rgba(0,0,0,.5);animation:jobsyncLoadingIn .4s cubic-bezier(.2,.75,.2,1) both;}}
+      .jobsync-loading-logo{{width:84px;height:84px;display:grid;place-items:center;border-radius:24px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.26),rgba(86,64,255,.18) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.26);box-shadow:0 0 35px rgba(54,190,255,.16),0 0 90px rgba(119,77,255,.14);animation:bigLogoFloat 1.4s ease-in-out infinite;}}
+      .jobsync-loading-logo svg{{width:56px;height:56px;overflow:visible}}
+      .jobsync-loading-logo .jobsync-logo-orbit{{fill:none;stroke-width:2.8;stroke-dasharray:95 22;animation:bigOrbit 1.1s linear infinite}}
+      .jobsync-loading-logo .jobsync-logo-dot{{fill:#fff;animation:bigDot .7s ease-in-out infinite}}
+      .jobsync-loading-logo .jobsync-logo-case{{fill:none;stroke:#cfe9ff;stroke-width:2;animation:bigCase 1s ease-in-out infinite}}
+      .jobsync-loading-text{{color:#eef2f7;font-size:.85rem;font-weight:800;letter-spacing:-.01em;}}
+      @keyframes jobsyncLoadingIn{{from{{opacity:0;transform:scale(.94)}}to{{opacity:1;transform:none}}}}
+      @media (prefers-reduced-motion: reduce){{.jobsync-loading-logo,.jobsync-loading-logo *{{animation:none !important}}}}
+    </style>''', unsafe_allow_html=True)
+    time.sleep(max(0.0, seconds))
+    slot.empty()
+
+
 def render_live_job_map(jobs: list[dict], search_location: str = "") -> None:
     st.markdown('<div class="jobsync-live-map-header"><div><span>LIVE JOB MAP</span><b>Jobs by location</b></div><small>Click a marker to see the matching listings · drag to pan · scroll to zoom</small></div>', unsafe_allow_html=True)
     try:
@@ -5611,28 +5655,18 @@ def render_modern_page_header(page_name: str) -> None:
     }
     kicker, title, copy, cards = configs.get(page_name, ("JOBSYNC", page_name, "Workspace controls and activity.", [("JOBS", len(jobs), "available"), ("APPLIED", len(applied), "tracked"), ("CVS", len(cvs), "ready"), ("STATUS", "LIVE", "workspace")]))
 
-    # New Search gets a live configuration signal deck instead of generic KPI cards.
-    # Every search signal starts red/pulsing until the user explicitly applies that
-    # setting. Once applied, the same card transitions to an animated green/ready state.
+    # New Search: a one-form page now (no more separate Sources/Profile/
+    # Freshness/ATS setup steps to track), so the header just shows the
+    # current result set like the other workspace pages' stat decks.
     if page_name == "New Search":
-        signal_specs = [
-            ("sources", "SOURCES", "Job sources", "Configured"),
-            ("profile", "PROFILE", "Role + location", "Configured"),
-            ("date", "FRESHNESS", "Posting window", "Configured"),
-            ("ats", "ATS", "Board filters", "Configured"),
+        last_search = (state.get("search_history") or [{}])[-1] if state.get("search_history") else {}
+        cards = [
+            ("JOBS FOUND", len(jobs), "current results"),
+            ("LAST FIELD", str(last_search.get("field") or "—")[:24] or "Any role", "most recent search"),
+            ("LAST LOCATION", str(last_search.get("location") or "—")[:24] or "Any location", "most recent search"),
+            ("STATUS", "LIVE", "workspace"),
         ]
-        stat_parts = []
-        for key, label, note, ready_note in signal_specs:
-            ready = bool(st.session_state.get(f"search_signal_{key}", False))
-            state_label = "READY" if ready else "SET"
-            state_note = ready_note if ready else "Needs setup"
-            stat_parts.append(
-                f'<div class="ux-stat {"signal-ready" if ready else "signal-pending"}" aria-label="{html.escape(label)} {state_label}">'
-                f'<div class="ux-stat-label">{html.escape(label)} <span class="ux-signal-status"><span class="ux-signal-dot"></span>{state_label}</span></div>'
-                f'<div class="ux-stat-value">{html.escape(state_label)}</div>'
-                f'<div class="ux-stat-note">{html.escape(note)} · {html.escape(state_note)}</div></div>'
-            )
-        stat_html = "".join(stat_parts)
+        stat_html = "".join(f'<div class="ux-stat"><div class="ux-stat-label">{html.escape(str(label))}</div><div class="ux-stat-value">{html.escape(str(value))}</div><div class="ux-stat-note">{html.escape(str(note))}</div></div>' for label, value, note in cards)
     else:
         stat_html = "".join(f'<div class="ux-stat"><div class="ux-stat-label">{html.escape(str(label))}</div><div class="ux-stat-value">{html.escape(str(value))}</div><div class="ux-stat-note">{html.escape(str(note))}</div></div>' for label, value, note in cards)
     # Updates is intentionally a clean utility surface: no dashboard/KPI cards above it.
@@ -5824,10 +5858,6 @@ elif page == "Dashboard":
 elif page == "New Search":
     render_modern_page_header("New Search")
 
-    if "search_wheel" not in st.session_state:
-        st.session_state["search_wheel"] = "profile"
-    active_setting = st.session_state.get("search_wheel", "profile")
-
     configured_ids = state.get("settings", {}).get("actor_ids") or [ACTOR_CATALOG[name]["id"] for name in DEFAULT_ACTOR_NAMES]
     configured_names = [ACTOR_ID_TO_NAME.get(x, x) for x in configured_ids]
     saved_mode = state.get("settings", {}).get("job_search_mode", "free")
@@ -5848,172 +5878,61 @@ elif page == "New Search":
         # internal vertical scrollbar on the left side.
         render_live_job_map(state.get("jobs") or [], profile.get("location") or profile.get("city") or "")
 
-        # v1.6.0 modal search settings: tabs stay compact and each tab opens
-        # its settings in a centered Streamlit dialog.
-        wheel_options = ["Sources", "Profile", "Freshness", "ATS"]
-        selected_map = {"Sources": "sources", "Profile": "profile", "Freshness": "date", "ATS": "ats"}
-        active_setting = st.session_state.get("search_wheel", "profile")
-        current_label = {"sources":"Sources", "profile":"Profile", "date":"Freshness", "ats":"ATS"}.get(active_setting, "Profile")
-
-        def _safe_choice(options, value, fallback=0):
-            try:
-                return options.index(value)
-            except (ValueError, AttributeError):
-                return fallback
-
-        @st.dialog("Search settings", width="large")
-        def _search_settings_dialog(setting):
-            setting = setting if setting in {"sources", "profile", "date", "ats"} else "profile"
-            st.caption("Configure this search signal. Press Enter or use Apply & close when finished.")
-
-            if setting == "sources":
-                st.markdown("### 🌐 Sources")
-                st.caption("Choose where JobSync collects openings from.")
-                saved = st.session_state.get("search_source_preset", saved_preset)
-                if saved not in preset_values:
-                    saved = saved_preset if saved_preset in preset_values else "open"
-                with st.form("search_sources_modal", clear_on_submit=False):
-                    preset_label = st.radio("Job scraping option", preset_labels, index=_safe_choice(preset_values, saved), horizontal=True, key="modal_source_preset")
-                    chosen = preset_values[_safe_choice(preset_labels, preset_label)]
-                    if chosen == "open":
-                        st.multiselect("Open-source collectors", options=OPEN_SOURCE_DEFAULTS, default=[x for x in st.session_state.get("search_free_sources", configured_free) if x in OPEN_SOURCE_DEFAULTS] or OPEN_SOURCE_DEFAULTS, key="modal_free_sources")
-                    elif chosen == "linkedin":
-                        st.success("LinkedIn selected — direct LinkedIn search.")
-                    else:
-                        st.multiselect("Apify Actors", options=list(ACTOR_CATALOG.keys()), default=[x for x in st.session_state.get("search_apify_sources", configured_names) if x in ACTOR_CATALOG], key="modal_apify_sources")
-                    apply = st.form_submit_button("✓  Apply & close", type="primary", width="stretch")
-                if apply:
-                    st.session_state["search_source_preset"] = chosen
-                    if chosen == "open":
-                        st.session_state["search_free_sources"] = st.session_state.get("modal_free_sources", [])
-                        st.session_state["search_apify_sources"] = []
-                    elif chosen == "linkedin":
-                        st.session_state["search_free_sources"] = ["LinkedIn"]
-                        st.session_state["search_apify_sources"] = []
-                    else:
-                        st.session_state["search_free_sources"] = []
-                        st.session_state["search_apify_sources"] = st.session_state.get("modal_apify_sources", [])
-                    st.session_state["search_signal_sources"] = True
-                    st.session_state["search_wheel"] = "sources"
-                    st.rerun()
-                if st.button("Close", key="close_sources_modal", width="stretch"):
-                    st.rerun()
-
-            elif setting == "profile":
-                st.markdown("### 🎯 Search profile")
-                st.caption("Define the opportunity you want to find.")
-                experience_options = ["Any", "Internship", "Entry level", "Associate", "Mid-Senior level", "Director"]
-                language_options = ["English", "German", "French", "Spanish", "Italian", "Dutch", "Any"]
-                with st.form("search_profile_modal", clear_on_submit=False):
-                    st.text_input("Field / job title", value=st.session_state.get("search_field", profile.get("field", "")), placeholder="Mechanical Engineer", key="modal_search_field")
-                    st.text_input("Industry", value=st.session_state.get("search_industry", profile.get("industry", "")), placeholder="Manufacturing, optics, automotive", key="modal_search_industry")
-                    st.text_input("Location", value=st.session_state.get("search_location", profile.get("location", profile.get("city", ""))), placeholder="Hannover, Germany", key="modal_search_location")
-                    current_exp = st.session_state.get("search_experience", profile.get("experience", "Any"))
-                    if current_exp not in experience_options: current_exp = "Any"
-                    st.selectbox("Experience", experience_options, index=_safe_choice(experience_options, current_exp), key="modal_search_experience")
-                    current_language = st.session_state.get("search_language", profile.get("language", "Any"))
-                    if current_language not in language_options: current_language = "Any"
-                    st.selectbox("Required language", language_options, index=_safe_choice(language_options, current_language), key="modal_search_language")
-                    apply = st.form_submit_button("✓  Apply & close", type="primary", width="stretch")
-                if apply:
-                    st.session_state["search_field"] = st.session_state.get("modal_search_field", "").strip()
-                    st.session_state["search_industry"] = st.session_state.get("modal_search_industry", "").strip()
-                    st.session_state["search_location"] = st.session_state.get("modal_search_location", "").strip()
-                    st.session_state["search_experience"] = st.session_state.get("modal_search_experience", "Any")
-                    st.session_state["search_language"] = st.session_state.get("modal_search_language", "Any")
-                    st.session_state["search_signal_profile"] = True
-                    st.session_state["search_wheel"] = "profile"
-                    st.rerun()
-                if st.button("Close", key="close_profile_modal", width="stretch"):
-                    st.rerun()
-
-            elif setting == "date":
-                st.markdown("### 📅 Freshness")
-                st.caption("Control how recent the jobs should be.")
-                date_options = {"Past 24 hours": 1, "Past 3 days": 3, "Past 7 days": 7}
-                current_window = st.session_state.get("search_date_window", profile.get("date_window", "Past 7 days"))
-                if current_window not in date_options: current_window = "Past 7 days"
-                with st.form("search_freshness_modal", clear_on_submit=False):
-                    st.selectbox("Date posted", list(date_options.keys()), index=_safe_choice(list(date_options.keys()), current_window), key="modal_search_date_window")
-                    apply = st.form_submit_button("✓  Apply & close", type="primary", width="stretch")
-                if apply:
-                    st.session_state["search_date_window"] = st.session_state.get("modal_search_date_window", "Past 7 days")
-                    st.session_state["search_signal_date"] = True
-                    st.session_state["search_wheel"] = "date"
-                    st.rerun()
-                if st.button("Close", key="close_date_modal", width="stretch"):
-                    st.rerun()
-
-            else:
-                st.markdown("### 🔗 Company ATS")
-                st.caption("Add public career boards to search alongside selected sources.")
-                current_ats = "\n".join(state.get("settings", {}).get("ats_urls") or [])
-                with st.form("search_ats_modal", clear_on_submit=False):
-                    st.text_area("Company ATS career URLs", value=st.session_state.get("search_ats_urls", current_ats), placeholder="https://company.wd5.myworkdayjobs.com/Careers\nhttps://boards.greenhouse.io/company", key="modal_search_ats_urls", height=140)
-                    apply = st.form_submit_button("✓  Apply & close", type="primary", width="stretch")
-                if apply:
-                    st.session_state["search_ats_urls"] = st.session_state.get("modal_search_ats_urls", "")
-                    st.session_state["search_signal_ats"] = True
-                    st.session_state["search_wheel"] = "ats"
-                    st.rerun()
-                if st.button("Close", key="close_ats_modal", width="stretch"):
-                    st.rerun()
-
-        # Once every search signal has been configured, keep the workspace clean:
-        # the four setup tabs disappear and only Find + Reset remain. Reset
-        # brings the configuration controls back so the user can start over.
-        all_signals_ready = all(st.session_state.get(f"search_signal_{key}", False) for key in ("sources", "profile", "date", "ats"))
-        if not all_signals_ready:
-            tab_cols = st.columns(4, gap="small")
-            for col, label in zip(tab_cols, wheel_options):
-                setting_key = selected_map[label]
-                with col:
-                    is_active = setting_key == active_setting
-                    if st.button(label, key=f"search_tab_{setting_key}", type="primary" if is_active else "secondary", width="stretch"):
-                        st.session_state["search_wheel"] = setting_key
-                        _search_settings_dialog(setting_key)
-
-        # Compact at-a-glance summary; detailed controls are intentionally hidden in the modal.
+        # Simplified search: one inline form instead of four separate modal
+        # dialogs that each had to be opened, filled in, and applied before a
+        # search could run. Everything lives directly on the page now; only
+        # the less-common filters (industry, experience, language, sources,
+        # ATS URLs) are tucked into one optional expander.
         source_preset_now = st.session_state.get("search_source_preset", saved_preset)
         if source_preset_now not in preset_values: source_preset_now = "open"
-        source_label_now = dict(zip(preset_values, preset_labels)).get(source_preset_now, "Open source")
-        profile_field_now = st.session_state.get("search_field", profile.get("field", "")) or "Any role"
-        profile_location_now = st.session_state.get("search_location", profile.get("location", profile.get("city", ""))) or "Any location"
-        date_now = st.session_state.get("search_date_window", profile.get("date_window", "Past 7 days"))
-        ats_now = len([x for x in st.session_state.get("search_ats_urls", "\n".join(state.get("settings", {}).get("ats_urls") or [])).splitlines() if x.strip()])
-        st.caption(f"Active search · **{source_label_now}** · **{profile_field_now}** · **{profile_location_now}** · **{date_now}** · **{ats_now} ATS")
 
-        # Resolve all search values from session state so the modal is the single source of truth.
-        source_preset = source_preset_now
-        if source_preset == "open":
-            search_mode = "free"; free_source_names = st.session_state.get("search_free_sources", [x for x in configured_free if x in OPEN_SOURCE_DEFAULTS] or OPEN_SOURCE_DEFAULTS); source_names = []
-        elif source_preset == "linkedin":
-            search_mode = "free"; free_source_names = ["LinkedIn"]; source_names = []
-        else:
-            search_mode = "apify"; free_source_names = []; source_names = st.session_state.get("search_apify_sources", [x for x in configured_names if x in ACTOR_CATALOG])
+        with st.form("new_search_form", clear_on_submit=False):
+            c1, c2 = st.columns([1.3, 1], gap="small")
+            with c1:
+                field = st.text_input("Job title / field", value=st.session_state.get("search_field", profile.get("field", "")), placeholder="Mechanical Engineer", key="ns_field")
+            with c2:
+                location = st.text_input("Location", value=st.session_state.get("search_location", profile.get("location", profile.get("city", ""))), placeholder="Hannover, Germany", key="ns_location")
 
-        field = st.session_state.get("search_field", profile.get("field", ""))
-        industry = st.session_state.get("search_industry", profile.get("industry", ""))
-        location = st.session_state.get("search_location", profile.get("location", profile.get("city", "")))
-        experience = st.session_state.get("search_experience", profile.get("experience", "Any"))
-        language = st.session_state.get("search_language", profile.get("language", "Any"))
-        date_options = {"Past 24 hours": 1, "Past 3 days": 3, "Past 7 days": 7}
-        date_window = st.session_state.get("search_date_window", profile.get("date_window", "Past 7 days"))
-        if date_window not in date_options: date_window = "Past 7 days"
-        ats_urls = [x.strip() for x in st.session_state.get("search_ats_urls", "\n".join(state.get("settings", {}).get("ats_urls") or [])).splitlines() if x.strip()]
+            with st.expander("More filters (optional)"):
+                fc1, fc2 = st.columns(2, gap="small")
+                with fc1:
+                    industry = st.text_input("Industry", value=st.session_state.get("search_industry", profile.get("industry", "")), placeholder="Manufacturing, optics, automotive", key="ns_industry")
+                    experience_options = ["Any", "Internship", "Entry level", "Associate", "Mid-Senior level", "Director"]
+                    current_exp = st.session_state.get("search_experience", profile.get("experience", "Any"))
+                    if current_exp not in experience_options: current_exp = "Any"
+                    experience = st.selectbox("Experience", experience_options, index=experience_options.index(current_exp), key="ns_experience")
+                    date_options = {"Past 24 hours": 1, "Past 3 days": 3, "Past 7 days": 7}
+                    current_window = st.session_state.get("search_date_window", profile.get("date_window", "Past 7 days"))
+                    if current_window not in date_options: current_window = "Past 7 days"
+                    date_window = st.selectbox("Date posted", list(date_options.keys()), index=list(date_options.keys()).index(current_window), key="ns_date_window")
+                with fc2:
+                    language_options = ["English", "German", "French", "Spanish", "Italian", "Dutch", "Any"]
+                    current_language = st.session_state.get("search_language", profile.get("language", "Any"))
+                    if current_language not in language_options: current_language = "Any"
+                    language = st.selectbox("Required language", language_options, index=language_options.index(current_language), key="ns_language")
+                    source_preset_label = st.radio("Sources", preset_labels, index=preset_values.index(source_preset_now), horizontal=True, key="ns_source_preset")
+                    source_preset = preset_values[preset_labels.index(source_preset_label)]
+                    if source_preset == "open":
+                        free_source_names = st.multiselect("Open-source collectors", options=OPEN_SOURCE_DEFAULTS, default=[x for x in st.session_state.get("search_free_sources", configured_free) if x in OPEN_SOURCE_DEFAULTS] or OPEN_SOURCE_DEFAULTS, key="ns_free_sources")
+                        source_names = []
+                    elif source_preset == "linkedin":
+                        free_source_names = ["LinkedIn"]; source_names = []
+                        st.caption("Direct LinkedIn search.")
+                    else:
+                        free_source_names = []
+                        source_names = st.multiselect("Apify Actors", options=list(ACTOR_CATALOG.keys()), default=[x for x in st.session_state.get("search_apify_sources", configured_names) if x in ACTOR_CATALOG], key="ns_apify_sources")
+                ats_urls_text = st.text_area("Company ATS career URLs (optional, one per line)", value=st.session_state.get("search_ats_urls", "\n".join(state.get("settings", {}).get("ats_urls") or [])), placeholder="https://company.wd5.myworkdayjobs.com/Careers", key="ns_ats_urls", height=90)
 
-        action_cols = st.columns([1, 1], gap="small") if all_signals_ready else st.columns([1], gap="small")
-        with action_cols[0]:
-            submitted = st.button("🔎  Find matching jobs", key="search_wheel_submit", type="primary", width="stretch")
-        if all_signals_ready:
-            with action_cols[1]:
-                reset_search = st.button("↺  Reset search", key="search_wheel_reset", width="stretch")
-        else:
-            reset_search = False
+            fcol1, fcol2 = st.columns([2, 1], gap="small")
+            with fcol1:
+                submitted = st.form_submit_button("🔎  Find matching jobs", type="primary", width="stretch")
+            with fcol2:
+                reset_search = st.form_submit_button("↺  Reset", width="stretch")
+
+        search_mode = "apify" if source_preset == "apify" else "free"
+        ats_urls = [x.strip() for x in ats_urls_text.splitlines() if x.strip()]
 
         if reset_search:
-            # Reset only the current New Search configuration. Existing jobs,
-            # applications, CVs and other user data remain untouched.
             for key in (
                 "search_source_preset", "search_free_sources", "search_apify_sources",
                 "search_field", "search_industry", "search_location",
@@ -6021,37 +5940,25 @@ elif page == "New Search":
                 "search_ats_urls",
             ):
                 st.session_state.pop(key, None)
-            for key in ("sources", "profile", "date", "ats"):
-                st.session_state[f"search_signal_{key}"] = False
-            st.session_state["search_wheel"] = "profile"
             st.rerun()
 
         if submitted:
+            st.session_state.update({
+                "search_source_preset": source_preset, "search_free_sources": free_source_names,
+                "search_apify_sources": source_names, "search_field": str(field).strip(),
+                "search_industry": str(industry).strip(), "search_location": str(location).strip(),
+                "search_experience": experience, "search_language": language,
+                "search_date_window": date_window, "search_ats_urls": ats_urls_text,
+            })
             profile.update({"field": str(field).strip(), "industry": str(industry).strip(), "location": str(location).strip(), "experience": experience, "language": language, "date_window": date_window})
             save_state(state)
             try:
                 actor_ids = [ACTOR_CATALOG[name]["id"] for name in source_names]
-                if search_mode in {"apify", "both"} and not actor_ids:
+                if search_mode == "apify" and not actor_ids:
                     raise RuntimeError("Select at least one Apify Actor for the selected search method.")
-
-                # v1.6.0 UX: use a live status surface instead of a tiny
-                # notification below the button. The status is deliberately
-                # staged for ~3 seconds before the real search begins so the
-                # user sees an unmistakable scanning transition.
-                with st.status("Scanning job sources…", expanded=True) as search_status:
-                    st.write("🔎 Finding fresh matches…")
-                    time.sleep(0.75)
-                    search_status.update(label="Matching jobs to your profile…", state="running")
-                    st.write("🎯 Resolving locations and preparing the live map…")
-                    time.sleep(0.75)
-                    search_status.update(label="Resolving job locations…", state="running")
-                    time.sleep(0.75)
-                    search_status.update(label="Building live job map…", state="running")
-                    os.environ["JOB_TRACKER_DATE_WINDOW_DAYS"] = str(date_options[date_window])
-                    results = search_jobs(str(field).strip(), str(location).strip(), str(industry).strip(), experience, language=language, limit=10000, actor_ids=actor_ids, search_mode=search_mode, free_sources=free_source_names, ats_urls=ats_urls)
-                    search_status.update(label=f"Search complete · {len(results)} jobs found", state="complete", expanded=False)
-                for _signal in ("sources", "profile", "date", "ats"):
-                    st.session_state[f"search_signal_{_signal}"] = True
+                _render_loading_splash("Scanning job sources and building your live map…", seconds=3.0)
+                os.environ["JOB_TRACKER_DATE_WINDOW_DAYS"] = str(date_options[date_window])
+                results = search_jobs(str(field).strip(), str(location).strip(), str(industry).strip(), experience, language=language, limit=10000, actor_ids=actor_ids, search_mode=search_mode, free_sources=free_source_names, ats_urls=ats_urls)
                 state.setdefault("settings", {})["actor_ids"] = actor_ids
                 state.setdefault("settings", {})["job_search_mode"] = search_mode
                 state.setdefault("settings", {})["job_source_preset"] = source_preset
@@ -6062,10 +5969,10 @@ elif page == "New Search":
                 state["search_history"] = state["search_history"][-25:]
                 save_state(state)
                 notify_success(f"Found {len(results)} jobs from the selected sources.")
-                # Re-render so the live map immediately reflects this search.
                 st.rerun()
             except Exception as exc:
                 notify_error(str(exc))
+
 
     with results_col:
         # Results are deliberately contained in a fixed-height internal pane.
