@@ -1830,24 +1830,24 @@ st.markdown(
     .applied-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.29rem .5rem; border-radius:999px; color:#cfd8e3; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); font-size:.54rem; font-weight:760; }
     .applied-dot { width:5px; height:5px; border-radius:50%; background:#ff5a65; box-shadow:0 0 9px rgba(255,90,101,.55); }
     .applied-dot.green { background:#39e58c; box-shadow:0 0 9px rgba(57,229,140,.45); }
-    .applied-dot.blue { background:#55dcff; box-shadow:0 0 9px rgba(85,220,255,.45); }
+    .applied-dot.blue { background:#e0a458; box-shadow:0 0 9px rgba(224,164,88,.45); }
     .applied-overview { display:grid; grid-template-columns:1.45fr repeat(4,minmax(90px,1fr)); gap:.45rem; margin:.6rem 0 .7rem; }
     .applied-stat { position:relative; overflow:hidden; min-height:67px; padding:.62rem .68rem; border-radius:16px; border:1px solid rgba(255,255,255,.06); background:linear-gradient(145deg,rgba(16,21,29,.92),rgba(8,12,18,.94)); box-shadow:0 12px 30px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.025); }
     .applied-stat::after { content:""; position:absolute; width:55px; height:55px; right:-20px; top:-22px; border-radius:50%; background:rgba(255,255,255,.025); pointer-events:none; }
     .applied-stat-label { color:#727e8e; font-size:.53rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
     .applied-stat-value { color:#f4f7fa; font-size:1.25rem; font-weight:920; letter-spacing:-.045em; margin-top:.15rem; }
     .applied-stat-note { color:#626e7e; font-size:.52rem; margin-top:.05rem; }
-    .applied-stat.main { background:radial-gradient(circle at 90% 10%,rgba(85,220,255,.08),transparent 35%),linear-gradient(145deg,rgba(16,25,34,.94),rgba(8,12,18,.96)); }
-    .applied-stat.main .applied-stat-value { background:linear-gradient(90deg,#f7f9fc,#74e3ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .applied-stat.main { background:radial-gradient(circle at 90% 10%,rgba(224,164,88,.08),transparent 35%),linear-gradient(145deg,rgba(16,25,34,.94),rgba(8,12,18,.96)); }
+    .applied-stat.main .applied-stat-value { background:linear-gradient(90deg,#f7f9fc,#f0c383); -webkit-background-clip:text; background-clip:text; color:transparent; }
     .applied-stat.interview { box-shadow:inset 0 1px 0 rgba(102,166,255,.55),0 12px 30px rgba(0,0,0,.14); }
     .applied-stat.offer { box-shadow:inset 0 1px 0 rgba(57,229,140,.6),0 12px 30px rgba(0,0,0,.14); }
     .applied-stat.rejected { box-shadow:inset 0 1px 0 rgba(255,77,91,.48),0 12px 30px rgba(0,0,0,.14); }
     .applied-command { display:flex; align-items:center; justify-content:space-between; gap:.7rem; padding:.58rem .68rem; margin-bottom:.65rem; border-radius:16px; border:1px solid rgba(255,255,255,.055); background:rgba(10,15,22,.78); box-shadow:0 12px 30px rgba(0,0,0,.12); }
     .applied-command-left { display:flex; align-items:center; gap:.55rem; min-width:0; }
-    .applied-command-icon { width:30px; height:30px; border-radius:10px; display:grid; place-items:center; color:#fff; font-size:.7rem; font-weight:900; background:linear-gradient(135deg,rgba(85,220,255,.17),rgba(139,92,255,.2)); border:1px solid rgba(85,220,255,.14); }
+    .applied-command-icon { width:30px; height:30px; border-radius:10px; display:grid; place-items:center; color:#fff; font-size:.7rem; font-weight:900; background:linear-gradient(135deg,rgba(224,164,88,.22),rgba(111,191,139,.22)); border:1px solid rgba(224,164,88,.16); }
     .applied-command-title { color:#e8edf3; font-size:.64rem; font-weight:850; }
     .applied-command-copy { color:#687485; font-size:.52rem; margin-top:.08rem; }
-    .applied-command-badge { padding:.27rem .48rem; border-radius:999px; color:#9feaff; border:1px solid rgba(85,220,255,.12); background:rgba(85,220,255,.04); font-size:.51rem; font-weight:850; white-space:nowrap; }
+    .applied-command-badge { padding:.27rem .48rem; border-radius:999px; color:#f0c383; border:1px solid rgba(224,164,88,.16); background:rgba(224,164,88,.06); font-size:.51rem; font-weight:850; white-space:nowrap; }
     .applied-actions [data-testid="stButton"] > button, .applied-actions [data-testid="stDownloadButton"] > button { min-height:37px !important; border-radius:11px !important; font-size:.61rem !important; }
     .applied-actions [data-testid="stDownloadButton"] > button { background:rgba(255,255,255,.025) !important; border-color:rgba(255,255,255,.07) !important; }
     .applied-list-head { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; margin:.2rem 0 .5rem; }
