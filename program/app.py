@@ -3233,7 +3233,7 @@ st.markdown("""
 .update-dot{width:7px;height:7px;border-radius:50%;margin-top:6px;flex:none;box-shadow:0 0 10px rgba(98,220,255,.25);}
 .section-kicker{color:#6f8299;font-size:.53rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;}
 .software-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:4px;}
-.software-card{position:relative;overflow:hidden;padding:28px;border:1px solid rgba(113,93,241,.20);border-radius:20px;background:linear-gradient(145deg,rgba(8,17,29,.97),rgba(25,12,46,.97));min-height:235px;}
+.software-card{position:relative;overflow:hidden;padding:28px;border:1px solid rgba(224,164,88,.20);border-radius:20px;background:linear-gradient(145deg,rgba(24,20,15,.97),rgba(18,16,12,.97));min-height:235px;}
 .software-card:after{content:"";position:absolute;left:-25%;right:-25%;height:1px;top:0;background:linear-gradient(90deg,transparent,rgba(70,212,255,.55),rgba(181,72,204,.55),transparent);animation:updatesSweep 3.2s linear infinite;}
 .software-label{color:#7f90a8;font-size:.55rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;}
 .software-version{font-size:3.5rem;font-weight:950;letter-spacing:-.07em;margin-top:7px;background:linear-gradient(90deg,#f4f7fb,#6cddff,#a86cf3);-webkit-background-clip:text;background-clip:text;color:transparent;}
@@ -8067,12 +8067,12 @@ elif page == "Settings":
         border-radius:12px 12px 0 0 !important; font-weight:700 !important; font-size:.78rem !important;
         padding:9px 14px !important; transition: background .2s ease, color .2s ease !important;
       }
-      .stTabs [data-baseweb="tab"]:hover{ background:rgba(110,90,255,.12) !important; }
-      .stTabs [aria-selected="true"]{ background:rgba(110,90,255,.16) !important; }
+      .stTabs [data-baseweb="tab"]:hover{ background:rgba(224,164,88,.14) !important; }
+      .stTabs [aria-selected="true"]{ background:rgba(224,164,88,.18) !important; }
       .settings-card-head{display:flex; align-items:center; gap:11px; margin-bottom:10px;}
       .settings-icon{
         width:34px; height:34px; flex:0 0 34px; border-radius:11px; display:grid; place-items:center;
-        font-size:1rem; background:linear-gradient(135deg,rgba(120,180,255,.35),rgba(190,130,255,.28));
+        font-size:1rem; background:linear-gradient(135deg,rgba(224,164,88,.35),rgba(111,191,139,.28));
         box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
       }
       .settings-icon.danger{ background:linear-gradient(135deg,rgba(255,110,110,.4),rgba(255,60,60,.22)); }
