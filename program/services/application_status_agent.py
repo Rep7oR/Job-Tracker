@@ -12,10 +12,11 @@ _DEV_BASE = Path(__file__).resolve().parents[2]
 BASE_DIR = _PACKAGED_BASE_DIR if _PACKAGED_BASE_DIR else _DEV_BASE
 LOG_FILE = BASE_DIR / "data" / "status_agent.log"
 
-# Only auto-apply a status change when the email-to-application match is this
-# confident. Anything below stays a manual suggestion on the Gmail Updates
-# page, same as before this agent existed.
-AUTO_APPLY_CONFIDENCE = 0.72
+# The agent never applies a status change on its own -- it only stages a
+# suggestion for the user to confirm or dismiss with one click. This is the
+# minimum match confidence worth surfacing as a ready-to-confirm suggestion
+# at all (anything below still appears on the Gmail Updates page as before).
+SUGGEST_CONFIDENCE = 0.55
 STALE_FOLLOWUP_DAYS = 14
 
 STATUS_MAP = {
@@ -49,7 +50,12 @@ def _log_activity(state: dict, kind: str, text: str) -> None:
 
 
 def _check_email_updates(state: dict) -> int:
-    """Auto-sync Gmail and auto-apply only confident status matches."""
+    """Auto-sync Gmail and stage confident matches as ready-to-confirm suggestions.
+
+    Never writes application['status'] itself -- the agent's job ends at
+    preparing the suggestion. Applying it is always a deliberate click by the
+    user, on the Applied Jobs card or the Gmail Updates page.
+    """
     settings = state.setdefault("settings", {})
     if not gmail_configured() or not settings.get("gmail_email"):
         return 0
@@ -65,11 +71,13 @@ def _check_email_updates(state: dict) -> int:
     settings["gmail_last_sync"] = datetime.now().isoformat(timespec="seconds")
     state["gmail_updates"] = updates
 
-    applied_count = 0
+    pending = state.setdefault("assistant_pending_status_changes", [])
+    already_pending = {(p.get("application_index"), p.get("suggested_status")) for p in pending}
+    new_count = 0
     for update in updates:
         matched = update.get("matched_application_index")
         confidence = float(update.get("match_confidence") or 0)
-        if matched is None or matched >= len(applications) or confidence < AUTO_APPLY_CONFIDENCE:
+        if matched is None or matched >= len(applications) or confidence < SUGGEST_CONFIDENCE:
             continue
         suggested = STATUS_MAP.get(update.get("status", ""), "")
         if not suggested:
@@ -79,20 +87,31 @@ def _check_email_updates(state: dict) -> int:
         if suggested == current:
             continue
         if STATUS_RANK.get(suggested, 0) < STATUS_RANK.get(current, 0):
+            # Don't even suggest downgrading an application that's already
+            # further along the pipeline -- a generic email is too weak
+            # evidence for that regardless of confirmation.
             continue
-        app_row["status"] = suggested
-        app_row["status_updated_at"] = datetime.now().isoformat(timespec="seconds")
-        app_row["status_source"] = "email-auto"
-        applied_count += 1
+        if (matched, suggested) in already_pending:
+            continue
+        pending.append({
+            "application_index": matched,
+            "suggested_status": suggested,
+            "confidence": confidence,
+            "subject": update.get("subject", ""),
+            "prepared_at": datetime.now().isoformat(timespec="seconds"),
+        })
+        already_pending.add((matched, suggested))
+        new_count += 1
         title = app_row.get("title", "a role")
         company = app_row.get("company", "")
-        text = f"{title} at {company}: status auto-updated to {suggested} from an email"
-        _log_activity(state, "status_update", text)
+        text = f"{title} at {company}: found a likely status update to {suggested} — ready to confirm"
+        _log_activity(state, "status_suggestion", text)
         try:
-            desktop_notify("JobSync: application update", text)
+            desktop_notify("JobSync: update ready to review", text)
         except Exception:
             pass
-    return applied_count
+    state["assistant_pending_status_changes"] = pending[-200:]
+    return new_count
 
 
 def _check_stale_applications(state: dict) -> int:
@@ -134,13 +153,13 @@ def run_once() -> dict:
         _log("Application status agent disabled; skipping.")
         return {"enabled": False}
 
-    email_updates = _check_email_updates(state)
+    new_suggestions = _check_email_updates(state)
     stale = _check_stale_applications(state)
 
     settings["status_agent_last_check"] = datetime.now().isoformat(timespec="seconds")
-    settings["status_agent_last_email_updates"] = email_updates
+    settings["status_agent_last_email_updates"] = new_suggestions
     settings["status_agent_last_stale_flags"] = stale
     settings.pop("status_agent_last_error", None)
     save_state(state)
-    _log(f"Checked: {email_updates} email auto-updates, {stale} new follow-up flags.")
-    return {"enabled": True, "email_updates": email_updates, "stale_flags": stale}
+    _log(f"Checked: {new_suggestions} new status suggestions staged, {stale} new follow-up flags.")
+    return {"enabled": True, "email_updates": new_suggestions, "stale_flags": stale}

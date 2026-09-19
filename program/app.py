@@ -6231,7 +6231,7 @@ def _render_home_authenticated_content():
             # work is actually visible instead of silently updating state.
             assistant_feed = (state.get("assistant_activity") or [])[:5]
             if assistant_feed:
-                icon_by_kind = {"status_update": "✉", "follow_up": "🔔"}
+                icon_by_kind = {"status_suggestion": "✉", "follow_up": "🔔"}
                 assistant_rows = "".join(
                     f'<div class="ag-activity-row"><span class="ag-activity-dot"></span>'
                     f'<div class="ag-activity-text"><b>{html.escape(icon_by_kind.get(ev.get("kind"), "•"))} {html.escape(str(ev.get("agent") or "Assistant"))}</b> — '
@@ -6831,14 +6831,38 @@ elif page == "Applied Jobs":
             date_applied = html.escape(row.get("applied_date", "") or "Date not specified")
             url = html.escape(row.get("url", "") or "")
             followup_chip = '<span class="applied-mini-chip" style="border-color:rgba(224,164,88,.4);color:var(--wg-amber-2,#e0a458);">🔔 Needs follow-up</span>' if row.get("_followup_flagged") else ''
-            status_source_chip = '<span class="applied-mini-chip" style="border-color:rgba(111,191,139,.35);color:var(--wg-green,#6fbf8b);">✉ Auto-detected</span>' if row.get("status_source") == "email-auto" else ''
-            st.markdown(f'''<div class="applied-card"><div class="applied-card-top"><div><div class="applied-card-index">APPLICATION {idx + 1:02d}</div><div class="applied-card-title">{title}</div><div class="applied-card-company"><b>{company}</b> · {location}</div><div class="applied-card-meta"><span class="applied-mini-chip">Applied {date_applied}</span><span class="applied-mini-chip">{source}</span>{'<span class="applied-mini-chip">URL linked</span>' if url else ''}{followup_chip}{status_source_chip}</div></div><div class="applied-card-status"><div class="applied-card-status-label">Current stage</div><span class="status-pill {status_class(old_status)}">{html.escape(old_status)}</span></div></div><div class="applied-card-controls">''', unsafe_allow_html=True)
+            pending_for_row = [p for p in (state.get("assistant_pending_status_changes") or []) if p.get("application_index") == idx]
+            suggestion_chip = f'<span class="applied-mini-chip" style="border-color:rgba(111,191,139,.35);color:var(--wg-green,#6fbf8b);">✉ Suggested: {html.escape(pending_for_row[0]["suggested_status"])}</span>' if pending_for_row else ''
+            st.markdown(f'''<div class="applied-card"><div class="applied-card-top"><div><div class="applied-card-index">APPLICATION {idx + 1:02d}</div><div class="applied-card-title">{title}</div><div class="applied-card-company"><b>{company}</b> · {location}</div><div class="applied-card-meta"><span class="applied-mini-chip">Applied {date_applied}</span><span class="applied-mini-chip">{source}</span>{'<span class="applied-mini-chip">URL linked</span>' if url else ''}{followup_chip}{suggestion_chip}</div></div><div class="applied-card-status"><div class="applied-card-status-label">Current stage</div><span class="status-pill {status_class(old_status)}">{html.escape(old_status)}</span></div></div><div class="applied-card-controls">''', unsafe_allow_html=True)
             if row.get("_followup_flagged"):
                 if st.button("✓ Mark followed up", key=f"followup_clear_{idx}", width="stretch"):
                     row.pop("_followup_flagged", None)
                     save_state(state)
                     notify_success("Follow-up cleared.")
                     st.rerun()
+            if pending_for_row:
+                suggestion = pending_for_row[0]
+                st.caption(f"Assistant found this from an email: \"{suggestion.get('subject', '')[:80]}\" ({suggestion.get('confidence', 0):.0%} confidence)")
+                sug_col1, sug_col2 = st.columns(2, gap="small")
+                with sug_col1:
+                    if st.button(f"✓ Confirm: {suggestion['suggested_status']}", key=f"suggestion_confirm_{idx}", type="primary", width="stretch"):
+                        row["status"] = suggestion["suggested_status"]
+                        row.pop("_followup_flagged", None)
+                        state["assistant_pending_status_changes"] = [
+                            p for p in (state.get("assistant_pending_status_changes") or [])
+                            if not (p.get("application_index") == idx and p.get("suggested_status") == suggestion["suggested_status"])
+                        ]
+                        save_state(state)
+                        notify_success(f"Status confirmed: {suggestion['suggested_status']}.")
+                        st.rerun()
+                with sug_col2:
+                    if st.button("✕ Dismiss", key=f"suggestion_dismiss_{idx}", width="stretch"):
+                        state["assistant_pending_status_changes"] = [
+                            p for p in (state.get("assistant_pending_status_changes") or [])
+                            if not (p.get("application_index") == idx and p.get("suggested_status") == suggestion["suggested_status"])
+                        ]
+                        save_state(state)
+                        st.rerun()
             h1, h2, h3 = st.columns([1.05, 1.05, .7])
             with h1:
                 status = st.selectbox("Pipeline status", status_values, index=status_values.index(old_status) if old_status in status_values else 0, key=f"status_{idx}")
@@ -8256,11 +8280,11 @@ elif page == "Settings":
         st.write("")
         st.markdown('<div class="settings-card-head"><div class="settings-icon">🤝</div><div class="section-title">Application status agent</div></div>', unsafe_allow_html=True)
         status_agent_enabled = st.checkbox(
-            "Auto-detect application status changes and follow-up reminders",
+            "Watch for application status updates and follow-up reminders",
             value=bool(state.get("settings", {}).get("application_status_agent_enabled", True)),
-            help="Runs alongside the job monitor. Auto-syncs Gmail and applies a status change only when the email-to-application match is very confident; everything else stays a manual suggestion on Gmail Updates. Also flags applications with no movement in 14+ days as needing a follow-up.",
+            help="Runs alongside the job monitor. Auto-syncs Gmail and prepares a status-change suggestion whenever an email looks like a confident match — it never changes anything itself; you confirm or dismiss each one with one click on Applied Jobs. Also flags applications with no movement in 14+ days as needing a follow-up.",
         )
-        st.info("Requires Gmail to be connected (Gmail OAuth tab) for the email half. The follow-up flag works even without Gmail, using each application's applied date.")
+        st.info("The agent only prepares suggestions — it never submits a status change on its own. Requires Gmail to be connected (Gmail OAuth tab) for the email half; the follow-up flag works even without Gmail.")
         sa_col1, sa_col2 = st.columns([1, 3])
         with sa_col1:
             if st.button("▶ Run now", key="run_status_agent_now", width="stretch"):
@@ -8269,7 +8293,7 @@ elif page == "Settings":
                     result = _status_agent_run_once()
                     refresh_state()
                     if result.get("enabled"):
-                        notify_success(f"Checked: {result.get('email_updates', 0)} auto-updates, {result.get('stale_flags', 0)} new follow-up flags.")
+                        notify_success(f"Checked: {result.get('email_updates', 0)} new suggestions ready to confirm, {result.get('stale_flags', 0)} new follow-up flags.")
                     else:
                         notify_error("Application status agent is turned off.")
                 except Exception as exc:
@@ -8281,7 +8305,7 @@ elif page == "Settings":
         sa_last_emails = state.get("settings", {}).get("status_agent_last_email_updates", 0)
         sa_last_stale = state.get("settings", {}).get("status_agent_last_stale_flags", 0)
         if sa_last_check:
-            st.caption(f"Last check: {sa_last_check} · Auto-updated from email: {sa_last_emails} · New follow-up flags: {sa_last_stale}")
+            st.caption(f"Last check: {sa_last_check} · New suggestions ready to confirm: {sa_last_emails} · New follow-up flags: {sa_last_stale}")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with tab_oauth:
