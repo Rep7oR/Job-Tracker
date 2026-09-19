@@ -1669,7 +1669,7 @@ st.markdown(
     .jobsync-folder-library-pane { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; min-height:0; margin-bottom:.7rem; }
     .jobsync-folder-pane-kicker { color:#7fb5ff; font-size:.58rem; font-weight:900; letter-spacing:.14em; margin-bottom:.28rem; }
     .jobsync-folder-pane-title { color:#f3f6fb; font-size:1rem; font-weight:900; letter-spacing:-.02em; }
-    .jobsync-folder-pane-title span { display:inline-grid; place-items:center; min-width:25px; height:20px; padding:0 6px; margin-left:5px; border-radius:999px; background:rgba(88,92,230,.16); border:1px solid rgba(111,113,255,.2); color:#b9bcff; font-size:.62rem; vertical-align:2px; }
+    .jobsync-folder-pane-title span { display:inline-grid; place-items:center; min-width:25px; height:20px; padding:0 6px; margin-left:5px; border-radius:999px; background:rgba(224,164,88,.16); border:1px solid rgba(224,164,88,.24); color:#f0c383; font-size:.62rem; vertical-align:2px; }
     .jobsync-folder-pane-copy { color:#7f8b9d; font-size:.67rem; line-height:1.45; margin-top:.28rem; max-width:620px; }
     .jobsync-folder-live { flex:0 0 auto; color:#63e9a2; font-size:.57rem; font-weight:900; letter-spacing:.12em; padding:.35rem .55rem; border-radius:999px; background:rgba(52,211,153,.06); border:1px solid rgba(52,211,153,.15); }
     .jobsync-folder-upload-hint { color:#687587; font-size:.55rem; font-weight:850; letter-spacing:.11em; margin:.42rem 0 .5rem; }
@@ -1685,11 +1685,11 @@ st.markdown(
     .jobsync-folder-stat { padding:.7rem .85rem; border:1px solid rgba(255,255,255,.08); border-radius:14px; background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.015)); color:#8592a4; font-size:.62rem; font-weight:700; text-align:center; transition:transform .25s ease,border-color .25s ease; }
     .jobsync-folder-stat:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.18); }
     .jobsync-folder-stat span { display:block; color:#f0f3f8; font-size:1.15rem; font-weight:950; margin-bottom:2px; }
-    .jobsync-folder-upload-note code { color:#8ea5ff; font-size:.6rem; word-break:break-all; }
+    .jobsync-folder-upload-note code { color:#f0c383; font-size:.6rem; word-break:break-all; }
     .jobsync-folder-live { animation:jobsyncFolderLivePulse 2.4s ease-in-out infinite; }
-    @keyframes jobsyncFolderLivePulse { 0%,100% { box-shadow:0 0 0 0 rgba(52,211,153,.0); } 50% { box-shadow:0 0 14px 1px rgba(52,211,153,.22); } }
+    @keyframes jobsyncFolderLivePulse { 0%,100% { box-shadow:0 0 0 0 rgba(111,191,139,.0); } 50% { box-shadow:0 0 14px 1px rgba(111,191,139,.22); } }
     .jobsync-folder-item-head { display:flex; align-items:center; gap:.65rem; min-width:0; }
-    .jobsync-folder-file-icon { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border-radius:12px; background:linear-gradient(135deg,rgba(53,179,224,.16),rgba(104,74,230,.18)); border:1px solid rgba(111,131,255,.18); color:#aab9ff; font-size:.48rem; font-weight:950; letter-spacing:.04em; }
+    .jobsync-folder-file-icon { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border-radius:12px; background:linear-gradient(135deg,rgba(224,164,88,.18),rgba(111,191,139,.18)); border:1px solid rgba(224,164,88,.18); color:#f0c383; font-size:.48rem; font-weight:950; letter-spacing:.04em; }
     .jobsync-folder-item-main { min-width:0; }
     .jobsync-folder-item-name { color:#eef2f7; font-size:.78rem; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .jobsync-folder-item-meta { display:flex; gap:.38rem; align-items:center; flex-wrap:wrap; color:#788596; font-size:.58rem; margin-top:.25rem; }
