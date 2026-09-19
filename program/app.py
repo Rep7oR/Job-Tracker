@@ -519,29 +519,11 @@ st.markdown(
     /* Animated JobSync identity: CSS/SVG so it stays crisp and lightweight. */
     .jobsync-logo-mark {
         position:relative; display:inline-grid; place-items:center; width:42px; height:42px; flex:0 0 42px;
-        border-radius:14px; background:linear-gradient(145deg,#0c1728,#171033);
-        border:1px solid rgba(115,224,255,.24); overflow:visible;
-        box-shadow:0 10px 28px rgba(74,93,255,.20), inset 0 1px 0 rgba(255,255,255,.12);
+        overflow:visible;
     }
-    .jobsync-logo-mark::before {
-        content:""; position:absolute; inset:-3px; border-radius:16px;
-        border:1px solid rgba(92,219,255,.0); animation:jobsyncLogoPulse 2.8s ease-in-out infinite;
-    }
-    .jobsync-logo-mark svg { width:31px; height:31px; overflow:visible; }
-    .jobsync-logo-j { fill:url(#jobsyncJGradient); filter:drop-shadow(0 0 5px rgba(53,216,255,.34)); }
-    .jobsync-logo-orbit { fill:none; stroke:url(#jobsyncOrbitGradient); stroke-width:2.6; stroke-linecap:round;
-        stroke-dasharray:74 18; transform-origin:50% 50%; animation:jobsyncOrbit 3.4s linear infinite; }
-    .jobsync-logo-dot { fill:#ef7be8; filter:drop-shadow(0 0 4px rgba(239,123,232,.75)); animation:jobsyncDot 1.7s ease-in-out infinite; }
-    .jobsync-logo-case { fill:#d78bff; stroke:#24143f; stroke-width:1.2; animation:jobsyncCase 2.8s ease-in-out infinite; transform-origin:67% 62%; }
+    .jobsync-logo-mark svg { width:38px; height:38px; overflow:visible; }
     .jobsync-logo-wordmark { font-weight:950; letter-spacing:-.055em; color:#f7f9ff; }
-    .jobsync-logo-wordmark .sync { color:#35d8ff; }
-    @keyframes jobsyncOrbit { to { transform:rotate(360deg); } }
-    @keyframes jobsyncDot { 0%,100% { opacity:.55; transform:scale(.82); } 50% { opacity:1; transform:scale(1.15); } }
-    @keyframes jobsyncCase { 0%,100% { transform:rotate(-2deg) translateY(0); } 50% { transform:rotate(3deg) translateY(-1px); } }
-    @keyframes jobsyncLogoPulse { 0%,100% { opacity:0; box-shadow:0 0 0 0 rgba(53,216,255,0); } 50% { opacity:1; box-shadow:0 0 0 6px rgba(53,216,255,.055), 0 0 22px rgba(124,92,255,.12); } }
-    @media (prefers-reduced-motion: reduce) {
-        .jobsync-logo-mark::before, .jobsync-logo-orbit, .jobsync-logo-dot, .jobsync-logo-case { animation:none !important; }
-    }
+    .jobsync-logo-wordmark .sync { color:var(--wg-amber-2,#e0a458); }
     .jobsync-brand-row { display:flex; align-items:center; gap:10px; }
     .jobsync-brand-row .brand-copy { min-width:0; }
     .jobsync-brand-row .brand-name { line-height:1; }
@@ -573,17 +555,11 @@ st.markdown(
     .jobsync-login-logo {
         width:48px;
         height:48px;
-        border-radius:14px;
         display:flex;
         align-items:center;
         justify-content:center;
-        background:linear-gradient(145deg,#ff5d67,#d93642);
-        color:#fff;
-        font-weight:950;
-        font-size:15px;
-        letter-spacing:-.04em;
-        box-shadow:0 12px 30px rgba(255,82,94,.18);
     }
+    .jobsync-login-logo svg { width:48px; height:48px; overflow:visible; }
     .jobsync-login-name {
         color:#f5f7fa;
         font-size:1.25rem;
@@ -621,13 +597,13 @@ st.markdown(
 
     /* v1.3.64 — public landing identity */
     .jobsync-public-landing{min-height:calc(100vh - 30px);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:18px 24px 40px;box-sizing:border-box}
-    .jobsync-public-landing::before{content:"";position:absolute;width:720px;height:720px;border-radius:50%;background:radial-gradient(circle,rgba(70,210,255,.13),rgba(103,77,255,.09) 34%,rgba(225,72,211,.05) 52%,transparent 70%);filter:blur(8px);animation:landingAura 8s ease-in-out infinite alternate;pointer-events:none}
+    .jobsync-public-landing::before{content:"";position:absolute;width:720px;height:720px;border-radius:50%;background:radial-gradient(circle,rgba(224,164,88,.13),rgba(111,191,139,.09) 34%,rgba(201,123,58,.05) 52%,transparent 70%);filter:blur(8px);animation:landingAura 8s ease-in-out infinite alternate;pointer-events:none}
     .jobsync-public-card{width:min(980px,92vw);text-align:center;position:relative;z-index:2;padding:22px 20px 30px}
     .jobsync-big-logo{width:210px;height:210px;margin:0 auto 26px;position:relative;display:grid;place-items:center;border-radius:54px;background:radial-gradient(circle at 32% 25%,rgba(65,223,255,.26),rgba(86,64,255,.18) 38%,rgba(21,18,50,.9) 72%);border:1px solid rgba(111,215,255,.26);box-shadow:0 0 35px rgba(54,190,255,.16),0 0 90px rgba(119,77,255,.14),inset 0 1px 0 rgba(255,255,255,.14);animation:bigLogoFloat 4.2s ease-in-out infinite}
     .jobsync-big-logo::before,.jobsync-big-logo::after{content:"";position:absolute;inset:-15px;border-radius:66px;border:1px solid rgba(55,216,255,.24);animation:bigLogoRing 3.8s linear infinite}.jobsync-big-logo::after{inset:-31px;border-color:rgba(219,75,209,.14);animation-duration:6s;animation-direction:reverse}
     .jobsync-big-logo svg{width:168px;height:168px;overflow:visible;filter:drop-shadow(0 12px 22px rgba(0,0,0,.25))}.jobsync-big-logo .jobsync-logo-orbit{stroke-width:2.8;stroke-dasharray:95 22;animation:bigOrbit 2.2s linear infinite}.jobsync-big-logo .jobsync-logo-dot{animation:bigDot 1.15s ease-in-out infinite}.jobsync-big-logo .jobsync-logo-case{animation:bigCase 1.8s ease-in-out infinite}
-    .jobsync-public-kicker{color:#5de3ff;font-size:.66rem;font-weight:950;letter-spacing:.28em;text-transform:uppercase}.jobsync-public-title{margin-top:10px;font-size:clamp(2.7rem,6vw,5.5rem);font-weight:950;line-height:.94;letter-spacing:-.075em;background:linear-gradient(90deg,#f8fbff 5%,#9cecff 36%,#8a73ff 65%,#ef72d8 96%);-webkit-background-clip:text;background-clip:text;color:transparent}.jobsync-public-copy{max-width:700px;margin:17px auto 0;color:#8493aa;font-size:.86rem;line-height:1.7}
-    .jobsync-public-feature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:760px;margin:28px auto 0}.jobsync-public-feature{padding:12px 14px;border-radius:15px;border:1px solid rgba(255,255,255,.065);background:linear-gradient(145deg,rgba(14,26,49,.72),rgba(7,14,28,.82));text-align:left;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}.jobsync-public-feature b{display:block;color:#e8f1ff;font-size:.65rem}.jobsync-public-feature span{display:block;color:#64758d;font-size:.49rem;margin-top:4px}
+    .jobsync-public-kicker{color:var(--wg-amber-2,#e0a458);font-size:.66rem;font-weight:950;letter-spacing:.28em;text-transform:uppercase}.jobsync-public-title{margin-top:10px;font-size:clamp(2.7rem,6vw,5.5rem);font-weight:950;line-height:.94;letter-spacing:-.075em;background:linear-gradient(90deg,#fff6e8 5%,#f0c383 36%,#7fd1a0 65%,#fff6e8 96%);-webkit-background-clip:text;background-clip:text;color:transparent}.jobsync-public-copy{max-width:700px;margin:17px auto 0;color:#a89d8a;font-size:.86rem;line-height:1.7}
+    .jobsync-public-feature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:760px;margin:28px auto 0}.jobsync-public-feature{padding:12px 14px;border-radius:15px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(145deg,rgba(28,25,19,.75),rgba(18,16,12,.85));text-align:left;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}.jobsync-public-feature b{display:block;color:#f6f1e8;font-size:.65rem}.jobsync-public-feature span{display:block;color:#8a8074;font-size:.49rem;margin-top:4px}
     @keyframes landingAura{from{transform:scale(.9) translate3d(-2%,1%,0);opacity:.65}to{transform:scale(1.08) translate3d(2%,-1%,0);opacity:1}}@keyframes bigLogoFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-9px) rotate(1deg)}}@keyframes bigLogoRing{0%{transform:scale(.9) rotate(0);opacity:.1}45%{opacity:.8}100%{transform:scale(1.12) rotate(360deg);opacity:0}}@keyframes bigOrbit{to{transform:rotate(360deg)}}@keyframes bigDot{0%,100%{opacity:.35;transform:scale(.75)}50%{opacity:1;transform:scale(1.35)}}@keyframes bigCase{0%,100%{transform:rotate(-3deg) translateY(0)}50%{transform:rotate(4deg) translateY(-3px)}}
     @media(max-width:700px){.jobsync-public-landing{padding:10px 12px 30px}.jobsync-big-logo{width:165px;height:165px;border-radius:44px}.jobsync-big-logo svg{width:132px;height:132px}.jobsync-public-feature-row{grid-template-columns:1fr}}
 
