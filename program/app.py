@@ -132,7 +132,10 @@ def _load_local_accounts() -> dict:
             if isinstance(raw, dict):
                 return raw
     except Exception:
-        pass
+        try:
+            st.session_state["_accounts_file_corrupted"] = True
+        except Exception:
+            pass
     return {}
 
 
@@ -5577,6 +5580,8 @@ else:
 if page == "Login":
     if page == "Login" and st.session_state.pop("_auth_expired", False):
         notify_error("Your 3-hour session has expired. Please sign in again.")
+    if st.session_state.pop("_accounts_file_corrupted", False):
+        notify_error("Your local accounts file could not be read and may be damaged. Existing accounts may not appear — contact support before creating a new one to avoid losing data.")
     # Modern, focused authentication screen. The underlying local account
     # behavior and forms remain unchanged.
     st.markdown(
@@ -5605,89 +5610,129 @@ if page == "Login":
         tab_login, tab_signup, tab_forgot = st.tabs(["Sign in", "Create account", "Forgot password"])
 
         with tab_login:
+            show_login_pw = st.checkbox("Show password", value=False, key="login_show_pw")
             with st.form("login_form"):
-                email = st.text_input("Email", autocomplete="email")
-                password = st.text_input("Password", type="password", autocomplete="current-password")
+                email = st.text_input("Email", autocomplete="email", key="login_email_input")
+                password = st.text_input(
+                    "Password",
+                    type="default" if show_login_pw else "password",
+                    autocomplete="current-password",
+                    key="login_password_input",
+                )
                 remember_me = st.checkbox("Remember me on this device", value=False, help="Keeps you signed in beyond the normal 3-hour session. JobSync does not store your password; it uses a revocable local sign-in token.")
                 submit = st.form_submit_button("Sign in to JobSync", type="primary", width="stretch")
             if submit:
-                try:
-                    uid, account_email = _local_sign_in(email, password)
-                    if remember_me:
-                        _remember_local_login(uid, account_email)
-                    else:
-                        _clear_remembered_login()
-                    st.session_state["local_user_id"] = uid
-                    st.session_state["local_user_email"] = account_email
-                    set_active_user(uid)
-                    state = load_state(uid)
-                    profile = state["profile"]
-                    profile["email"] = profile.get("email") or account_email
-                    save_state(state, uid)
-                    st.session_state["_authed"] = True
-                    st.session_state["_user_id"] = uid
-                    st.session_state["_user_email"] = account_email
-                    st.session_state["_profile_completed"] = bool(
-                        state.get("settings", {}).get("profile_completed", False)
-                    )
-                    st.session_state["_auth_started_at"] = time.time()
-                    st.session_state["_remembered_login"] = bool(remember_me)
-                    st.session_state["_remembered_login_message"] = (
-                        "Remember me is enabled for this device." if remember_me else "Remember me is off for this sign-in."
-                    )
-                    st.session_state.pop("_auth_expired", None)
-                    st.session_state.nav = "Home"
-                    st.rerun()
-                except Exception as exc:
-                    notify_error(f"Login failed: {exc}")
+                if not email.strip() or "@" not in email:
+                    notify_error("Enter a valid email address.")
+                elif not password:
+                    notify_error("Enter your password.")
+                else:
+                    try:
+                        with st.spinner("Signing in..."):
+                            uid, account_email = _local_sign_in(email, password)
+                            if remember_me:
+                                _remember_local_login(uid, account_email)
+                            else:
+                                _clear_remembered_login()
+                            st.session_state["local_user_id"] = uid
+                            st.session_state["local_user_email"] = account_email
+                            set_active_user(uid)
+                            state = load_state(uid)
+                            profile = state["profile"]
+                            profile["email"] = profile.get("email") or account_email
+                            save_state(state, uid)
+                        st.session_state["_authed"] = True
+                        st.session_state["_user_id"] = uid
+                        st.session_state["_user_email"] = account_email
+                        st.session_state["_profile_completed"] = bool(
+                            state.get("settings", {}).get("profile_completed", False)
+                        )
+                        st.session_state["_auth_started_at"] = time.time()
+                        st.session_state["_remembered_login"] = bool(remember_me)
+                        st.session_state["_remembered_login_message"] = (
+                            "Remember me is enabled for this device." if remember_me else "Remember me is off for this sign-in."
+                        )
+                        st.session_state.pop("_auth_expired", None)
+                        st.session_state.nav = "Home"
+                        st.rerun()
+                    except Exception as exc:
+                        notify_error(f"Login failed: {exc}")
 
         with tab_signup:
+            show_signup_pw = st.checkbox("Show password", value=False, key="signup_show_pw")
             with st.form("signup_form"):
-                email2 = st.text_input("Email", autocomplete="email")
-                password2 = st.text_input("Password", type="password", autocomplete="new-password")
+                email2 = st.text_input("Email", autocomplete="email", key="signup_email_input")
+                password2 = st.text_input(
+                    "Password",
+                    type="default" if show_signup_pw else "password",
+                    autocomplete="new-password",
+                    key="signup_password_input",
+                    help="At least 6 characters. Mix letters, numbers, and symbols for a stronger password.",
+                )
+                pw_len = len(password2)
+                if pw_len:
+                    pw_score = sum([pw_len >= 6, pw_len >= 10, bool(re.search(r"\d", password2)), bool(re.search(r"[^A-Za-z0-9]", password2))])
+                    pw_label, pw_color = [("Too short", "#ff4d5b"), ("Weak", "#ff8a3d"), ("Fair", "#f5c542"), ("Good", "#3ce69b"), ("Strong", "#3ce69b")][min(pw_score, 4)]
+                    st.markdown(
+                        f'<div style="height:4px;border-radius:999px;background:rgba(255,255,255,.08);margin:-8px 0 8px;overflow:hidden;">'
+                        f'<div style="height:100%;width:{min(pw_score,4)*25}%;background:{pw_color};transition:width .25s ease;"></div></div>'
+                        f'<div style="font-size:.62rem;color:{pw_color};margin:-4px 0 6px;">{pw_label}</div>',
+                        unsafe_allow_html=True,
+                    )
                 submit2 = st.form_submit_button("Create my account", type="primary", width="stretch")
             if submit2:
-                try:
-                    uid, recovery_code = _local_sign_up(email2, password2)
-                    account_email2 = email2.strip().lower()
-                    st.session_state["local_user_id"] = uid
-                    st.session_state["local_user_email"] = account_email2
-                    set_active_user(uid)
-                    state = load_state(uid)
-                    state["profile"]["email"] = account_email2
-                    state.setdefault("settings", {})["profile_completed"] = False
-                    save_state(state, uid)
-                    st.session_state["_authed"] = True
-                    st.session_state["_user_id"] = uid
-                    st.session_state["_user_email"] = account_email2
-                    # v1.7.0: account creation opens the full workspace immediately.
-                    # Profile can be completed later and never blocks navigation.
-                    st.session_state["_profile_completed"] = True
-                    state.setdefault("settings", {})["profile_completed"] = True
-                    save_state(state, uid)
-                    st.session_state["_auth_started_at"] = time.time()
-                    st.session_state["_remembered_login"] = False
-                    st.session_state["_show_recovery_code"] = recovery_code
-                    st.session_state.nav = "Dashboard"
-                    st.rerun()
-                except Exception as exc:
-                    notify_error(f"Account creation failed: {exc}")
+                if not email2.strip() or "@" not in email2:
+                    notify_error("Enter a valid email address.")
+                else:
+                    try:
+                        with st.spinner("Creating your account..."):
+                            uid, recovery_code = _local_sign_up(email2, password2)
+                            account_email2 = email2.strip().lower()
+                            st.session_state["local_user_id"] = uid
+                            st.session_state["local_user_email"] = account_email2
+                            set_active_user(uid)
+                            state = load_state(uid)
+                            state["profile"]["email"] = account_email2
+                            state.setdefault("settings", {})["profile_completed"] = False
+                            save_state(state, uid)
+                        st.session_state["_authed"] = True
+                        st.session_state["_user_id"] = uid
+                        st.session_state["_user_email"] = account_email2
+                        # v1.7.0: account creation opens the full workspace immediately.
+                        # Profile can be completed later and never blocks navigation.
+                        st.session_state["_profile_completed"] = True
+                        state.setdefault("settings", {})["profile_completed"] = True
+                        save_state(state, uid)
+                        st.session_state["_auth_started_at"] = time.time()
+                        st.session_state["_remembered_login"] = False
+                        st.session_state["_show_recovery_code"] = recovery_code
+                        st.session_state.nav = "Dashboard"
+                        st.rerun()
+                    except Exception as exc:
+                        notify_error(f"Account creation failed: {exc}")
 
         with tab_forgot:
             st.markdown("### Reset your password")
             st.caption("JobSync accounts are local. Use the recovery code you received when the account was created.")
+            show_forgot_pw = st.checkbox("Show password", value=False, key="forgot_show_pw")
             with st.form("forgot_password_form"):
                 forgot_email = st.text_input("Email", autocomplete="email", key="forgot_email")
                 recovery_code = st.text_input("Recovery code", placeholder="XXXX-XXXX-XXXX", key="forgot_recovery")
-                new_password = st.text_input("New password", type="password", autocomplete="new-password", key="forgot_new_password")
-                confirm_password = st.text_input("Confirm new password", type="password", autocomplete="new-password", key="forgot_confirm_password")
+                pw_type = "default" if show_forgot_pw else "password"
+                new_password = st.text_input("New password", type=pw_type, autocomplete="new-password", key="forgot_new_password", help="At least 6 characters.")
+                confirm_password = st.text_input("Confirm new password", type=pw_type, autocomplete="new-password", key="forgot_confirm_password")
                 reset_submit = st.form_submit_button("Reset password", type="primary", width="stretch")
             if reset_submit:
-                if new_password != confirm_password:
+                if not forgot_email.strip() or "@" not in forgot_email:
+                    notify_error("Enter a valid email address.")
+                elif not recovery_code.strip():
+                    notify_error("Enter your recovery code.")
+                elif new_password != confirm_password:
                     notify_error("The new passwords do not match.")
                 else:
                     try:
-                        _local_reset_password(forgot_email, recovery_code, new_password)
+                        with st.spinner("Resetting your password..."):
+                            _local_reset_password(forgot_email, recovery_code, new_password)
                         notify_success("Password reset successfully. You can now sign in with the new password.")
                     except Exception as exc:
                         notify_error(f"Password reset failed: {exc}")
