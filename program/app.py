@@ -1527,9 +1527,12 @@ st.markdown(
         .cv29-modebar { align-items:flex-start; flex-direction:column; }
     }
 
-    @media (min-width:901px) {
-        .block-container { padding-right:305px !important; }
-    }
+    /* A fixed 305px right-side reservation used to live here for a right-side
+       panel that no longer exists — it just ate width on every page above
+       901px, pushing content (e.g. New Search's results column, map
+       controls) off the visible edge on smaller/laptop screens instead of
+       scaling with the window. Removed; normal responsive padding (set
+       earlier on .block-container) applies instead. */
 
     /* v2.5.0 Apple Glass Home — Home-only visual system.
        Frosted "Liquid Glass" panels (blurred translucent surfaces, soft inner
@@ -5644,7 +5647,7 @@ def render_modern_page_header(page_name: str) -> None:
     cvs = generated_cvs()
     letters = generated_letters()
     configs = {
-        "New Search": ("SEARCH CENTER", "Find your next opportunity", "Configure sources, profile and freshness without losing sight of your results.", [("MATCHES", len(jobs), "available"), ("TRACKED", len(applied), "applications"), ("PROFILE", "READY" if profile.get("field") else "SET UP", "matching signal"), ("ATS", "ON" if state.get("ats_urls") else "OFF", "board filters")]),
+        "New Search": ("SEARCH CENTER", "Find your next opportunity", "Enter a title and location, then search — more filters are optional.", [("MATCHES", len(jobs), "available"), ("TRACKED", len(applied), "applications"), ("PROFILE", "READY" if profile.get("field") else "SET UP", "matching signal"), ("ATS", "ON" if state.get("ats_urls") else "OFF", "board filters")]),
         "Applied Jobs": ("APPLICATION PIPELINE", "Move opportunities forward", "A focused command deck for every job you have decided to track.", [("TRACKED", len(applied), "applications"), ("INTERVIEW", interviews, "next stage"), ("OFFERS", offers, "wins"), ("REJECTED", rejected, "closed")]),
         "Gmail Updates": ("INBOX SIGNAL", "Stay ahead of replies", "Turn mailbox activity into a clean stream of job-search signals.", [("TRACKED", len(applied), "applications"), ("INTERVIEWS", interviews, "pipeline"), ("OFFERS", offers, "pipeline"), ("STATUS", "LIVE", "workspace")]),
         "LinkedIn Updates": ("NETWORK SIGNAL", "See what changed", "A compact space for LinkedIn notification and profile signals.", [("JOBS", len(jobs), "in workspace"), ("TRACKED", len(applied), "applications"), ("CVS", len(cvs), "ready"), ("STATUS", "LIVE", "workspace")]),
