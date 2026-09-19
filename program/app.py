@@ -2123,6 +2123,214 @@ st.markdown(r"""
 </style>
 """, unsafe_allow_html=True)
 
+# ===== GLOBAL MICRO-INTERACTION / ANIMATION LAYER =====
+# One shared CSS layer (keyframes + utility rules against existing, already-used
+# class names) plus one shared JS engine (count-up numbers, button ripple,
+# mouse-tracked card tilt). Both are injected once, apply to every page, and
+# degrade silently — no page needs to opt in or carry its own animation code.
+st.markdown(r"""
+<style>
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes jsFadeUp { from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes jsFadeIn { from{opacity:0;} to{opacity:1;} }
+  @keyframes jsShimmerSweep { 0%{background-position:-160% 0;} 100%{background-position:160% 0;} }
+  @keyframes jsPulseRing { 0%{box-shadow:0 0 0 0 rgba(94,227,255,.32);} 70%{box-shadow:0 0 0 9px rgba(94,227,255,0);} 100%{box-shadow:0 0 0 0 rgba(94,227,255,0);} }
+  @keyframes jsFloat { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+  @keyframes jsRippleAnim { from{transform:scale(0); opacity:.45;} to{transform:scale(1); opacity:0;} }
+  @keyframes jsGradientMove { 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
+
+  /* Staggered entrance for column groups and card/list items across every page */
+  [data-testid="stHorizontalBlock"] > [data-testid="stColumn"],
+  .applied-card, .jobsync-folder-item, .p17-card, .software-card,
+  .an-kpi, .ux-stat, .cv29-mini-card, .action-card, .metric-card,
+  .chart-card, .info-card {
+    animation: jsFadeUp .45s cubic-bezier(.2,.8,.2,1) both;
+  }
+  :is(.applied-card,.jobsync-folder-item,.p17-card,.software-card,.an-kpi,.ux-stat,
+      .cv29-mini-card,.action-card,.metric-card,.chart-card,.info-card,
+      [data-testid="stColumn"]):nth-child(1){animation-delay:.02s}
+  :is(.applied-card,.jobsync-folder-item,.p17-card,.software-card,.an-kpi,.ux-stat,
+      .cv29-mini-card,.action-card,.metric-card,.chart-card,.info-card,
+      [data-testid="stColumn"]):nth-child(2){animation-delay:.07s}
+  :is(.applied-card,.jobsync-folder-item,.p17-card,.software-card,.an-kpi,.ux-stat,
+      .cv29-mini-card,.action-card,.metric-card,.chart-card,.info-card,
+      [data-testid="stColumn"]):nth-child(3){animation-delay:.12s}
+  :is(.applied-card,.jobsync-folder-item,.p17-card,.software-card,.an-kpi,.ux-stat,
+      .cv29-mini-card,.action-card,.metric-card,.chart-card,.info-card,
+      [data-testid="stColumn"]):nth-child(4){animation-delay:.17s}
+  :is(.applied-card,.jobsync-folder-item,.p17-card,.software-card,.an-kpi,.ux-stat,
+      .cv29-mini-card,.action-card,.metric-card,.chart-card,.info-card,
+      [data-testid="stColumn"]):nth-child(5){animation-delay:.22s}
+  :is(.applied-card,.jobsync-folder-item,.p17-card,.software-card,.an-kpi,.ux-stat,
+      .cv29-mini-card,.action-card,.metric-card,.chart-card,.info-card,
+      [data-testid="stColumn"]):nth-child(n+6){animation-delay:.27s}
+
+  /* Hover lift + live-tracked tilt target (JS drives the transform, this just
+     makes it glide instead of snap) */
+  :is(.action-card,.metric-card,.chart-card,.info-card,.an-card,.cv29-mini-card,
+      .p17-card,.software-card,.jobsync-folder-item) {
+    transition: transform .18s ease, box-shadow .25s ease;
+    will-change: transform;
+  }
+  :is(.action-card,.metric-card,.chart-card,.info-card,.an-card,.cv29-mini-card,
+      .p17-card,.software-card,.jobsync-folder-item):hover {
+    box-shadow: 0 22px 50px rgba(0,0,0,.28);
+  }
+
+  /* Buttons: press feedback + ripple host */
+  .stButton > button, .stFormSubmitButton > button, .stDownloadButton > button, .stLinkButton > a {
+    position:relative; overflow:hidden;
+    transition: transform .12s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  .stButton > button:hover, .stFormSubmitButton > button:hover, .stDownloadButton > button:hover, .stLinkButton > a:hover {
+    filter:brightness(1.08);
+  }
+  .stButton > button:active, .stFormSubmitButton > button:active, .stDownloadButton > button:active {
+    transform: scale(.96);
+  }
+  .jobsync-ripple {
+    position:absolute; border-radius:50%; pointer-events:none;
+    background:rgba(255,255,255,.35); transform:scale(0);
+    animation: jsRippleAnim .6s ease-out forwards;
+  }
+
+  /* Inputs: focus glow */
+  input:focus, textarea:focus, select:focus,
+  div[data-baseweb="select"]:focus-within,
+  div[data-testid="stTextInput"]:focus-within,
+  div[data-testid="stTextArea"]:focus-within,
+  div[data-testid="stDateInput"]:focus-within,
+  div[data-testid="stNumberInput"]:focus-within {
+    box-shadow:0 0 0 3px rgba(94,227,255,.18) !important;
+    transition: box-shadow .2s ease;
+  }
+
+  /* Progress / generation bars: animated shimmer sweep */
+  .jobsync-generation-track div, .an-track .an-fill, .p17-track > div {
+    position:relative;
+  }
+  .jobsync-generation-track div::after, .an-track .an-fill::after, .p17-track > div::after {
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);
+    background-size:160% 100%;
+    animation: jsShimmerSweep 1.7s linear infinite;
+  }
+
+  /* Chips / active tab pulse once on entry */
+  .applied-mini-chip, .p17-identity-chip, .search-signal-name {
+    animation: jsFadeIn .4s ease both;
+  }
+  .stTabs [aria-selected="true"] { animation: jsPulseRing 1s ease-out 1; }
+
+  /* Tab-panel content cross-fades in on switch */
+  .stTabs [role="tabpanel"] { animation: jsFadeIn .32s ease both; }
+
+  /* Idle float for empty-state / decorative icons (matches any *-empty-icon class) */
+  [class*="-empty-icon"] { animation: jsFloat 3.2s ease-in-out infinite; }
+
+  /* Rotating gradient outline on hero/command panels across pages */
+  :is(.hero,.cvwiz-hero,.p17-hero,.an-hero,.ux-page-hero,.jobsync-search-command)::before {
+    content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1px;
+    background:linear-gradient(120deg, rgba(94,227,255,.5), rgba(166,102,255,.4), rgba(236,79,209,.4), rgba(94,227,255,.5));
+    background-size:300% 300%;
+    animation: jsGradientMove 6s ease infinite;
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude;
+    opacity:.35; pointer-events:none;
+  }
+
+  /* Count-up targets: subtle settle so the final digit doesn't feel abrupt */
+  .an-kpi-value, .ux-stat-value, .applied-stat-value, .jobsync-folder-stat span, .p17-glance-value {
+    display:inline-block;
+  }
+}
+</style>
+""", unsafe_allow_html=True)
+
+_js_engine = r"""
+<script>
+(function(){
+  try {
+    var doc = window.parent.document;
+    if (doc.__jobsyncAnimInit) return;
+    doc.__jobsyncAnimInit = true;
+
+    function animateCount(el){
+      if (el.__counted) return;
+      var raw = el.textContent.trim();
+      var m = raw.match(/-?\d[\d,]*\.?\d*/);
+      if (!m) return;
+      var prefix = raw.slice(0, raw.indexOf(m[0]));
+      var suffix = raw.slice(raw.indexOf(m[0]) + m[0].length);
+      var target = parseFloat(m[0].replace(/,/g, ''));
+      if (isNaN(target)) return;
+      el.__counted = true;
+      var decimals = (m[0].split('.')[1] || '').length;
+      var start = null;
+      var dur = 700;
+      function step(ts){
+        if (start === null) start = ts;
+        var p = Math.min(1, (ts - start) / dur);
+        var eased = 1 - Math.pow(1 - p, 3);
+        var val = target * eased;
+        var text = val.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        el.textContent = prefix + text + suffix;
+        if (p < 1) requestAnimationFrame(step);
+        else el.textContent = raw;
+      }
+      requestAnimationFrame(step);
+    }
+
+    var countSelectors = '.an-kpi-value, .ux-stat-value, .applied-stat-value, .jobsync-folder-stat span, .p17-glance-value';
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if (e.isIntersecting) animateCount(e.target); });
+    }, {threshold:.3});
+
+    function observeNewCountTargets(){
+      doc.querySelectorAll(countSelectors).forEach(function(el){
+        if (!el.__observed) { el.__observed = true; io.observe(el); }
+      });
+    }
+
+    // Button ripple
+    doc.addEventListener('mousedown', function(e){
+      var btn = e.target.closest('.stButton > button, .stFormSubmitButton > button, .stDownloadButton > button, .stLinkButton > a');
+      if (!btn) return;
+      var rect = btn.getBoundingClientRect();
+      var size = Math.max(rect.width, rect.height) * 1.8;
+      var r = doc.createElement('span');
+      r.className = 'jobsync-ripple';
+      r.style.width = r.style.height = size + 'px';
+      r.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      r.style.top = (e.clientY - rect.top - size / 2) + 'px';
+      btn.appendChild(r);
+      setTimeout(function(){ r.remove(); }, 650);
+    }, true);
+
+    // Mouse-tracked tilt on cards
+    var tiltSelectors = '.action-card, .metric-card, .chart-card, .info-card, .an-card, .cv29-mini-card, .p17-card, .software-card, .jobsync-folder-item';
+    doc.addEventListener('mousemove', function(e){
+      var card = e.target.closest(tiltSelectors);
+      if (!card) return;
+      var rect = card.getBoundingClientRect();
+      var px = (e.clientX - rect.left) / rect.width - 0.5;
+      var py = (e.clientY - rect.top) / rect.height - 0.5;
+      card.style.transform = 'perspective(700px) rotateX(' + (py * -5) + 'deg) rotateY(' + (px * 5) + 'deg) translateY(-3px)';
+    });
+    doc.addEventListener('mouseout', function(e){
+      var card = e.target.closest(tiltSelectors);
+      if (card && !card.matches(':hover')) card.style.transform = '';
+    });
+
+    var mo = new MutationObserver(function(){ observeNewCountTargets(); });
+    mo.observe(doc.body, { childList: true, subtree: true });
+    observeNewCountTargets();
+  } catch (err) { /* animations are cosmetic only; never break the app */ }
+})();
+</script>
+"""
+components.html(_js_engine, height=0)
+
 st.session_state.sidebar_collapsed = False
 if "cv_studio_cycle" not in st.session_state:
     st.session_state.cv_studio_cycle = 0
