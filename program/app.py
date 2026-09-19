@@ -6155,7 +6155,28 @@ elif page == "Dashboard":
     raw_display_name = name or fallback_username
     display_name = html.escape(raw_display_name[:60])
     jobs = state.get("jobs", []) or []
-    applied = state.get("applied", []) or []
+    applied_all = state.get("applied", []) or []
+
+    def _parsed_applied_date(r):
+        try:
+            return datetime.strptime(str(r.get("applied_date") or ""), "%Y-%m-%d")
+        except Exception:
+            return None
+
+    dash_range_col, _dash_range_spacer = st.columns([0.32, 0.68])
+    with dash_range_col:
+        dash_range = st.selectbox(
+            "Date range",
+            ["All time", "This week", "This month"],
+            key="dashboard_date_range",
+            label_visibility="collapsed",
+        )
+    _now = datetime.now()
+    _cutoff = {"This week": _now - timedelta(days=7), "This month": _now - timedelta(days=30)}.get(dash_range)
+    if _cutoff is not None:
+        applied = [r for r in applied_all if (_parsed_applied_date(r) or _now) >= _cutoff]
+    else:
+        applied = applied_all
     cvs = generated_cvs()
     letters = generated_letters()
     interviews = sum(1 for r in applied if r.get("status") == "Interview")
@@ -6163,6 +6184,10 @@ elif page == "Dashboard":
     rejected = sum(1 for r in applied if r.get("status") == "Rejected")
     response_rate = (interviews / len(applied) * 100) if applied else 0
     counts = Counter((r.get("status") or "Applied") for r in applied)
+    weekly_goal = int(state.get("settings", {}).get("weekly_application_goal", 5) or 5)
+    week_ago = _now - timedelta(days=7)
+    this_week_count = sum(1 for r in applied_all if (_parsed_applied_date(r) or _now) >= week_ago)
+    goal_pct = max(0, min(100, round(this_week_count / weekly_goal * 100))) if weekly_goal else 0
     updates = latest_updates() or []
     profile_fields = [profile.get("field"), profile.get("city") or profile.get("location"), profile.get("industry"), profile.get("language")]
     profile_score = round(sum(1 for x in profile_fields if str(x or "").strip()) / 4 * 100)
@@ -6270,14 +6295,14 @@ elif page == "Dashboard":
         </div>
         <div class="an-lower">
           <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Priority opportunities</div><div class="an-card-sub">Latest jobs available for action</div></div><span class="an-tag">{len(jobs)} FOUND</span></div><div class="an-jobs">{job_html}</div></div>
-          <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Smart workspace signals</div><div class="an-card-sub">Useful indicators from your data</div></div></div><div class="an-insights"><div class="an-insight"><div class="an-insight-title">Profile readiness · {profile_status}</div><div class="an-insight-copy">Complete your search identity to improve matching quality.</div><div class="an-meter"><span style="width:{progress}%"></span></div></div><div class="an-insight"><div class="an-insight-title">Top sources</div><div class="an-insight-copy">{"".join(f"{html.escape(str(s))} · {n}  " for s, n in top_sources) or "No jobs sourced yet."}</div></div><div class="an-insight"><div class="an-insight-title">Documents · {len(cvs)} CV / {len(letters)} letters</div><div class="an-insight-copy">Your document workspace is ready for the next application.</div></div><div class="an-insight"><div class="an-insight-title">Pipeline attention · {rejected} rejected</div><div class="an-insight-copy">Keep moving active applications toward interview and offer stages.</div></div></div></div>
+          <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Smart workspace signals</div><div class="an-card-sub">Useful indicators from your data</div></div></div><div class="an-insights"><div class="an-insight"><div class="an-insight-title">Weekly goal · {this_week_count}/{weekly_goal} applications</div><div class="an-insight-copy">{"Goal reached for this week." if this_week_count >= weekly_goal else f"{weekly_goal - this_week_count} more to hit your weekly goal."} Change the goal in Settings → Job sources.</div><div class="an-meter"><span style="width:{goal_pct}%"></span></div></div><div class="an-insight"><div class="an-insight-title">Profile readiness · {profile_status}</div><div class="an-insight-copy">Complete your search identity to improve matching quality.</div><div class="an-meter"><span style="width:{progress}%"></span></div></div><div class="an-insight"><div class="an-insight-title">Top sources</div><div class="an-insight-copy">{"".join(f"{html.escape(str(s))} · {n}  " for s, n in top_sources) or "No jobs sourced yet."}</div></div><div class="an-insight"><div class="an-insight-title">Documents · {len(cvs)} CV / {len(letters)} letters</div><div class="an-insight-copy">Your document workspace is ready for the next application.</div></div><div class="an-insight"><div class="an-insight-title">Pipeline attention · {rejected} rejected</div><div class="an-insight-copy">Keep moving active applications toward interview and offer stages.</div></div></div></div>
           <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Live activity</div><div class="an-card-sub">Recent workspace events</div></div><span class="an-tag">NOW</span></div><div class="an-activity">{activity_html}</div></div>
         </div>
       </div>
     ''', unsafe_allow_html=True)
 
     q1,q2,q3,q4 = st.columns(4, gap="small")
-    for col,label,target,key in [(q1,"⌕ Find jobs","New Search","an_find"),(q2,f"✓ View {len(applied)} applications","Applied Jobs","an_apps"),(q3,"▣ Create CV","CV & Cover Letter","an_cv"),(q4,"◉ Profile","Profile","an_profile")]:
+    for col,label,target,key in [(q1,"⌕ Find jobs","New Search","an_find"),(q2,f"✓ View {len(applied_all)} applications","Applied Jobs","an_apps"),(q3,"▣ Create CV","CV & Cover Letter","an_cv"),(q4,"◉ Profile","Profile","an_profile")]:
         with col:
             if st.button(label,key=key,width="stretch"):
                 go(target)
@@ -7879,6 +7904,12 @@ elif page == "Settings":
             placeholder="https://company.wd5.myworkdayjobs.com/Careers\nhttps://boards.greenhouse.io/company",
         )
         ats_urls_setting = [x.strip() for x in ats_urls_setting_text.splitlines() if x.strip()]
+        weekly_goal_setting = st.number_input(
+            "Weekly application goal",
+            min_value=1, max_value=100,
+            value=int(state.get("settings", {}).get("weekly_application_goal", 5) or 5),
+            help="Shown as a progress bar on the Dashboard's weekly signal card.",
+        )
         if settings_search_mode == "free":
             st.info("Free APIs & public sources selected. Searches from this installation will not use Apify.")
         configured_ids = state.get("settings", {}).get("actor_ids") or [ACTOR_CATALOG[name]["id"] for name in DEFAULT_ACTOR_NAMES]
@@ -8088,6 +8119,7 @@ elif page == "Settings":
         settings["ats_urls"] = ats_urls_setting
         settings["live_monitor_enabled"] = bool(monitor_enabled)
         settings["monitor_interval_hours"] = 24
+        settings["weekly_application_goal"] = int(weekly_goal_setting)
         content = "\n".join([
             f"APIFY_TOKEN={apify_token}",
             f"GEMINI_API_KEY={gemini_key.strip()}",
