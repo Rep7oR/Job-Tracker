@@ -1950,7 +1950,7 @@ st.markdown(r"""
   .applied-card, .info-card, .template-summary {
     border-color:var(--v60-border) !important;
     background:
-      linear-gradient(145deg,rgba(15,22,43,.96),rgba(12,14,31,.96)) !important;
+      linear-gradient(145deg,rgba(28,25,19,.94),rgba(18,16,12,.96)) !important;
     box-shadow:0 16px 42px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.025) !important;
   }
 
@@ -7210,7 +7210,7 @@ elif page == "CV & Cover Letter":
             if st.button("↺ Start over", key=f"cvwiz_reset_all_{cv_cycle}", help="Clear the document type, AI model, job details and any generated draft, and return to step 1", width="stretch"):
                 reset_cv_studio_for_new_preparation()
                 st.rerun()
-    st.markdown('<style>.st-key-cvwiz_reset_row{max-width:980px;margin:0 auto 6px;}</style>', unsafe_allow_html=True)
+    st.markdown('<style>.st-key-cvwiz_reset_row{max-width:820px;margin:0 auto 6px;}.st-key-cvwiz_reset_row .stButton>button{min-height:34px!important;padding:0 14px!important;font-size:.68rem!important;}</style>', unsafe_allow_html=True)
 
     st.markdown("""
     <style>
@@ -7225,7 +7225,7 @@ elif page == "CV & Cover Letter":
          that left a large dead gap above and below the content, which is
          the empty middle box users were seeing. The card now hugs its
          actual content and only grows if a step genuinely has more in it. */
-      .cvwiz-card { margin:12px auto 0; padding:22px 30px 20px; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; border:1px solid rgba(255,255,255,.075); border-radius:22px; background:linear-gradient(145deg,rgba(10,17,25,.97),rgba(13,10,28,.96)); box-shadow:0 20px 55px rgba(0,0,0,.20); }
+      .cvwiz-card { width:100%; max-width:820px; margin:12px auto 0; padding:22px 30px 20px; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; border:1px solid rgba(255,255,255,.075); border-radius:22px; background:linear-gradient(145deg,rgba(28,25,19,.94),rgba(18,16,12,.96)); box-shadow:0 20px 55px rgba(0,0,0,.20); box-sizing:border-box; }
       .cvwiz-eyebrow { color:#8798b0; font-size:.55rem; font-weight:900; letter-spacing:.16em; text-transform:uppercase; text-align:center; }
       .cvwiz-question { color:#f2f5f9; font-size:1.05rem; font-weight:850; margin-top:7px; text-align:center; letter-spacing:-.02em; }
       .cvwiz-copy { color:#718094; font-size:.64rem; line-height:1.5; text-align:center; margin-top:5px; max-width:700px; }
