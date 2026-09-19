@@ -1818,7 +1818,7 @@ st.markdown(
 
 
     /* ===== APPLIED — APPLICATION OPERATIONS DECK ===== */
-    .applied-hero { position:relative; overflow:hidden; margin:.05rem 0 .75rem; padding:1rem 1.05rem .9rem; border-radius:24px; border:1px solid rgba(255,255,255,.075); background:radial-gradient(circle at 84% 18%,rgba(255,77,91,.18),transparent 25%),radial-gradient(circle at 8% 88%,rgba(57,229,140,.07),transparent 25%),radial-gradient(circle at 48% 120%,rgba(83,220,255,.07),transparent 30%),linear-gradient(135deg,rgba(16,22,32,.97),rgba(7,10,17,.98)); box-shadow:0 24px 65px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.045); }
+    .applied-hero { position:relative; overflow:hidden; margin:.05rem 0 .75rem; padding:1rem 1.05rem .9rem; border-radius:24px; border:1px solid rgba(255,255,255,.075); background:linear-gradient(135deg,rgba(28,25,19,.96),rgba(18,16,12,.98)); box-shadow:0 24px 65px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.045); }
     .applied-hero::after { content:"PIPELINE"; position:absolute; right:-.15rem; bottom:-1.2rem; font-size:4.8rem; font-weight:950; letter-spacing:-.09em; color:rgba(255,255,255,.022); pointer-events:none; }
     .applied-hero-top { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; position:relative; z-index:1; }
     .applied-kicker { color:#ff8f91; font-size:.6rem; font-weight:900; letter-spacing:.2em; text-transform:uppercase; }
@@ -1832,12 +1832,11 @@ st.markdown(
     .applied-dot.green { background:#39e58c; box-shadow:0 0 9px rgba(57,229,140,.45); }
     .applied-dot.blue { background:#e0a458; box-shadow:0 0 9px rgba(224,164,88,.45); }
     .applied-overview { display:grid; grid-template-columns:1.45fr repeat(4,minmax(90px,1fr)); gap:.45rem; margin:.6rem 0 .7rem; }
-    .applied-stat { position:relative; overflow:hidden; min-height:67px; padding:.62rem .68rem; border-radius:16px; border:1px solid rgba(255,255,255,.06); background:linear-gradient(145deg,rgba(16,21,29,.92),rgba(8,12,18,.94)); box-shadow:0 12px 30px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.025); }
-    .applied-stat::after { content:""; position:absolute; width:55px; height:55px; right:-20px; top:-22px; border-radius:50%; background:rgba(255,255,255,.025); pointer-events:none; }
-    .applied-stat-label { color:#727e8e; font-size:.53rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
-    .applied-stat-value { color:#f4f7fa; font-size:1.25rem; font-weight:920; letter-spacing:-.045em; margin-top:.15rem; }
-    .applied-stat-note { color:#626e7e; font-size:.52rem; margin-top:.05rem; }
-    .applied-stat.main { background:radial-gradient(circle at 90% 10%,rgba(224,164,88,.08),transparent 35%),linear-gradient(145deg,rgba(16,25,34,.94),rgba(8,12,18,.96)); }
+    .applied-stat { position:relative; overflow:hidden; min-height:58px; padding:.5rem .6rem; border-radius:14px; border:1px solid rgba(255,255,255,.06); background:linear-gradient(145deg,rgba(24,20,15,.9),rgba(18,16,12,.94)); box-shadow:0 12px 30px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.025); }
+    .applied-stat-label { color:#727e8e; font-size:.5rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .applied-stat-value { color:#f4f7fa; font-size:1.15rem; font-weight:920; letter-spacing:-.045em; margin-top:.1rem; }
+    .applied-stat-note { color:#626e7e; font-size:.5rem; margin-top:.05rem; }
+    .applied-stat.main { background:linear-gradient(145deg,rgba(28,25,19,.94),rgba(18,16,12,.96)); }
     .applied-stat.main .applied-stat-value { background:linear-gradient(90deg,#f7f9fc,#f0c383); -webkit-background-clip:text; background-clip:text; color:transparent; }
     .applied-stat.interview { box-shadow:inset 0 1px 0 rgba(102,166,255,.55),0 12px 30px rgba(0,0,0,.14); }
     .applied-stat.offer { box-shadow:inset 0 1px 0 rgba(57,229,140,.6),0 12px 30px rgba(0,0,0,.14); }
@@ -1854,8 +1853,8 @@ st.markdown(
     .applied-list-kicker { color:#6ee7ff; font-size:.54rem; font-weight:900; letter-spacing:.18em; text-transform:uppercase; }
     .applied-list-title { color:#eef2f6; font-size:.88rem; font-weight:880; margin-top:.12rem; }
     .applied-list-copy { color:#687586; font-size:.52rem; text-align:right; }
-    .applied-card { position:relative; overflow:hidden; margin:.48rem 0; padding:.72rem .78rem .68rem; border-radius:19px; border:1px solid rgba(255,255,255,.06); background:linear-gradient(135deg,rgba(13,18,26,.94),rgba(8,12,18,.96)); box-shadow:0 16px 38px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.025); }
-    .applied-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:linear-gradient(180deg,rgba(85,220,255,.7),rgba(139,92,255,.35),transparent); opacity:.65; }
+    .applied-card { position:relative; overflow:hidden; margin:.32rem 0; padding:.58rem .68rem .55rem; border-radius:16px; border:1px solid rgba(255,255,255,.06); background:linear-gradient(135deg,rgba(24,20,15,.92),rgba(18,16,12,.96)); box-shadow:0 12px 28px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.025); }
+    .applied-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:linear-gradient(180deg,rgba(224,164,88,.75),rgba(111,191,139,.4),transparent); opacity:.7; }
     .applied-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:.8rem; }
     .applied-card-index { color:#536171; font-size:.5rem; font-weight:900; letter-spacing:.1em; margin-bottom:.18rem; }
     .applied-card-title { color:#f0f4f8; font-size:.86rem; font-weight:880; letter-spacing:-.025em; line-height:1.15; }
@@ -1866,11 +1865,11 @@ st.markdown(
     .applied-card-status { text-align:right; min-width:132px; }
     .applied-card-status-label { color:#687586; font-size:.48rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; margin-bottom:.15rem; }
     .applied-card .status-pill { display:inline-flex; margin-top:.22rem; }
-    .applied-card-controls { margin-top:.55rem; padding-top:.55rem; border-top:1px solid rgba(255,255,255,.045); }
-    .applied-card-controls [data-testid="stSelectbox"] label { font-size:.52rem !important; color:#687586 !important; margin-bottom:.16rem !important; }
-    .applied-card-controls [data-baseweb="select"] > div { min-height:35px !important; border-radius:10px !important; background:rgba(255,255,255,.022) !important; border-color:rgba(255,255,255,.06) !important; }
-    .applied-card-link { margin-top:.42rem; }
-    .applied-card-link [data-testid="stLinkButton"] > a, .applied-card-link [data-testid="stButton"] > button { border-radius:10px !important; font-size:.57rem !important; min-height:34px !important; }
+    .applied-card-controls { margin-top:.4rem; padding-top:.4rem; border-top:1px solid rgba(255,255,255,.045); }
+    .applied-card-controls [data-testid="stSelectbox"] label { font-size:.48rem !important; color:#687586 !important; margin-bottom:.1rem !important; }
+    .applied-card-controls [data-baseweb="select"] > div { min-height:30px !important; border-radius:9px !important; background:rgba(255,255,255,.022) !important; border-color:rgba(255,255,255,.06) !important; }
+    .applied-card-link { margin-top:.32rem; }
+    .applied-card-link [data-testid="stLinkButton"] > a, .applied-card-link [data-testid="stButton"] > button { border-radius:9px !important; font-size:.56rem !important; min-height:30px !important; }
     .applied-empty { min-height:290px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:2rem; border:1px dashed rgba(255,255,255,.09); border-radius:20px; background:radial-gradient(circle at 50% 40%,rgba(85,220,255,.055),transparent 35%),rgba(9,13,19,.65); }
     .applied-empty-icon { width:50px; height:50px; border-radius:16px; display:grid; place-items:center; color:#b9efff; font-size:1.2rem; background:linear-gradient(135deg,rgba(85,220,255,.10),rgba(139,92,255,.12)); border:1px solid rgba(85,220,255,.12); }
     .applied-empty-title { color:#e9eef4; font-size:.95rem; font-weight:850; margin-top:.7rem; }
@@ -6914,8 +6913,33 @@ elif page == "Applied Jobs":
                 row["cover_letter_path"] = cl_path
                 save_state(state)
             st.markdown('<div class="applied-card-link">', unsafe_allow_html=True)
-            if row.get("url"):
-                st.link_button("Open original job ↗", row["url"], width="stretch")
+            link_col, delete_col = st.columns([1, 1], gap="small")
+            with link_col:
+                if row.get("url"):
+                    st.link_button("Open original job ↗", row["url"], width="stretch")
+            with delete_col:
+                delete_key = f"applied_delete_confirm_{idx}"
+                if st.session_state.get(delete_key):
+                    dc1, dc2 = st.columns(2, gap="small")
+                    with dc1:
+                        if st.button("✓ Confirm", key=f"applied_delete_yes_{idx}", type="primary", width="stretch"):
+                            state["applied"].remove(row)
+                            state["assistant_pending_status_changes"] = [
+                                p for p in (state.get("assistant_pending_status_changes") or [])
+                                if p.get("application_index") != idx
+                            ]
+                            save_state(state)
+                            st.session_state.pop(delete_key, None)
+                            notify_success("Application removed.")
+                            st.rerun()
+                    with dc2:
+                        if st.button("Cancel", key=f"applied_delete_no_{idx}", width="stretch"):
+                            st.session_state.pop(delete_key, None)
+                            st.rerun()
+                else:
+                    if st.button("🗑 Delete", key=f"applied_delete_{idx}", width="stretch"):
+                        st.session_state[delete_key] = True
+                        st.rerun()
             st.markdown('</div></div></div>', unsafe_allow_html=True)
 
 # ---------------- UPDATES CENTER ----------------
