@@ -1183,7 +1183,7 @@ st.markdown(
     .jobsync-search-wheel-sub { color:#687384; font-size:.62rem; line-height:1.45; margin-bottom:.65rem; }
     .jobsync-search-option-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; margin-bottom:.65rem; }
     .jobsync-search-option-grid [data-testid="stButton"] > button { min-height:42px !important; padding:.35rem .45rem !important; border-radius:12px !important; font-size:.65rem !important; }
-    .jobsync-search-option-grid [data-testid="stButton"] > button[kind="primary"] { background:linear-gradient(135deg,rgba(53,216,255,.16),rgba(139,92,255,.22),rgba(236,79,209,.13)) !important; border-color:rgba(53,216,255,.30) !important; box-shadow:0 10px 28px rgba(92,78,220,.16), inset 0 1px 0 rgba(255,255,255,.08) !important; }
+    .jobsync-search-option-grid [data-testid="stButton"] > button[kind="primary"] { background:linear-gradient(135deg,rgba(224,164,88,.22),rgba(217,140,63,.24),rgba(111,191,139,.16)) !important; border-color:rgba(224,164,88,.30) !important; box-shadow:0 10px 28px rgba(180,120,50,.16), inset 0 1px 0 rgba(255,255,255,.08) !important; }
     .jobsync-search-setting-note { padding:.58rem .65rem; border:1px solid rgba(255,255,255,.055); border-radius:13px; background:rgba(255,255,255,.022); color:#8a95a4; font-size:.6rem; line-height:1.45; margin-bottom:.65rem; }
     .jobsync-search-setting-note b { color:#e8edf3; }
     .jobsync-search-settings-card { padding:.78rem; border-radius:15px; border:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.018); margin-bottom:.55rem; }
@@ -1235,7 +1235,7 @@ st.markdown(
         font-size:.64rem !important; font-weight:800 !important; transition:all .18s ease !important;
     }
     .jobsync-search-settings-bar + div [data-testid="stButton"] > button:hover {
-        transform:translateY(-1px); border-color:rgba(110,231,255,.28) !important;
+        transform:translateY(-1px); border-color:rgba(224,164,88,.30) !important;
     }
     .jobsync-search-controls { padding:.68rem !important; border-radius:16px !important; }
     .jobsync-search-active-label {
@@ -1258,13 +1258,13 @@ st.markdown(
         font-size:.59rem !important; text-align:left !important;
     }
     .jobsync-search-controls [data-testid="stButton"] > button:hover {
-        border-color:rgba(110,231,255,.22) !important; background:rgba(53,216,255,.045) !important;
+        border-color:rgba(224,164,88,.24) !important; background:rgba(224,164,88,.05) !important;
     }
     .jobsync-search-find [data-testid="stButton"] > button { text-align:center !important; }
     .jobsync-search-settings-card { padding:.68rem !important; margin-bottom:.42rem !important; border-radius:13px !important; }
     .jobsync-search-settings-card-active {
-        border-color:rgba(110,231,255,.12) !important;
-        background:linear-gradient(145deg,rgba(53,216,255,.035),rgba(139,92,255,.025),rgba(255,255,255,.012)) !important;
+        border-color:rgba(224,164,88,.14) !important;
+        background:linear-gradient(145deg,rgba(224,164,88,.04),rgba(111,191,139,.03),rgba(255,255,255,.012)) !important;
     }
     .jobsync-search-find { margin-top:.15rem; }
     .jobsync-search-find [data-testid="stButton"] > button { min-height:42px !important; }
@@ -1934,13 +1934,13 @@ st.markdown(r"""
   section[data-testid="stSidebar"] .stButton button {
     min-height:43px !important;
     border-radius:12px !important;
-    background:rgba(17,24,43,.82) !important;
-    border:1px solid rgba(151,165,255,.08) !important;
+    background:rgba(24,20,15,.82) !important;
+    border:1px solid rgba(224,164,88,.10) !important;
     box-shadow:none !important;
   }
   section[data-testid="stSidebar"] .stButton button:hover {
-    background:linear-gradient(90deg,rgba(56,216,255,.10),rgba(124,92,255,.16),rgba(236,79,209,.08)) !important;
-    border-color:rgba(124,92,255,.32) !important;
+    background:linear-gradient(90deg,rgba(224,164,88,.14),rgba(217,140,63,.16),rgba(111,191,139,.08)) !important;
+    border-color:rgba(224,164,88,.32) !important;
     transform:translateX(2px) !important;
   }
 
@@ -2010,8 +2010,8 @@ st.markdown(r"""
   }
   .dash-kpi:hover, .dash-card:hover, .applied-card:hover {
     transform:translateY(-2px) !important;
-    border-color:rgba(124,92,255,.28) !important;
-    box-shadow:0 20px 48px rgba(0,0,0,.28),0 0 0 1px rgba(124,92,255,.04) !important;
+    border-color:rgba(224,164,88,.28) !important;
+    box-shadow:0 20px 48px rgba(0,0,0,.28),0 0 0 1px rgba(224,164,88,.06) !important;
   }
 
   @media(max-width:1100px){
@@ -2659,16 +2659,16 @@ st.markdown(
         --glass-border-soft: rgba(255,255,255,.055);
         --glass-text: #f6f8ff;
         --glass-muted: #9aa7bb;
-        --glass-cyan: #35d8ff;
-        --glass-purple: #8b5cff;
-        --glass-pink: #ec4fd1;
+        --glass-cyan: #e0a458;
+        --glass-purple: #d98c3f;
+        --glass-pink: #7fd1a0;
     }
 
     html, body, [data-testid="stAppViewContainer"], .stApp {
         background:
-            radial-gradient(ellipse at 72% 8%, rgba(139,92,255,.18), transparent 34%),
-            radial-gradient(ellipse at 18% 94%, rgba(35,210,255,.13), transparent 34%),
-            linear-gradient(145deg, #030711 0%, #07101d 46%, #090615 100%) !important;
+            radial-gradient(ellipse at 72% 8%, rgba(224,164,88,.14), transparent 34%),
+            radial-gradient(ellipse at 18% 94%, rgba(111,191,139,.11), transparent 34%),
+            linear-gradient(145deg, #12100c 0%, #171410 46%, #14120f 100%) !important;
         color:var(--glass-text) !important;
     }
     [data-testid="stAppViewContainer"] { position:relative; }
@@ -2685,12 +2685,12 @@ st.markdown(
     }
     [data-testid="stAppViewContainer"]::before {
         width:72vw; height:34vh; left:-18vw; top:-9vh;
-        background:radial-gradient(ellipse, rgba(28,211,255,.48) 0%, rgba(28,140,255,.18) 38%, transparent 72%);
+        background:radial-gradient(ellipse, rgba(224,164,88,.34) 0%, rgba(201,123,58,.14) 38%, transparent 72%);
         animation:jobsyncGlassFloat 18s ease-in-out infinite alternate;
     }
     [data-testid="stAppViewContainer"]::after {
         width:68vw; height:38vh; right:-17vw; top:4vh;
-        background:radial-gradient(ellipse, rgba(214,61,255,.38) 0%, rgba(116,64,255,.18) 42%, transparent 72%);
+        background:radial-gradient(ellipse, rgba(111,191,139,.28) 0%, rgba(111,191,139,.13) 42%, transparent 72%);
         animation:jobsyncGlassFloat 22s ease-in-out infinite alternate-reverse;
     }
     @keyframes jobsyncGlassFloat {
@@ -2730,19 +2730,19 @@ st.markdown(
         -webkit-backdrop-filter:blur(10px);
     }
     section[data-testid="stSidebar"] .stButton > button:hover {
-        background:linear-gradient(100deg, rgba(53,216,255,.10), rgba(139,92,255,.10)) !important;
-        border-color:rgba(53,216,255,.18) !important;
+        background:linear-gradient(100deg, rgba(224,164,88,.10), rgba(111,191,139,.10)) !important;
+        border-color:rgba(224,164,88,.18) !important;
         box-shadow:0 10px 30px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.05) !important;
         transform:translateX(2px);
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background:linear-gradient(100deg, rgba(139,92,255,.22), rgba(236,79,209,.10)) !important;
-        border-color:rgba(139,92,255,.28) !important;
-        box-shadow:0 10px 30px rgba(89,54,180,.18), inset 0 1px 0 rgba(255,255,255,.06) !important;
+        background:linear-gradient(100deg, rgba(224,164,88,.26), rgba(111,191,139,.14)) !important;
+        border-color:rgba(224,164,88,.32) !important;
+        box-shadow:0 10px 30px rgba(180,120,50,.18), inset 0 1px 0 rgba(255,255,255,.06) !important;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]::before {
         background:linear-gradient(180deg,var(--glass-cyan),var(--glass-purple),var(--glass-pink)) !important;
-        box-shadow:0 0 18px rgba(139,92,255,.60) !important;
+        box-shadow:0 0 18px rgba(224,164,88,.60) !important;
     }
 
     /* Universal glass surfaces — selectors intentionally target existing components only. */
@@ -2760,7 +2760,7 @@ st.markdown(
     }
     .card:hover, .job-card:hover, .metric-card:hover, .action-card:hover,
     .info-card:hover, .jobsync-search-settings-card:hover {
-        border-color:rgba(53,216,255,.18) !important;
+        border-color:rgba(224,164,88,.20) !important;
         box-shadow:0 28px 70px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.06) !important;
     }
 
@@ -2775,8 +2775,8 @@ st.markdown(
     }
     div[data-testid="stTextInput"] input:focus, div[data-testid="stTextArea"] textarea:focus,
     div[data-baseweb="input"] input:focus {
-        border-color:rgba(53,216,255,.38) !important;
-        box-shadow:0 0 0 1px rgba(53,216,255,.16), 0 0 24px rgba(53,216,255,.08) !important;
+        border-color:rgba(224,164,88,.38) !important;
+        box-shadow:0 0 0 1px rgba(224,164,88,.16), 0 0 24px rgba(224,164,88,.08) !important;
     }
     .stButton > button, .stFormSubmitButton > button, .stDownloadButton > button,
     .stLinkButton > a {
@@ -2791,16 +2791,16 @@ st.markdown(
     }
     .stButton > button:hover, .stFormSubmitButton > button:hover, .stDownloadButton > button:hover,
     .stLinkButton > a:hover {
-        border-color:rgba(53,216,255,.26) !important;
-        background:linear-gradient(135deg, rgba(53,216,255,.10), rgba(139,92,255,.10)) !important;
-        box-shadow:0 12px 30px rgba(0,0,0,.20), 0 0 24px rgba(53,216,255,.07) !important;
+        border-color:rgba(224,164,88,.30) !important;
+        background:linear-gradient(135deg, rgba(224,164,88,.12), rgba(111,191,139,.10)) !important;
+        box-shadow:0 12px 30px rgba(0,0,0,.20), 0 0 24px rgba(224,164,88,.08) !important;
         transform:translateY(-1px);
     }
     .stButton > button[kind="primary"], .stFormSubmitButton > button[kind="primary"] {
-        background:linear-gradient(135deg, rgba(53,216,255,.72), rgba(111,77,255,.84) 58%, rgba(236,79,209,.72)) !important;
+        background:linear-gradient(135deg, rgba(224,164,88,.92), rgba(217,140,63,.95) 58%, rgba(127,209,160,.85)) !important;
         border-color:rgba(255,255,255,.18) !important;
-        color:#fff !important;
-        box-shadow:0 12px 34px rgba(92,78,220,.25), inset 0 1px 0 rgba(255,255,255,.22) !important;
+        color:#1a140c !important;
+        box-shadow:0 12px 34px rgba(180,120,50,.25), inset 0 1px 0 rgba(255,255,255,.22) !important;
     }
 
     /* Tabs / expanders / popovers */
@@ -2814,7 +2814,7 @@ st.markdown(
     [data-baseweb="tab"] { color:#9aa7bb !important; border-radius:10px !important; }
     [aria-selected="true"][data-baseweb="tab"] {
         color:#fff !important;
-        background:linear-gradient(135deg,rgba(53,216,255,.13),rgba(139,92,255,.16)) !important;
+        background:linear-gradient(135deg,rgba(224,164,88,.18),rgba(111,191,139,.14)) !important;
     }
     div[data-testid="stExpander"] {
         background:rgba(10,16,28,.54) !important;
@@ -2825,11 +2825,11 @@ st.markdown(
 
     /* Home / login accents follow the new palette without changing their layout. */
     .jobsync-login-logo, .jobsync-home-avatar {
-        background:linear-gradient(135deg,#35d8ff,#7c5cff 58%,#ec4fd1) !important;
-        box-shadow:0 14px 34px rgba(108,80,255,.24), inset 0 1px 0 rgba(255,255,255,.22) !important;
+        background:none !important;
+        box-shadow:none !important;
     }
     .jobsync-login-heading, .jobsync-home-greeting-title, .home-center-title {
-        background:linear-gradient(90deg,#f8fbff 0%,#b8eaff 35%,#b28cff 68%,#ff91e9 100%) !important;
+        background:linear-gradient(90deg,#fff6e8 0%,#f0c383 35%,#7fd1a0 68%,#fff6e8 100%) !important;
         -webkit-background-clip:text !important;
         background-clip:text !important;
         color:transparent !important;
