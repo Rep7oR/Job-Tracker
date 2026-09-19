@@ -2947,9 +2947,20 @@ def notify_error(message: str, *args, **kwargs):
 # ----------------- Identity / automatic update alerts -----------------
 
 def _identity() -> tuple[str, str]:
-    """Lightweight local identity (no login gate) — sourced from profile."""
+    """Lightweight local identity (no login gate) — sourced from profile.
+
+    Falls back to the signed-in account's email when the profile's own email
+    field is blank (e.g. an older account created before profile.email was
+    always populated) — otherwise presence/messaging silently lose the
+    address needed to identify who to chat with, even though the account is
+    fully signed in.
+    """
     name = (profile.get("name") or "").strip() or "User"
-    email = (profile.get("email") or "").strip()
+    email = (
+        (profile.get("email") or "").strip()
+        or str(st.session_state.get("_user_email") or "").strip()
+        or str(st.session_state.get("local_user_email") or "").strip()
+    )
     return name[:120], email[:240]
 
 
@@ -5668,9 +5679,32 @@ with st.sidebar:
                 go(p)
 
     st.markdown(
-        f'<div class="sidebar-userbar"><div class="jobsync-user-avatar" style="width:34px;height:34px;flex-basis:34px;flex-shrink:0" title="{html.escape(profile.get("name") or "User", quote=True)}"></div><div class="sidebar-usercopy"><div class="sidebar-username">{html.escape(profile.get("name") or "User")}</div><div class="sidebar-useremail">{html.escape(profile.get("email") or "")}</div></div></div>',
+        '''<style>
+          .st-key-sidebar_userbar{display:flex;align-items:center;gap:10px;padding:.55rem .5rem;
+            border:1px solid #232832;border-radius:14px;
+            background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(34,197,94,.05));}
+          .st-key-sidebar_userbar .stButton{margin:0!important;}
+          .st-key-sidebar_userbar .stButton>button{
+            width:34px!important;height:34px!important;min-height:34px!important;flex:0 0 34px!important;
+            border-radius:50%!important;padding:0!important;
+            background:linear-gradient(135deg,var(--wg-amber-2,#e0a458),var(--wg-amber,#d98c3f))!important;
+            border:1px solid rgba(255,255,255,.16)!important;color:#1a140c!important;
+            font-weight:900!important;font-size:.6rem!important;line-height:1!important;box-shadow:none!important;}
+        </style>''',
         unsafe_allow_html=True,
     )
+    with st.container(key="sidebar_userbar"):
+        avatar_col, copy_col = st.columns([0.28, 0.72])
+        with avatar_col:
+            if st.button(_presence_initials(profile.get("name") or "User"), key="sidebar_avatar_messenger_btn", help="Messages"):
+                st.session_state["messenger_panel_open"] = not st.session_state.get("messenger_panel_open", False)
+                st.rerun()
+        with copy_col:
+            st.markdown(
+                f'<div class="sidebar-usercopy"><div class="sidebar-username">{html.escape(profile.get("name") or "User")}</div>'
+                f'<div class="sidebar-useremail">{html.escape(profile.get("email") or "")}</div></div>',
+                unsafe_allow_html=True,
+            )
     if is_authed:
         if st.button("↪   Sign out", key="sidebar_sign_out", help="Sign out", width="stretch", type="secondary"):
             _clear_remembered_login()
@@ -6132,6 +6166,7 @@ def _render_home_authenticated_content():
                                 if can_chat:
                                     if st.button(f"{initials}   {nm}", key=f"home_chat_{u['presence_id']}", width="stretch"):
                                         st.session_state["messenger_open_with"] = {"email": u["contact_email"], "name": nm}
+                                        st.session_state["messenger_panel_open"] = True
                                         st.rerun()
                                 else:
                                     st.caption(f"{initials}   {nm}" + ("  (you)" if u.get("contact_email") == my_email else ""))
@@ -8375,17 +8410,23 @@ if page in {x["name"] for x in custom_sections()}:
 # A Facebook-Messenger-style popup, not a page: clicking someone in Home's
 # "Online now" list opens this fixed-position panel over whatever page is
 # currently showing, and it stays open across navigation until closed.
+def _friendly_supabase_error(exc: Exception) -> str:
+    text = str(exc)
+    if "404" in text or "PGRST" in text or "does not exist" in text or "42P01" in text:
+        return "Messaging isn't set up on this Supabase project yet — run tools/SUPABASE_MESSAGING_SETUP.sql once, then try again."
+    return f"Could not reach messaging: {text[:160]}"
+
+
 def _render_messenger_widget() -> None:
+    panel_open = bool(st.session_state.get("messenger_panel_open"))
     target = st.session_state.get("messenger_open_with")
-    if not target or not st.session_state.get("_authed"):
+    if not (panel_open or target) or not st.session_state.get("_authed"):
         return
     if not messaging_configured():
         return
 
-    other_email = str(target.get("email") or "").strip().lower()
-    other_name = str(target.get("name") or other_email).strip()
     my_name, my_email = _identity()
-    if not other_email or not my_email:
+    if not my_email:
         return
 
     st.markdown('''<style>
@@ -8398,6 +8439,10 @@ def _render_messenger_widget() -> None:
       .msngr-title{font-size:.8rem;font-weight:850;color:#f5f1e8;}
       .msngr-sub{font-size:.58rem;color:#a89d8a;margin-top:1px;}
       .st-key-messenger_widget .msngr-body .stButton>button{padding:2px 8px!important;min-height:26px!important;height:26px!important;font-size:.85rem!important;background:transparent!important;border:none!important;box-shadow:none!important;}
+      .st-key-messenger_widget .msngr-pick .stButton>button{width:100%!important;justify-content:flex-start!important;gap:8px!important;
+        background:transparent!important;border:1px solid transparent!important;box-shadow:none!important;padding:.4rem .5rem!important;
+        border-radius:12px!important;font-size:.74rem!important;font-weight:700!important;color:#e6ecf7!important;text-align:left!important;}
+      .st-key-messenger_widget .msngr-pick .stButton>button:hover{background:rgba(255,255,255,.07)!important;}
       .msngr-bubble{max-width:80%;padding:.5rem .68rem;border-radius:15px;margin:.28rem 0;font-size:.74rem;line-height:1.4;word-wrap:break-word;}
       .msngr-bubble a{color:inherit;text-decoration:underline;}
       .msngr-mine{margin-left:auto;background:linear-gradient(135deg,var(--wg-amber-2,#e0a458),var(--wg-amber,#d98c3f));color:#1a140c;}
@@ -8407,13 +8452,64 @@ def _render_messenger_widget() -> None:
     </style>''', unsafe_allow_html=True)
 
     with st.container(key="messenger_widget"):
-        head_col, close_col = st.columns([0.85, 0.15])
+        if not target:
+            # Launcher mode: pick who to message from who's online right now.
+            head_col, close_col = st.columns([0.85, 0.15])
+            with head_col:
+                st.markdown('<div class="msngr-head"><div><div class="msngr-title">💬 Messages</div><div class="msngr-sub">Click someone online to chat</div></div></div>', unsafe_allow_html=True)
+            with close_col:
+                st.markdown('<div class="msngr-body">', unsafe_allow_html=True)
+                if st.button("✕", key="messenger_close_launcher"):
+                    st.session_state["messenger_panel_open"] = False
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            try:
+                online = list_online_users() or []
+            except Exception:
+                online = []
+            others = []
+            seen = set()
+            for u in online:
+                em = str(u.get("contact_email") or "").strip().lower()
+                if not em or em == my_email or em in seen:
+                    continue
+                seen.add(em)
+                others.append({"email": em, "name": str(u.get("display_name") or em).strip()})
+
+            with st.container(key="messenger_launcher_list"):
+                st.markdown('<div class="msngr-pick">', unsafe_allow_html=True)
+                if not others:
+                    st.markdown('<div class="msngr-empty">No one else is online right now.</div>', unsafe_allow_html=True)
+                else:
+                    for u in others:
+                        initials = _presence_initials(u["name"])
+                        if st.button(f"{initials}   {u['name']}", key=f"messenger_pick_{u['email']}", width="stretch"):
+                            st.session_state["messenger_open_with"] = {"email": u["email"], "name": u["name"]}
+                            st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+            return
+
+        other_email = str(target.get("email") or "").strip().lower()
+        other_name = str(target.get("name") or other_email).strip()
+        if not other_email:
+            st.session_state.pop("messenger_open_with", None)
+            return
+
+        head_col, back_col, close_col = st.columns([0.68, 0.16, 0.16])
         with head_col:
             st.markdown(f'<div class="msngr-head"><div><div class="msngr-title">💬 {html.escape(other_name)}</div><div class="msngr-sub">{html.escape(other_email)}</div></div></div>', unsafe_allow_html=True)
+        with back_col:
+            st.markdown('<div class="msngr-body">', unsafe_allow_html=True)
+            if st.button("‹", key="messenger_back", help="Back to conversations"):
+                st.session_state.pop("messenger_open_with", None)
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
         with close_col:
             st.markdown('<div class="msngr-body">', unsafe_allow_html=True)
             if st.button("✕", key="messenger_close"):
                 st.session_state.pop("messenger_open_with", None)
+                st.session_state["messenger_panel_open"] = False
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -8421,7 +8517,7 @@ def _render_messenger_widget() -> None:
             messages = fetch_thread(my_email, other_email)
         except Exception as exc:
             messages = []
-            st.caption(f"Could not load messages: {exc}")
+            st.caption(_friendly_supabase_error(exc))
 
         with st.container(height=260, border=False):
             if not messages:
@@ -8467,7 +8563,7 @@ def _render_messenger_widget() -> None:
                     )
                     st.rerun()
                 except Exception as exc:
-                    notify_error(f"Could not send message: {exc}")
+                    notify_error(_friendly_supabase_error(exc))
 
 
 _render_messenger_widget()
