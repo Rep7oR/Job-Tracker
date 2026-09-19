@@ -6133,7 +6133,10 @@ elif page == "Dashboard":
     profile_score = round(sum(1 for x in profile_fields if str(x or "").strip()) / 4 * 100)
     source_counts = Counter(str(j.get("source") or "Other") for j in jobs)
     top_source = source_counts.most_common(1)[0] if source_counts else ("—", 0)
+    top_sources = source_counts.most_common(3)
     top_jobs = jobs[:5]
+    dashboard_updated_at = datetime.now().strftime("%I:%M %p").lstrip("0")
+    response_note = f"{interviews} of {len(applied)} applications" if applied else "No applications tracked yet"
 
     st.markdown('''
     <style>
@@ -6217,14 +6220,14 @@ elif page == "Dashboard":
 
     st.markdown(f'''
       <div class="an-shell">
-        <div class="an-hero"><div class="an-kicker">JOBSYNC · ANALYTICS</div><div class="an-title">Decision dashboard</div><div class="an-copy">A different view of your workspace — momentum, pipeline health, search coverage and the actions that need attention.</div><div class="an-live"><i></i> DATA LIVE</div></div>
+        <div class="an-hero"><div class="an-kicker">JOBSYNC · ANALYTICS</div><div class="an-title">Decision dashboard</div><div class="an-copy">A different view of your workspace — momentum, pipeline health, search coverage and the actions that need attention.</div><div class="an-live"><i></i> UPDATED {html.escape(dashboard_updated_at)}</div></div>
         <div class="an-kpi-row">
           <div class="an-kpi" style="--c:#ff5261"><div class="an-kpi-label">Fresh jobs</div><div class="an-kpi-value">{len(jobs)}</div><div class="an-kpi-note">Current workspace</div></div>
           <div class="an-kpi" style="--c:#3ce69b"><div class="an-kpi-label">Applications</div><div class="an-kpi-value">{len(applied)}</div><div class="an-kpi-note">Tracked</div></div>
           <div class="an-kpi" style="--c:#39d9ff"><div class="an-kpi-label">Interviews</div><div class="an-kpi-value">{interviews}</div><div class="an-kpi-note">Next stage</div></div>
           <div class="an-kpi" style="--c:#a77cff"><div class="an-kpi-label">Offers</div><div class="an-kpi-value">{offers}</div><div class="an-kpi-note">Outcomes</div></div>
           <div class="an-kpi" style="--c:#e44fd2"><div class="an-kpi-label">Documents</div><div class="an-kpi-value">{len(cvs)+len(letters)}</div><div class="an-kpi-note">CVs + letters</div></div>
-          <div class="an-kpi" style="--c:#f5bb49"><div class="an-kpi-label">Response</div><div class="an-kpi-value">{response_rate:.0f}%</div><div class="an-kpi-note">Interview / applied</div></div>
+          <div class="an-kpi" style="--c:#f5bb49"><div class="an-kpi-label">Response</div><div class="an-kpi-value">{response_rate:.0f}%</div><div class="an-kpi-note">{html.escape(response_note)}</div></div>
         </div>
         <div class="an-grid">
           <div class="an-card"><div class="an-card-head"><div><div class="an-card-title">Workspace momentum</div><div class="an-card-sub">Current workload by JobSync area</div></div><span class="an-tag">LIVE</span></div><div class="an-momentum"><div class="an-momentum-top"><div class="an-gauge" style="--gauge-dash:{327 - round(327 * progress / 100, 2)}"><svg viewBox="0 0 132 132" aria-label="Profile readiness {progress}%"><defs><linearGradient id="anGaugeGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#39d9ff"/><stop offset="55%" stop-color="#7958ff"/><stop offset="100%" stop-color="#d84ed0"/></linearGradient></defs><circle class="an-gauge-track" cx="66" cy="66" r="52"/><circle class="an-gauge-progress" cx="66" cy="66" r="52"/></svg><div class="an-gauge-inner"><div class="an-gauge-value">{progress}%</div><div class="an-gauge-label">profile ready</div></div></div><div class="an-bars">{bars}</div></div></div></div>
@@ -6232,14 +6235,14 @@ elif page == "Dashboard":
         </div>
         <div class="an-lower">
           <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Priority opportunities</div><div class="an-card-sub">Latest jobs available for action</div></div><span class="an-tag">{len(jobs)} FOUND</span></div><div class="an-jobs">{job_html}</div></div>
-          <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Smart workspace signals</div><div class="an-card-sub">Useful indicators from your data</div></div></div><div class="an-insights"><div class="an-insight"><div class="an-insight-title">Profile readiness · {profile_status}</div><div class="an-insight-copy">Complete your search identity to improve matching quality.</div><div class="an-meter"><span style="width:{progress}%"></span></div></div><div class="an-insight"><div class="an-insight-title">Top source · {html.escape(str(top_source[0]))}</div><div class="an-insight-copy">{top_source[1]} jobs currently come from this source.</div></div><div class="an-insight"><div class="an-insight-title">Documents · {len(cvs)} CV / {len(letters)} letters</div><div class="an-insight-copy">Your document workspace is ready for the next application.</div></div><div class="an-insight"><div class="an-insight-title">Pipeline attention · {rejected} rejected</div><div class="an-insight-copy">Keep moving active applications toward interview and offer stages.</div></div></div></div>
+          <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Smart workspace signals</div><div class="an-card-sub">Useful indicators from your data</div></div></div><div class="an-insights"><div class="an-insight"><div class="an-insight-title">Profile readiness · {profile_status}</div><div class="an-insight-copy">Complete your search identity to improve matching quality.</div><div class="an-meter"><span style="width:{progress}%"></span></div></div><div class="an-insight"><div class="an-insight-title">Top sources</div><div class="an-insight-copy">{"".join(f"{html.escape(str(s))} · {n}  " for s, n in top_sources) or "No jobs sourced yet."}</div></div><div class="an-insight"><div class="an-insight-title">Documents · {len(cvs)} CV / {len(letters)} letters</div><div class="an-insight-copy">Your document workspace is ready for the next application.</div></div><div class="an-insight"><div class="an-insight-title">Pipeline attention · {rejected} rejected</div><div class="an-insight-copy">Keep moving active applications toward interview and offer stages.</div></div></div></div>
           <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Live activity</div><div class="an-card-sub">Recent workspace events</div></div><span class="an-tag">NOW</span></div><div class="an-activity">{activity_html}</div></div>
         </div>
       </div>
     ''', unsafe_allow_html=True)
 
     q1,q2,q3,q4 = st.columns(4, gap="small")
-    for col,label,target,key in [(q1,"⌕ Find jobs","New Search","an_find"),(q2,"✓ Applications","Applied Jobs","an_apps"),(q3,"▣ Create CV","CV & Cover Letter","an_cv"),(q4,"◉ Profile","Profile","an_profile")]:
+    for col,label,target,key in [(q1,"⌕ Find jobs","New Search","an_find"),(q2,f"✓ View {len(applied)} applications","Applied Jobs","an_apps"),(q3,"▣ Create CV","CV & Cover Letter","an_cv"),(q4,"◉ Profile","Profile","an_profile")]:
         with col:
             if st.button(label,key=key,width="stretch"):
                 go(target)
