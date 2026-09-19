@@ -2226,7 +2226,7 @@ st.markdown(r"""
   [class*="-empty-icon"] { animation: jsFloat 3.2s ease-in-out infinite; }
 
   /* Rotating gradient outline on hero/command panels across pages */
-  :is(.hero,.cvwiz-hero,.p17-hero,.an-hero,.ux-page-hero,.jobsync-search-command)::before {
+  :is(.hero,.cvwiz-hero,.p17-hero,.an-hero,.ux-page-hero,.jobsync-search-command,.applied-hero)::before {
     content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1px;
     background:linear-gradient(120deg, rgba(94,227,255,.5), rgba(166,102,255,.4), rgba(236,79,209,.4), rgba(94,227,255,.5));
     background-size:300% 300%;
@@ -2378,8 +2378,20 @@ st.markdown(r"""
   div[data-testid="stNumberInput"]:focus-within {
     box-shadow: 0 0 0 3px rgba(224,164,88,.20) !important;
   }
-  :is(.hero,.cvwiz-hero,.p17-hero,.an-hero,.ux-page-hero,.jobsync-search-command)::before {
+  :is(.hero,.cvwiz-hero,.p17-hero,.an-hero,.ux-page-hero,.jobsync-search-command,.applied-hero)::before {
     background: linear-gradient(120deg, rgba(224,164,88,.5), rgba(111,191,139,.35), rgba(201,123,58,.4), rgba(224,164,88,.5)) !important;
+  }
+
+  /* Parallax: the hero glow is anchored to the viewport rather than the
+     scrolling card, so it drifts against the foreground content as the page
+     scrolls instead of moving in lockstep with it. */
+  :is(.hero,.cvwiz-hero,.p17-hero,.an-hero,.ux-page-hero,.jobsync-search-command,.applied-hero)::before {
+    background-attachment: fixed !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :is(.hero,.cvwiz-hero,.p17-hero,.an-hero,.ux-page-hero,.jobsync-search-command,.applied-hero)::before {
+      background-attachment: scroll !important;
+    }
   }
 
   /* Presence live-dot + generic accent dots that were cyan/green mixes */
@@ -2388,6 +2400,11 @@ st.markdown(r"""
   /* Progress/generation bar fill: keep the sweep shimmer, warm the base gradient */
   .jobsync-generation-track div, .p17-track > div { background: linear-gradient(90deg,#c97b3a,#d98c3f,#e0a458) !important; }
   .an-fill { background: linear-gradient(90deg,#c97b3a,#d98c3f,#6fbf8b) !important; }
+
+  /* Smooth in-page scrolling for anchored jump-nav links (e.g. Dashboard's
+     Overview / Momentum / Activity nav). */
+  html { scroll-behavior: smooth !important; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto !important; } }
 
   /* ===== v2.0 LOGO: liquid-glass orbital mark ===== */
   @keyframes jsyncOrbitSpin { to { transform: rotate(360deg); } }
@@ -6459,7 +6476,12 @@ elif page == "Dashboard":
     st.markdown('''
     <style>
       .an-shell{width:100%;max-width:1240px;margin:0 auto;padding:2px 0 22px;color:#eef4ff}
-      .an-hero{height:122px;box-sizing:border-box;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.10);border-radius:22px;padding:18px 22px;background:radial-gradient(circle at 90% 0%,rgba(229,67,204,.20),transparent 27%),radial-gradient(circle at 42% 100%,rgba(44,211,255,.14),transparent 35%),linear-gradient(125deg,#0a1429,#111d42 52%,#25133c);box-shadow:0 20px 55px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.055)}
+      .an-hero{height:122px;box-sizing:border-box;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.10);border-radius:22px;padding:18px 22px;background:radial-gradient(circle at 90% 0%,rgba(229,67,204,.20),transparent 27%),radial-gradient(circle at 42% 100%,rgba(44,211,255,.14),transparent 35%),linear-gradient(125deg,#0a1429,#111d42 52%,#25133c);background-attachment:fixed,fixed,scroll;box-shadow:0 20px 55px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.055)}
+      /* Anchored jump-nav: clicking a link smooth-scrolls within this page instead of navigating away. */
+      .an-anchor-nav{display:flex;gap:8px;flex-wrap:wrap;margin:9px 0 2px;}
+      .an-anchor-nav a{padding:6px 12px;border-radius:999px;border:1px solid rgba(224,164,88,.22);background:rgba(224,164,88,.06);color:#f0c383;font-size:.6rem;font-weight:800;letter-spacing:.03em;text-decoration:none;transition:background .2s ease,border-color .2s ease,transform .2s ease;}
+      .an-anchor-nav a:hover{background:rgba(224,164,88,.14);border-color:rgba(224,164,88,.4);transform:translateY(-1px);}
+      #dash-overview, #dash-momentum, #dash-activity{scroll-margin-top:18px;}
       .an-hero:after{content:"COMMAND";position:absolute;right:-8px;bottom:-26px;font-size:5.8rem;font-weight:950;letter-spacing:-.1em;color:rgba(255,255,255,.022);pointer-events:none}
       .an-kicker{font-size:.55rem;font-weight:950;letter-spacing:.19em;color:#57ddff;text-transform:uppercase}.an-title{font-size:1.9rem;font-weight:950;letter-spacing:-.06em;line-height:1.02;margin-top:5px}.an-copy{font-size:.65rem;color:#8f9eb5;margin-top:5px;max-width:720px}.an-live{position:absolute;right:18px;top:18px;padding:6px 9px;border-radius:999px;border:1px solid rgba(71,231,164,.22);background:rgba(35,205,133,.07);color:#70eeae;font-size:.49rem;font-weight:900;letter-spacing:.08em;z-index:2}.an-live i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4be6a0;box-shadow:0 0 10px #4be6a0;margin-right:5px;animation:anpulse 1.5s infinite}@keyframes anpulse{50%{opacity:.3;transform:scale(.7)}}
       .an-kpi-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:10px 0}.an-kpi{height:72px;box-sizing:border-box;padding:10px 11px;border-radius:15px;border:1px solid rgba(255,255,255,.075);background:linear-gradient(145deg,rgba(18,29,53,.92),rgba(7,14,29,.95));position:relative;overflow:hidden}.an-kpi:before{content:"";position:absolute;left:0;top:0;right:0;height:2px;background:var(--c)}.an-kpi-label{font-size:.49rem;font-weight:900;letter-spacing:.11em;color:#71819a;text-transform:uppercase}.an-kpi-value{font-size:1.35rem;font-weight:950;line-height:1;margin-top:7px}.an-kpi-note{font-size:.48rem;color:#61718a;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -6539,7 +6561,12 @@ elif page == "Dashboard":
     st.markdown(f'''
       <div class="an-shell">
         <div class="an-hero"><div class="an-kicker">JOBSYNC · ANALYTICS</div><div class="an-title">Decision dashboard</div><div class="an-copy">A different view of your workspace — momentum, pipeline health, search coverage and the actions that need attention.</div><div class="an-live"><i></i> UPDATED {html.escape(dashboard_updated_at)}</div></div>
-        <div class="an-kpi-row">
+        <nav class="an-anchor-nav" aria-label="Jump to section">
+          <a href="#dash-overview">◇ Overview</a>
+          <a href="#dash-momentum">◇ Momentum &amp; Funnel</a>
+          <a href="#dash-activity">◇ Activity &amp; Insights</a>
+        </nav>
+        <div id="dash-overview" class="an-kpi-row">
           <div class="an-kpi" style="--c:#ff5261"><div class="an-kpi-label">Fresh jobs</div><div class="an-kpi-value">{len(jobs)}</div><div class="an-kpi-note">Current workspace</div></div>
           <div class="an-kpi" style="--c:#3ce69b"><div class="an-kpi-label">Applications</div><div class="an-kpi-value">{len(applied)}</div><div class="an-kpi-note">Tracked</div></div>
           <div class="an-kpi" style="--c:#39d9ff"><div class="an-kpi-label">Interviews</div><div class="an-kpi-value">{interviews}</div><div class="an-kpi-note">Next stage</div></div>
@@ -6547,11 +6574,11 @@ elif page == "Dashboard":
           <div class="an-kpi" style="--c:#e44fd2"><div class="an-kpi-label">Documents</div><div class="an-kpi-value">{len(cvs)+len(letters)}</div><div class="an-kpi-note">CVs + letters</div></div>
           <div class="an-kpi" style="--c:#f5bb49"><div class="an-kpi-label">Response</div><div class="an-kpi-value">{response_rate:.0f}%</div><div class="an-kpi-note">{html.escape(response_note)}</div></div>
         </div>
-        <div class="an-grid">
+        <div id="dash-momentum" class="an-grid">
           <div class="an-card"><div class="an-card-head"><div><div class="an-card-title">Workspace momentum</div><div class="an-card-sub">Current workload by JobSync area</div></div><span class="an-tag">LIVE</span></div><div class="an-momentum"><div class="an-momentum-top"><div class="an-gauge" style="--gauge-dash:{327 - round(327 * progress / 100, 2)}"><svg viewBox="0 0 132 132" aria-label="Profile readiness {progress}%"><defs><linearGradient id="anGaugeGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c97b3a"/><stop offset="55%" stop-color="#e0a458"/><stop offset="100%" stop-color="#7fd1a0"/></linearGradient></defs><circle class="an-gauge-track" cx="66" cy="66" r="52"/><circle class="an-gauge-progress" cx="66" cy="66" r="52"/></svg><div class="an-gauge-inner"><div class="an-gauge-value">{progress}%</div><div class="an-gauge-label">profile ready</div></div></div><div class="an-bars">{bars}</div></div></div></div>
           <div class="an-card"><div class="an-card-head"><div><div class="an-card-title">Application funnel</div><div class="an-card-sub">Where opportunities sit right now</div></div><span class="an-tag">{len(applied)} TRACKED</span></div><div class="an-funnel">{funnel_html}</div></div>
         </div>
-        <div class="an-lower">
+        <div id="dash-activity" class="an-lower">
           <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Priority opportunities</div><div class="an-card-sub">Latest jobs available for action</div></div><span class="an-tag">{len(jobs)} FOUND</span></div><div class="an-jobs">{job_html}</div></div>
           <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Smart workspace signals</div><div class="an-card-sub">Useful indicators from your data</div></div></div><div class="an-insights"><div class="an-insight"><div class="an-insight-title">Weekly goal · {this_week_count}/{weekly_goal} applications</div><div class="an-insight-copy">{"Goal reached for this week." if this_week_count >= weekly_goal else f"{weekly_goal - this_week_count} more to hit your weekly goal."} Change the goal in Settings → Job sources.</div><div class="an-meter"><span style="width:{goal_pct}%"></span></div></div><div class="an-insight"><div class="an-insight-title">Profile readiness · {profile_status}</div><div class="an-insight-copy">Complete your search identity to improve matching quality.</div><div class="an-meter"><span style="width:{progress}%"></span></div></div><div class="an-insight"><div class="an-insight-title">Top sources</div><div class="an-insight-copy">{"".join(f"{html.escape(str(s))} · {n}  " for s, n in top_sources) or "No jobs sourced yet."}</div></div><div class="an-insight"><div class="an-insight-title">Documents · {len(cvs)} CV / {len(letters)} letters</div><div class="an-insight-copy">Your document workspace is ready for the next application.</div></div><div class="an-insight"><div class="an-insight-title">Pipeline attention · {rejected} rejected</div><div class="an-insight-copy">Keep moving active applications toward interview and offer stages.</div></div></div></div>
           <div class="an-card an-tall"><div class="an-card-head"><div><div class="an-card-title">Live activity</div><div class="an-card-sub">Recent workspace events</div></div><span class="an-tag">NOW</span></div><div class="an-activity">{activity_html}</div></div>
