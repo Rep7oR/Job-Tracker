@@ -13,6 +13,7 @@ data/avatars/
 config/google_oauth.json
 data/roles.json
 data/presence_id.json
+data/company_career_boards.json
 
 # Local runtime logs and generated release packages
 data/*.log
