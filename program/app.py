@@ -54,6 +54,11 @@ from services.presence import (
     heartbeat_presence,
     list_online_users,
 )
+from services.company_watch import (
+    resolve_company as _watch_resolve_company,
+    resolve_manual_url as _watch_resolve_manual_url,
+    fetch_company_jobs as _watch_fetch_company_jobs,
+)
 from services.messaging import (
     configured as messaging_configured,
     fetch_conversations,
@@ -6594,6 +6599,122 @@ elif page == "Dashboard":
 # ---------------- NEW SEARCH ----------------
 elif page == "New Search":
     render_modern_page_header("New Search")
+
+    # ---- Company Watchlist: track specific employers' career pages ----
+    st.markdown('''<style>
+      .watch-panel{margin:2px 0 12px;}
+      .watch-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+      .watch-chip{display:flex;align-items:center;gap:8px;padding:.4rem .55rem .4rem .7rem;border-radius:14px;
+        border:1px solid rgba(255,255,255,.08);background:linear-gradient(135deg,rgba(28,25,19,.9),rgba(18,16,12,.94));
+        min-width:190px;}
+      .watch-chip-dot{width:7px;height:7px;border-radius:50%;background:#7fd1a0;box-shadow:0 0 8px rgba(127,209,160,.7);flex-shrink:0;}
+      .watch-chip-body{min-width:0;flex:1;}
+      .watch-chip-name{color:#f6f1e8;font-size:.72rem;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .watch-chip-meta{color:#8a8074;font-size:.55rem;margin-top:1px;}
+      .watch-chip-source{color:#f0c383;border:1px solid rgba(224,164,88,.25);background:rgba(224,164,88,.08);
+        border-radius:999px;padding:1px 7px;font-size:.5rem;font-weight:800;white-space:nowrap;}
+      .watch-empty{color:#8a8074;font-size:.68rem;padding:4px 2px;}
+    </style>''', unsafe_allow_html=True)
+
+    with st.container(key="watch_panel"):
+        with st.expander("🏢 Company Watchlist — track specific employers' career pages", expanded=bool(state.get("settings", {}).get("watched_companies"))):
+            st.caption("Type a company once — JobSync finds its public careers board and keeps checking it for new openings alongside your regular search.")
+            wc1, wc2 = st.columns([3, 1], gap="small")
+            with wc1:
+                new_company_name = st.text_input("Add a company", placeholder="e.g. BMW", key="watch_company_input", label_visibility="collapsed")
+            with wc2:
+                add_company_clicked = st.button("+ Add", key="watch_company_add", type="primary", width="stretch")
+
+            if add_company_clicked and new_company_name.strip():
+                with st.spinner(f"Looking up {new_company_name.strip()}'s career page…"):
+                    found = _watch_resolve_company(new_company_name.strip())
+                watched_list = state.setdefault("settings", {}).setdefault("watched_companies", [])
+                if found:
+                    if any(w.get("url") == found["url"] for w in watched_list):
+                        notify_error(f'{found["name"]} is already on your watchlist.')
+                    else:
+                        watched_list.append(found)
+                        ats_list = state["settings"].setdefault("ats_urls", [])
+                        if found["url"] not in ats_list:
+                            ats_list.append(found["url"])
+                        save_state(state)
+                        notify_success(f'Added {found["name"]} ({found["source"]}) — {found["job_count"]} openings found.')
+                    st.session_state.pop("watch_company_manual_prompt", None)
+                    st.rerun()
+                else:
+                    st.session_state["watch_company_manual_prompt"] = new_company_name.strip()
+
+            if st.session_state.get("watch_company_manual_prompt"):
+                pending_name = st.session_state["watch_company_manual_prompt"]
+                st.warning(f'Couldn\'t auto-detect a public careers board for "{pending_name}". If they use Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Personio or Workday, paste the careers URL directly:')
+                manual_url = st.text_input("Careers page URL", key="watch_company_manual_url", placeholder="https://boards.greenhouse.io/yourcompany")
+                mc1, mc2 = st.columns(2, gap="small")
+                with mc1:
+                    if st.button("Add with this URL", key="watch_company_manual_add", type="primary", width="stretch"):
+                        with st.spinner("Checking that URL…"):
+                            manual_found = _watch_resolve_manual_url(pending_name, manual_url)
+                        if manual_found:
+                            watched_list = state.setdefault("settings", {}).setdefault("watched_companies", [])
+                            if any(w.get("url") == manual_found["url"] for w in watched_list):
+                                notify_error("That career page is already on your watchlist.")
+                            else:
+                                watched_list.append(manual_found)
+                                ats_list = state["settings"].setdefault("ats_urls", [])
+                                if manual_found["url"] not in ats_list:
+                                    ats_list.append(manual_found["url"])
+                                save_state(state)
+                                notify_success(f'Added {manual_found["name"]} — {manual_found["job_count"]} openings found.')
+                            st.session_state.pop("watch_company_manual_prompt", None)
+                            st.rerun()
+                        else:
+                            notify_error("That URL didn't return any postings — double-check it's the public careers board link.")
+                with mc2:
+                    if st.button("Cancel", key="watch_company_manual_cancel", width="stretch"):
+                        st.session_state.pop("watch_company_manual_prompt", None)
+                        st.rerun()
+
+            watched_companies = state.get("settings", {}).get("watched_companies", [])
+            if not watched_companies:
+                st.markdown('<div class="watch-empty">No companies watched yet — add one above.</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="watch-row">', unsafe_allow_html=True)
+                for w in watched_companies:
+                    st.markdown(
+                        f'<div class="watch-chip"><span class="watch-chip-dot"></span>'
+                        f'<div class="watch-chip-body"><div class="watch-chip-name">{html.escape(w.get("name",""))}</div>'
+                        f'<div class="watch-chip-meta">{w.get("job_count", 0)} openings last checked</div></div>'
+                        f'<span class="watch-chip-source">{html.escape(w.get("source",""))}</span></div>',
+                        unsafe_allow_html=True,
+                    )
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                wcols = st.columns(min(4, len(watched_companies)) or 1, gap="small")
+                for i, w in enumerate(watched_companies):
+                    with wcols[i % len(wcols)]:
+                        view_col, remove_col = st.columns([2, 1], gap="small")
+                        with view_col:
+                            if st.button(f"🔎 {w.get('name','')[:16]}", key=f"watch_view_{i}", help=f"Pull current openings from {w.get('name','')}", width="stretch"):
+                                with st.spinner(f"Checking {w.get('name','')}…"):
+                                    rows, errors = _watch_fetch_company_jobs(w["url"])
+                                if rows:
+                                    existing = state.setdefault("jobs", [])
+                                    existing_urls = {str(j.get("url") or "") for j in existing}
+                                    additions = [r for r in rows if str(r.get("url") or "") not in existing_urls]
+                                    state["jobs"] = additions + existing
+                                    w["job_count"] = len(rows)
+                                    save_state(state)
+                                    notify_success(f'{len(rows)} current openings from {w.get("name","")} — {len(additions)} new, added to your results below.')
+                                else:
+                                    notify_error(f'No current openings found for {w.get("name","")}.' + (f" ({errors[0]})" if errors else ""))
+                                st.rerun()
+                        with remove_col:
+                            if st.button("🗑", key=f"watch_remove_{i}", help=f"Remove {w.get('name','')} from your watchlist", width="stretch"):
+                                state["settings"]["watched_companies"] = [x for x in watched_companies if x.get("url") != w.get("url")]
+                                ats_list = state["settings"].get("ats_urls") or []
+                                if w.get("url") in ats_list:
+                                    ats_list.remove(w["url"])
+                                save_state(state)
+                                st.rerun()
 
     configured_ids = state.get("settings", {}).get("actor_ids") or [ACTOR_CATALOG[name]["id"] for name in DEFAULT_ACTOR_NAMES]
     configured_names = [ACTOR_ID_TO_NAME.get(x, x) for x in configured_ids]
