@@ -148,6 +148,18 @@ if errorlevel 1 goto :fail_pip
 "%VENV_PY%" -m pip install --prefer-binary -r "%PROGRAM_DIR%\requirements.txt" >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto :fail_pip
 
+if exist "%PROGRAM_DIR%\requirements-voice.txt" (
+    rem Voice-assistant packages (PyAudio, pyttsx3) need native compilers/wheels
+    rem that are not always available on every Windows machine. This install
+    rem is deliberately best-effort: on failure JobSync itself still works,
+    rem just without the "Hey JobSync" voice assistant, instead of the whole
+    rem setup failing over one optional feature.
+    >>"%LOG_FILE%" echo Installing optional voice-assistant packages...
+    echo Installing optional voice-assistant packages...
+    "%VENV_PY%" -m pip install --prefer-binary -r "%PROGRAM_DIR%\requirements-voice.txt" >>"%LOG_FILE%" 2>&1
+    >>"%LOG_FILE%" echo Voice-assistant packages install exit code: !ERRORLEVEL! (non-fatal)
+)
+
 rem v1.3.42: the old launcher tree was removed by NSIS before this script ran.
 rem Always build a fresh native launcher so no old PyInstaller EXE/DLL can survive.
 set "DESKTOP_DIR=%ROOT%\tools\JobSync"
