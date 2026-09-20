@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutureTimeoutError
 
 from services.free_job_sources import ats_from_urls
 
@@ -15,6 +16,32 @@ _CANDIDATE_TEMPLATES = [
     ("SmartRecruiters", "https://careers.smartrecruiters.com/{slug}"),
     ("Workable", "https://apply.workable.com/{slug}"),
 ]
+
+# A company's real board (especially Workday, and big Greenhouse/Lever
+# boards) can have thousands of postings and paginate slowly. We only need
+# enough to confirm the URL is real and show an approximate count, not the
+# full list -- fetch_company_jobs()/the background monitor pull the complete
+# set later. Every network call here is wrapped in a hard wall-clock
+# timeout so a slow/unresponsive board can never hang the UI: Streamlit
+# runs this synchronously on the main thread, and Windows has no SIGALRM,
+# so a thread-pool future with .result(timeout=...) is the only clean
+# cross-platform way to bound it.
+_VALIDATE_TIMEOUT_SECONDS = 18
+_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="company_watch")
+
+
+def _ats_from_urls_bounded(urls: list[str], search_text: str = "", timeout: float = _VALIDATE_TIMEOUT_SECONDS):
+    """ats_from_urls(), but abandoned (not killed -- Python can't kill a
+    running thread) if it doesn't finish within `timeout` seconds, so the
+    caller's UI never hangs waiting on a slow or huge career board.
+    """
+    future = _executor.submit(ats_from_urls, urls, search_text)
+    try:
+        return future.result(timeout=timeout)
+    except _FutureTimeoutError:
+        return [], [f"Timed out after {timeout:.0f}s waiting for a response."]
+    except Exception as exc:
+        return [], [str(exc)]
 
 
 def _slugs_for(company_name: str) -> list[str]:
@@ -44,10 +71,7 @@ def resolve_company(company_name: str) -> dict | None:
     for source, template in _CANDIDATE_TEMPLATES:
         for slug in slugs:
             url = template.format(slug=slug)
-            try:
-                rows, errors = ats_from_urls([url])
-            except Exception:
-                continue
+            rows, _errors = _ats_from_urls_bounded([url])
             if rows:
                 return {
                     "name": company_name,
@@ -59,8 +83,13 @@ def resolve_company(company_name: str) -> dict | None:
 
 
 def fetch_company_jobs(url: str, search_text: str = "") -> tuple[list[dict], list[str]]:
-    """Re-fetch current postings for one already-added watched company URL."""
-    return ats_from_urls([url], search_text=search_text)
+    """Re-fetch current postings for one already-added watched company URL.
+
+    Uses a longer timeout than validation since this is a deliberate,
+    single-company on-demand refresh (the '🔎 View jobs' button), not a
+    multi-candidate lookup loop.
+    """
+    return _ats_from_urls_bounded([url], search_text=search_text, timeout=45)
 
 
 def _detect_source(url: str) -> str:
@@ -90,10 +119,10 @@ def resolve_manual_url(company_name: str, url: str) -> dict | None:
     company_name = company_name.strip() or _detect_source(url)
     if not url:
         return None
-    try:
-        rows, errors = ats_from_urls([url])
-    except Exception:
-        return None
+    # Workday boards in particular can be large/slow -- give manual-URL
+    # validation (a single deliberate check, not a multi-candidate loop) a
+    # bit more room than the auto-guess loop before giving up.
+    rows, _errors = _ats_from_urls_bounded([url], timeout=30)
     if not rows:
         return None
     return {
