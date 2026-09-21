@@ -33,6 +33,7 @@ from services.cv_engine import (
     extract_latex_code,
     validate_external_latex,
     render_cv_from_blueprint,
+    load_builtin_template,
     _json_from_output,
 )
 from services.excel_export import export_applied_jobs_xlsx
@@ -3281,7 +3282,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- Navigation helpers ----------------
-BASE_PAGES = ["Home", "Dashboard", "New Search", "Applied Jobs", "Updates", "CV & Cover Letter", "Folders", "Profile", "Settings"]
+BASE_PAGES = ["Home", "Dashboard", "New Search", "Applied Jobs", "Updates", "Folders", "Profile", "Settings"]
 
 def custom_sections() -> list[dict]:
     raw = state.get("settings", {}).get("custom_sections") or []
@@ -5166,38 +5167,6 @@ def _toggle_bookmark(job: dict) -> tuple[bool, str]:
     return True, "Saved to bookmarks."
 
 
-def reset_cv_studio_for_new_preparation(*, keep_selected_job: bool = False, selected_job: dict | None = None) -> None:
-    """Start a completely fresh CV/cover-letter preparation cycle.
-
-    Widget keys are versioned by ``cv_studio_cycle``, so clearing the backing
-    session values and advancing the cycle prevents Streamlit from restoring
-    the previous vacancy's text inputs, choices, prompts, or generated state.
-    """
-    cv_keys = (
-        "external_ai_prompt", "external_ai_provider",
-        "external_document_type_snapshot", "external_job_snapshot",
-        "external_template_snapshot", "cv_wizard_doc", "cv_wizard_ai",
-        "cv_wizard_source", "cv_wizard_job", "cv_wizard_manual_job",
-        "cv_wizard_template", "cv_latex_draft", "cv_latex_path",
-        "cv_compiled_pdf", "cv_saved_pdf", "cv_compile_error",
-        "cv_generation_status", "cv_generation_error", "cv_local_ai_chars",
-        "cv_generation_percent", "cv_ai_progress_callback", "cv_generation_running", "cv_blueprint_name",
-        "cv_generated_base", "cv_last_download_name",
-    )
-    for key in cv_keys:
-        st.session_state.pop(key, None)
-    st.session_state["cv_studio_cycle"] = int(st.session_state.get("cv_studio_cycle", 0)) + 1
-    if keep_selected_job and isinstance(selected_job, dict):
-        # Prepare CV from a search result: open directly on the job-details step
-        # with this exact vacancy pre-filled rather than making the user choose it again.
-        st.session_state["cv_entry_job"] = dict(selected_job)
-        st.session_state["cv_wizard_doc"] = "CV"
-        st.session_state["cv_wizard_step"] = 3
-    else:
-        st.session_state["cv_entry_job"] = {}
-        st.session_state["cv_wizard_step"] = 1
-
-
 def latest_reference_documents(max_each_chars: int = 14000) -> list[dict]:
     """Return the newest stored CV and cover-letter references for prompt assembly."""
     docs = state.get("documents", [])
@@ -5683,7 +5652,6 @@ with st.sidebar:
                 ("Dashboard", "▦", "Dashboard"),
             ]),
             ("JOB SEARCH", [
-                ("CV & Cover Letter", "CV", "CV & Cover Letter"),
                 ("New Search", "🔍", "New Search"),
                 ("Applied Jobs", "✓", "Applied Jobs"),
                 ("Folders", "📁", "Folders"),
@@ -5832,7 +5800,6 @@ def master_reset() -> None:
 
     # Return to Home after reset.
     st.session_state.nav = "Home"
-    st.session_state.selected_job_index = 0
     st.session_state.pop("master_reset_text", None)
 
 
@@ -6225,7 +6192,7 @@ def _render_home_authenticated_content():
                 ("Complete your profile", profile_complete, "Profile"),
                 ("Set your target roles", bool(targets), "Profile"),
                 ("Run your first search", bool(jobs), "New Search"),
-                ("Generate a CV or cover letter", cv_count > 0, "CV & Cover Letter"),
+                ("Generate a CV or cover letter", cv_count > 0, "New Search"),
                 ("Track your first application", bool(applied), "Applied Jobs"),
             ]
             remaining = [c for c in checklist if not c[1]]
@@ -6369,7 +6336,6 @@ def render_modern_page_header(page_name: str) -> None:
         "Applied Jobs": ("APPLICATION PIPELINE", "Move opportunities forward", "A focused command deck for every job you have decided to track.", [("TRACKED", len(applied), "applications"), ("INTERVIEW", interviews, "next stage"), ("OFFERS", offers, "wins"), ("REJECTED", rejected, "closed")]),
         "Gmail Updates": ("INBOX SIGNAL", "Stay ahead of replies", "Turn mailbox activity into a clean stream of job-search signals.", [("TRACKED", len(applied), "applications"), ("INTERVIEWS", interviews, "pipeline"), ("OFFERS", offers, "pipeline"), ("STATUS", "LIVE", "workspace")]),
         "LinkedIn Updates": ("NETWORK SIGNAL", "See what changed", "A compact space for LinkedIn notification and profile signals.", [("JOBS", len(jobs), "in workspace"), ("TRACKED", len(applied), "applications"), ("CVS", len(cvs), "ready"), ("STATUS", "LIVE", "workspace")]),
-        "CV & Cover Letter": ("DOCUMENT STUDIO", "Create application documents", "Generate tailored LaTeX, inspect the source, and continue to Overleaf when ready.", [("CVS", len(cvs), "saved"), ("LETTERS", len(letters), "saved"), ("PDF", "READY", "download"), ("ENGINE", "ONLINE", "generation")]),
         "Folders": ("DOCUMENT LIBRARY", "Everything in one place", "Browse your generated documents with compact actions beside each file.", [("CVS", len(cvs), "documents"), ("LETTERS", len(letters), "documents"), ("PDF", "READY", "preview"), ("STORAGE", "LOCAL", "workspace")]),
         "Profile": ("PROFILE CONTROL", "Tune your job-search identity", "Keep the information JobSync uses to match opportunities accurate and current.", [("TARGET", profile.get("field") or "NOT SET", "role"), ("CITY", profile.get("city") or profile.get("location") or "NOT SET", "location"), ("LANG", profile.get("language") or "ANY", "preference"), ("SIGNAL", "READY" if profile.get("field") else "INCOMPLETE", "match quality")]),
         "Settings": ("CONTROL CENTER", "Configure JobSync", "Manage integrations, updates, notifications and workspace behavior from one place.", [("VERSION", APP_VERSION, "current"), ("DATA", "LOCAL", "workspace"), ("BROWSER", "READY", "automation"), ("UPDATE", "READY", "software")]),
@@ -6597,7 +6563,7 @@ elif page == "Dashboard":
     ''', unsafe_allow_html=True)
 
     q1,q2,q3,q4 = st.columns(4, gap="small")
-    for col,label,target,key in [(q1,"⌕ Find jobs","New Search","an_find"),(q2,f"✓ View {len(applied_all)} applications","Applied Jobs","an_apps"),(q3,"▣ Create CV","CV & Cover Letter","an_cv"),(q4,"◉ Profile","Profile","an_profile")]:
+    for col,label,target,key in [(q1,"⌕ Find jobs","New Search","an_find"),(q2,f"✓ View {len(applied_all)} applications","Applied Jobs","an_apps"),(q3,"▣ Create CV","New Search","an_cv"),(q4,"◉ Profile","Profile","an_profile")]:
         with col:
             if st.button(label,key=key,width="stretch"):
                 go(target)
@@ -6846,6 +6812,43 @@ elif page == "New Search":
                 notify_error(str(exc))
 
 
+    def _auto_generate_application_docs(job: dict) -> tuple[str, str]:
+        # Reuses the same generation engine the old manual CV Studio wizard
+        # called (cv_engine/cv_prompt) but drives it programmatically, with
+        # no user-facing prompt-editing step, and writes straight to the
+        # existing output/cv and output/coverletters folders.
+        provider = LOCAL_AI_DEFAULT
+        profile = state.get("profile", {}) or {}
+        cv_path = ""; cl_path = ""
+        for doc, out_folder, kind in (("CV", OUTPUT_CV, "generated_cv"), ("Cover Letter", OUTPUT_CL, "generated_coverletter")):
+            try:
+                template = load_builtin_template(doc)
+                prompt = build_external_ai_prompt(job=job, references="", profile=profile, template=template, document_type=doc, provider=provider)
+                latex = _generate_latex_with_ai(provider, prompt, document_type=doc, template=template)
+                clean = extract_latex_code(latex)
+                ok, msg = validate_external_latex(doc, clean, template, strict_structure=not (_is_local_ai_provider(provider) and doc == "CV"))
+                if not ok:
+                    raise RuntimeError(msg)
+                base = safe_name(job.get("title") or doc) or doc.lower().replace(" ", "_")
+                out_folder.mkdir(parents=True, exist_ok=True)
+                target = unique_doc_path(out_folder, f"{base}_{doc}_generated", ".tex")
+                target.write_text(clean, encoding="utf-8")
+                created = datetime.now().isoformat(timespec="seconds")
+                state.setdefault("documents", []).append({
+                    "name": target.name, "display_name": target.stem, "kind": kind,
+                    "path": str(target), "pdf_path": "", "tex_path": str(target),
+                    "company": job.get("company", ""), "job_title": job.get("title", ""),
+                    "job_url": job.get("url", ""), "created_at": created, "updated_at": created,
+                    "size_bytes": target.stat().st_size,
+                })
+                if doc == "CV": cv_path = str(target)
+                else: cl_path = str(target)
+            except Exception as exc:
+                notify_error(f"Could not auto-generate the {doc.lower()}: {exc}")
+        if cv_path or cl_path:
+            save_state(state)
+        return cv_path, cl_path
+
     def _check_apply_sessions():
         # Closing the "Open & Apply" browser window is itself the user's
         # confirmation that the application is done -- pick up every session
@@ -6860,10 +6863,9 @@ elif page == "New Search":
                 continue
             if url and any(r.get("url") == url for r in state["applied"] if r.get("url")):
                 continue
-            applied_record = {**job, "applied_date": datetime.now().strftime("%Y-%m-%d"), "status": "Applied", "cv_path": "", "cover_letter_path": ""}
+            applied_record = {**job, "applied_date": datetime.now().strftime("%Y-%m-%d"), "status": "Applied", "cv_path": job.get("cv_path", ""), "cover_letter_path": job.get("cover_letter_path", "")}
             state["applied"].append(applied_record)
             save_state(state)
-            st.session_state["cv_entry_job"] = dict(applied_record)
             notify_success(f"Application window closed — {job.get('title', 'this job')} marked as applied.")
 
     apply_fragment = getattr(st, "fragment", None)
@@ -6925,7 +6927,10 @@ elif page == "New Search":
                                 if active_session and active_session.get("status") in ("opening", "open"):
                                     st.caption("🌐 Application window open — closing it marks this job applied.")
                                 elif job.get("url") and st.button("🚀 Open & Apply", key=f"open_apply_{idx}", width="stretch"):
-                                    session_id = _apply_start_session(job)
+                                    with st.spinner("Generating a tailored CV and cover letter…"):
+                                        cv_path, cl_path = _auto_generate_application_docs(job)
+                                    job_with_docs = {**job, "cv_path": cv_path, "cover_letter_path": cl_path}
+                                    session_id = _apply_start_session(job_with_docs)
                                     st.session_state.setdefault("apply_sessions", {})[job.get("url")] = session_id
                                     notify_success("Application browser opening… close its window when you're done to mark this job applied.")
                                     st.rerun()
@@ -6933,19 +6938,13 @@ elif page == "New Search":
                                     applied_record = {**job, "applied_date": datetime.now().strftime("%Y-%m-%d"), "status": "Applied", "cv_path": "", "cover_letter_path": ""}
                                     state["applied"].append(applied_record)
                                     save_state(state)
-                                    # The newest applied vacancy becomes the natural CV prefill candidate.
-                                    st.session_state["cv_entry_job"] = dict(applied_record)
-                                    notify_success("Application recorded. This job is ready to pre-fill in CV Studio.")
+                                    notify_success("Application recorded.")
                                     st.rerun()
                             bookmark_label = "🔖 Bookmarked" if _is_bookmarked(job) else "🔖 Save bookmark"
                             if st.button(bookmark_label, key=f"bookmark_{idx}", width="stretch"):
                                 added, message = _toggle_bookmark(job)
                                 notify_success(message) if added else notify_error(message)
                                 st.rerun()
-                            if st.button("Prepare CV", key=f"cv_{idx}", width="stretch"):
-                                reset_cv_studio_for_new_preparation(keep_selected_job=True, selected_job=job)
-                                st.session_state.selected_job_index = idx
-                                go("CV & Cover Letter")
             else:
                 st.markdown('<div class="jobsync-search-empty"><div class="jobsync-search-empty-icon">⌕</div><div class="jobsync-search-empty-title">Your next opportunity starts here.</div><div class="jobsync-search-empty-copy">Configure the signal on the left, then run your search. Results stay in this panel.</div></div>', unsafe_allow_html=True)
 
@@ -7386,523 +7385,6 @@ elif page == "LinkedIn Updates":
         )
 
 
-# ---------------- CV & COVER LETTER ----------------
-elif page == "CV & Cover Letter":
-    render_modern_page_header("CV & Cover Letter")
-    """In-app document studio: one choice at a time, then AI generation and PDF save without leaving JobSync."""
-    cv_cycle = int(st.session_state.get("cv_studio_cycle", 0))
-    wizard_step = int(st.session_state.get("cv_wizard_step", 1))
-    prompt_ready = bool(st.session_state.get("external_ai_prompt"))
-
-    st.markdown(
-        '<style>.st-key-cvwiz_reset_row{max-width:820px;margin:0 auto 6px;display:flex;justify-content:flex-end;}'
-        '.st-key-cvwiz_reset_row .stButton{display:inline-block;}'
-        '.st-key-cvwiz_reset_row .stButton>button{min-height:34px!important;padding:0 14px!important;font-size:.68rem!important;width:auto!important;}</style>',
-        unsafe_allow_html=True,
-    )
-    with st.container(key="cvwiz_reset_row"):
-        if st.button("↺ Start over", key=f"cvwiz_reset_all_{cv_cycle}", help="Clear the document type, AI model, job details and any generated draft, and return to step 1"):
-            reset_cv_studio_for_new_preparation()
-            st.rerun()
-
-    st.markdown("""
-    <style>
-      .cvwiz { max-width:980px; margin:0 auto; }
-      .cvwiz-hero { position:relative; padding:15px 20px 12px; border:1px solid rgba(255,255,255,.075); border-radius:20px; background:linear-gradient(110deg,rgba(8,20,31,.96),rgba(27,15,57,.94)); overflow:hidden; }
-      .cvwiz-hero:after { content:""; position:absolute; width:250px; height:250px; right:-105px; top:-145px; border-radius:50%; border:1px solid rgba(224,164,88,.18); box-shadow:0 0 0 34px rgba(224,164,88,.035),0 0 0 70px rgba(111,191,139,.03); pointer-events:none; }
-      .cvwiz-kicker { color:#e0a458; font-size:.55rem; font-weight:900; letter-spacing:.18em; }
-      .cvwiz-title { margin-top:4px; color:#f8fafc; font-size:1.3rem; font-weight:900; letter-spacing:-.04em; }
-      .cvwiz-sub { color:#8995a6; font-size:.65rem; margin-top:3px; }
-      /* min-height was 470px with justify-content:center — on the short
-         text-only steps (e.g. "Ready to build your CV?" + one ready-card)
-         that left a large dead gap above and below the content, which is
-         the empty middle box users were seeing. The card now hugs its
-         actual content and only grows if a step genuinely has more in it. */
-      .cvwiz-card { width:100%; max-width:820px; margin:12px auto 0; padding:22px 30px 20px; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; border:1px solid rgba(255,255,255,.075); border-radius:22px; background:linear-gradient(145deg,rgba(28,25,19,.94),rgba(18,16,12,.96)); box-shadow:0 20px 55px rgba(0,0,0,.20); box-sizing:border-box; }
-      .cvwiz-eyebrow { color:#8798b0; font-size:.55rem; font-weight:900; letter-spacing:.16em; text-transform:uppercase; text-align:center; }
-      .cvwiz-question { color:#f2f5f9; font-size:1.05rem; font-weight:850; margin-top:7px; text-align:center; letter-spacing:-.02em; }
-      .cvwiz-copy { color:#718094; font-size:.64rem; line-height:1.5; text-align:center; margin-top:5px; max-width:700px; }
-      .cvwiz-choice-grid { width:100%; max-width:720px; margin:20px auto 0; }
-      .cvwiz-card .stButton > button { min-height:74px !important; border-radius:16px !important; border:1px solid rgba(255,255,255,.08) !important; background:rgba(10,15,22,.90) !important; color:#e8edf5 !important; font-size:.73rem !important; font-weight:850 !important; }
-      .cvwiz-card .stButton > button:hover { border-color:rgba(117,104,255,.55) !important; background:rgba(30,24,55,.92) !important; transform:translateY(-1px); }
-      .cvwiz-progress { display:flex; justify-content:center; gap:8px; margin:18px 0 0; }
-      .cvwiz-dot { width:7px; height:7px; border-radius:50%; background:#303744; }
-      .cvwiz-dot.active { background:#e0a458; box-shadow:0 0 0 4px rgba(224,164,88,.15); }
-      .cvwiz-ready { width:100%; max-width:720px; margin:20px auto 0; padding:16px 18px; border:1px solid rgba(55,211,153,.20); background:rgba(16,31,31,.60); border-radius:15px; display:flex; flex-direction:column; gap:4px; }
-      .cvwiz-ready b { color:#e9f3ef; font-size:.72rem; }
-      .cvwiz-ready span { color:#718b86; font-size:.58rem; }
-      .cvwiz-status { width:100%; max-width:720px; margin:14px auto 0; padding:9px 13px; border-radius:999px; border:1px solid rgba(255,255,255,.065); background:rgba(255,255,255,.018); color:#8190a4; font-size:.55rem; text-align:center; }
-      .cvwiz-inline-progress{width:100%;max-width:760px;margin:14px auto 0;padding:15px 17px;border:1px solid rgba(105,91,235,.28);border-radius:16px;background:linear-gradient(145deg,rgba(11,18,30,.96),rgba(28,15,48,.95));box-shadow:0 18px 45px rgba(0,0,0,.18),0 0 28px rgba(90,82,220,.10)}
-      .cvwiz-inline-progress-head{display:flex;align-items:center;gap:10px}.cvwiz-inline-orbit{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-weight:950;color:#1a140c;background:linear-gradient(135deg,#c97b3a,#e0a458,#7fd1a0);box-shadow:0 0 22px rgba(224,164,88,.34);animation:cvwizOrbitPulse 1.8s ease-in-out infinite}.cvwiz-inline-title{color:#f1f5fb;font-size:.78rem;font-weight:900}.cvwiz-inline-sub{color:#75859b;font-size:.56rem;margin-top:2px}.cvwiz-inline-percent{margin-left:auto;color:#a9b9d0;font-size:.7rem;font-weight:850}.cvwiz-inline-track{height:9px;margin-top:13px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.05)}.cvwiz-inline-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#c97b3a,#e0a458,#7fd1a0);box-shadow:0 0 18px rgba(224,164,88,.42);background-size:200% 100%;animation:cvwizShimmerMove 1.6s linear infinite;transition:width .25s ease}.cvwiz-inline-stages{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:11px}.cvwiz-inline-stage{padding:7px 4px;text-align:center;border:1px solid rgba(255,255,255,.055);border-radius:9px;color:#58667a;font-size:.43rem;font-weight:900;letter-spacing:.11em;background:rgba(255,255,255,.018)}.cvwiz-inline-stage.active{color:#f0c383;border-color:rgba(224,164,88,.42);background:rgba(224,164,88,.12);animation:cvwizStageGlow 1.2s ease-in-out infinite alternate}.cvwiz-inline-stage.done{color:#75d8be;border-color:rgba(55,211,153,.18)}.cvwiz-inline-now{display:flex;align-items:center;gap:8px;margin-top:10px;color:#a9b7ca;font-size:.57rem}.cvwiz-inline-spinner{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.16);border-top-color:#e0a458;border-right-color:#7fd1a0;animation:cvwizSpin .8s linear infinite}@keyframes cvwizSpin{to{transform:rotate(360deg)}}@keyframes cvwizOrbitPulse{50%{transform:translateY(-1px) scale(1.04);box-shadow:0 0 30px rgba(224,164,88,.42)}}@keyframes cvwizShimmerMove{to{background-position:-200% 0}}@keyframes cvwizStageGlow{to{box-shadow:0 0 16px rgba(224,164,88,.12)}}.cvwiz-blueprint{width:100%;max-width:760px;margin-top:9px;color:#64748a;font-size:.5rem;text-align:left;letter-spacing:.07em;text-transform:uppercase}.cvwiz-source-label{width:100%;max-width:760px;margin:14px auto 6px;color:#93a6bf;font-size:.52rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.cvwiz-source-help{width:100%;max-width:760px;margin:0 auto 8px;color:#67778e;font-size:.56rem;line-height:1.45}
-      .cvwiz-inline-snippet{margin-top:11px;padding:9px 11px;border-radius:10px;background:#090d13;border:1px solid rgba(255,255,255,.06);color:#7fe0b8;font:10px/1.5 Consolas,Menlo,monospace;white-space:pre-wrap;word-break:break-word;max-height:64px;overflow:hidden;}
-      .cvwiz-inline-cursor{display:inline-block;color:#e0a458;animation:cvwizCursorBlink 1s step-end infinite;margin-right:1px;}
-      @keyframes cvwizCursorBlink{50%{opacity:0}}
-      .st-key-cvwiz_latex_box{width:100%;max-width:760px;margin:0 auto;}
-      .st-key-cvwiz_latex_box [data-testid="stCode"]{font-size:.68rem!important;}
-      .st-key-cvwiz_latex_box pre{max-height:140px!important;}
-      .cvwiz-mini { width:100%; max-width:720px; margin:12px auto 0; color:#6f7d90; font-size:.58rem; text-align:center; }
-      .cvwiz-modal-status { padding:14px 16px; border:1px solid rgba(111,89,232,.25); border-radius:14px; background:linear-gradient(145deg,rgba(10,17,28,.96),rgba(22,13,42,.96)); }
-      .cvwiz-modal-stage { display:flex; justify-content:space-between; gap:16px; color:#eef2f7; font-size:.82rem; }
-      .cvwiz-modal-stage span { color:#e0a458; font-weight:900; }
-      .cvwiz-modal-eta { margin-top:7px; color:#8290a4; font-size:.66rem; }
-      .cvwiz-modal-lock { margin-top:10px; color:#6f8096; font-size:.60rem; }
-      .jobsync-generation-overlay { position:fixed; inset:0; z-index:2147483647; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; pointer-events:auto; }
-      .jobsync-generation-backdrop { position:absolute; inset:0; background:rgba(2,7,14,.82); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
-      .jobsync-generation-dialog { position:relative; z-index:2; width:min(650px,calc(100vw - 42px)); padding:25px 28px 20px; border:1px solid rgba(116,96,255,.30); border-radius:22px; background:linear-gradient(145deg,rgba(10,18,30,.985),rgba(25,13,48,.985)); box-shadow:0 30px 100px rgba(0,0,0,.62),0 0 75px rgba(99,78,220,.14); color:#eef3fa; }
-      .jobsync-generation-brand { display:flex; align-items:center; gap:9px; color:#9ab1ff; font-size:.58rem; font-weight:900; letter-spacing:.18em; }
-      .jobsync-generation-brand b { margin-left:auto; color:#64758d; font-size:.48rem; letter-spacing:.14em; }
-      .jobsync-gen-orbit { display:inline-flex; width:27px; height:27px; align-items:center; justify-content:center; border-radius:9px; color:white; font-size:.9rem; letter-spacing:-.04em; background:linear-gradient(135deg,#2eb7e5,#714ee8,#c347b7); box-shadow:0 0 22px rgba(91,103,255,.34); }
-      .jobsync-generation-eyebrow { margin-top:20px; color:#7f92b0; font-size:.52rem; font-weight:900; letter-spacing:.17em; }
-      .jobsync-generation-dialog h2 { margin:7px 0 4px; font-size:1.45rem; letter-spacing:-.035em; }
-      .jobsync-generation-copy { margin:0; color:#8492a6; font-size:.68rem; line-height:1.5; }
-      .jobsync-generation-percent { display:flex; align-items:end; justify-content:space-between; margin-top:20px; }
-      .jobsync-generation-percent strong { font-size:1.55rem; letter-spacing:-.06em; background:linear-gradient(90deg,#37b7e4,#6d55e9,#c34db9); -webkit-background-clip:text; background-clip:text; color:transparent; }
-      .jobsync-generation-percent span { color:#8c9aaf; font-size:.66rem; padding-bottom:5px; }
-      .jobsync-generation-track { position:relative; height:10px; margin-top:10px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.075); border:1px solid rgba(255,255,255,.06); }
-      .jobsync-generation-track div { position:relative; height:100%; border-radius:999px; background:linear-gradient(90deg,#2bb4dd,#6156e8,#b844bd); box-shadow:0 0 22px rgba(94,89,236,.45); transition:width .25s ease; overflow:hidden; }
-      .jobsync-generation-track div:after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.48) 48%,transparent 76%); transform:translateX(-100%); animation:jobsyncShimmer 1.25s linear infinite; }
-      .jobsync-generation-stages { display:grid; grid-template-columns:repeat(5,1fr); gap:7px; margin-top:17px; }
-      .jobsync-gen-stage { padding:8px 5px; text-align:center; border-radius:9px; border:1px solid rgba(255,255,255,.055); background:rgba(255,255,255,.025); color:#56657a; font-size:.46rem; font-weight:900; letter-spacing:.12em; }
-      .jobsync-gen-stage.active { color:#b8c6ff; border-color:rgba(104,91,232,.42); background:rgba(95,76,200,.12); }
-      .jobsync-gen-stage.done { color:#76d8c0; border-color:rgba(55,211,153,.18); }
-      .jobsync-generation-current { display:flex; gap:12px; align-items:center; margin-top:15px; padding:11px 13px; border-radius:12px; border:1px solid rgba(255,255,255,.065); background:rgba(4,9,16,.42); }
-      .jobsync-generation-current strong { display:block; font-size:.72rem; color:#e8edf5; }
-      .jobsync-generation-current small { display:block; margin-top:3px; color:#708096; font-size:.57rem; line-height:1.4; }
-      .jobsync-gen-spinner { flex:0 0 24px; width:24px; height:24px; border:2px solid rgba(255,255,255,.12); border-top-color:#6e5ce9; border-right-color:#38b9e4; border-radius:50%; animation:jobsyncSpin .8s linear infinite; }
-      .jobsync-generation-footer { display:flex; justify-content:space-between; gap:10px; margin-top:15px; color:#596a80; font-size:.5rem; }
-      @keyframes jobsyncSpin { to { transform:rotate(360deg); } }
-      @keyframes jobsyncShimmer { to { transform:translateX(100%); } }
-      @media (max-width:700px) { .jobsync-generation-dialog { padding:26px 22px 22px; } .jobsync-generation-brand b { display:none; } .jobsync-generation-footer { flex-direction:column; } }
-      .cvwiz-card .stTextInput input, .cvwiz-card .stTextArea textarea { background:#090e15 !important; border:1px solid rgba(255,255,255,.08) !important; color:#e7edf5 !important; border-radius:12px !important; }
-      .cvwiz-card .stTextInput, .cvwiz-card .stTextArea, .cvwiz-card .stFileUploader { width:100%; max-width:720px; }
-      /* STEP 4's real panel: a genuine st.container() (not a cross-call HTML
-         div) so the uploader, blueprint caption, Build button and any error
-         are actually inside the same bordered box as the summary text. */
-      .st-key-cvwiz_step4_panel { margin:12px auto 0; padding:22px 30px 20px; max-width:900px; display:flex; flex-direction:column; align-items:center; border:1px solid rgba(255,255,255,.075); border-radius:22px; background:linear-gradient(145deg,rgba(10,17,25,.97),rgba(13,10,28,.96)); box-shadow:0 20px 55px rgba(0,0,0,.20); }
-      .st-key-cvwiz_step4_panel .stFileUploader,
-      .st-key-cvwiz_step4_panel [data-testid="stCaptionContainer"],
-      .st-key-cvwiz_step4_panel .stButton,
-      .st-key-cvwiz_step4_panel [data-testid="stAlert"] { width:100%; max-width:720px; margin-top:14px; }
-      .st-key-cvwiz_step4_panel .stButton > button { min-height:52px !important; border-radius:14px !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    def dots(total: int, active: int):
-        html_dots = ''.join(f'<span class="cvwiz-dot {"active" if i == active else ""}"></span>' for i in range(1, total + 1))
-        st.markdown(f'<div class="cvwiz-progress">{html_dots}</div>', unsafe_allow_html=True)
-
-    if not prompt_ready and wizard_step == 1:
-        st.markdown('<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 1 OF 3</div><div class="cvwiz-question">What are you creating?</div><div class="cvwiz-copy">Choose one. JobSync generates it locally with its built-in AI — no account, no API key, nothing else to set up.</div><div class="cvwiz-choice-grid">', unsafe_allow_html=True)
-        a,b=st.columns(2,gap="medium")
-        with a:
-            if st.button("CV\nTailored resume for this vacancy",key=f"cvwiz_cv_{cv_cycle}",width="stretch"):
-                st.session_state["cv_wizard_doc"]="CV"; st.session_state["cv_wizard_ai"]=LOCAL_AI_DEFAULT; st.session_state["cv_wizard_step"]=3; st.rerun()
-        with b:
-            if st.button("Cover Letter\nFocused letter for this vacancy",key=f"cvwiz_cl_{cv_cycle}",width="stretch"):
-                st.session_state["cv_wizard_doc"]="Cover Letter"; st.session_state["cv_wizard_ai"]=LOCAL_AI_DEFAULT; st.session_state["cv_wizard_step"]=3; st.rerun()
-        st.markdown('</div></div>',unsafe_allow_html=True); dots(3,1)
-
-    elif not prompt_ready and wizard_step == 3:
-        provider=st.session_state.get("cv_wizard_ai",LOCAL_AI_DEFAULT); doc=st.session_state.get("cv_wizard_doc","CV")
-        st.markdown(f'<div class="cvwiz-card"><div class="cvwiz-eyebrow">STEP 2 OF 3</div><div class="cvwiz-question">Which job should JobSync tailor it to?</div><div class="cvwiz-copy">Pick a saved vacancy or enter the missing details. JobSync auto-fills everything it already knows.</div>',unsafe_allow_html=True)
-        jobs=state.get("search_results",[]) or []
-        saved_jobs=[]
-        for j in jobs:
-            if isinstance(j,dict) and j.get("title"): saved_jobs.append(j)
-        for j in state.get("applied",[]) or []:
-            if isinstance(j,dict) and j.get("title") and j not in saved_jobs: saved_jobs.append(j)
-        saved_jobs=saved_jobs[:100]
-        entry_job = st.session_state.get("cv_entry_job") or {}
-        # Direct preparation should show the chosen job first and only once.
-        if entry_job and entry_job.get("title"):
-            entry_key = _bookmark_key(entry_job)
-            matching = [j for j in saved_jobs if _bookmark_key(j) == entry_key]
-            if not matching:
-                saved_jobs.insert(0, dict(entry_job))
-            else:
-                saved_jobs = matching + [j for j in saved_jobs if _bookmark_key(j) != entry_key]
-        forced_job = bool(st.session_state.get("cv_entry_job"))
-        mode = "Saved job" if forced_job else st.radio("Job source",["Saved job","Enter manually"],horizontal=True,key=f"cvwiz_jobmode_{cv_cycle}",label_visibility="collapsed")
-        job={}
-        if mode=="Saved job" and saved_jobs:
-            labels=[f'{j.get("title","Untitled")} — {j.get("company") or "Company not entered"}' for j in saved_jobs]
-            entry_job = st.session_state.get("cv_entry_job") or {}
-            default_idx = 0
-            if entry_job:
-                for candidate_idx, candidate in enumerate(saved_jobs):
-                    if (candidate.get("url") and candidate.get("url") == entry_job.get("url")) or (
-                        candidate.get("title") == entry_job.get("title") and candidate.get("company") == entry_job.get("company")
-                    ):
-                        default_idx = candidate_idx
-                        break
-            idx=st.selectbox("Saved job",range(len(labels)),index=default_idx,format_func=lambda i:labels[i],key=f"cvwiz_saved_{cv_cycle}")
-            job=dict(saved_jobs[idx])
-            st.session_state["cv_wizard_job"]=job
-        else:
-            if mode=="Saved job" and not saved_jobs: st.info("No saved vacancy is available yet. Enter the job manually below.")
-            job={"title":"","company":"","location":"","url":"","description":""}
-        c1,c2=st.columns(2,gap="small")
-        with c1: title=st.text_input("Job title",value=job.get("title", ""),placeholder="Job title",key=f"cvwiz_title_{cv_cycle}")
-        with c2: company=st.text_input("Company",value=job.get("company", ""),placeholder="Company",key=f"cvwiz_company_{cv_cycle}")
-        c1,c2=st.columns(2,gap="small")
-        with c1: location=st.text_input("Location",value=job.get("location", ""),placeholder="Location",key=f"cvwiz_location_{cv_cycle}")
-        with c2: url=st.text_input("Job posting URL",value=job.get("url", ""),placeholder="Optional URL",key=f"cvwiz_url_{cv_cycle}")
-        description=st.text_area("Job description",value=job.get("description", ""),height=120,placeholder="Paste only if the saved vacancy does not already contain it.",key=f"cvwiz_desc_{cv_cycle}")
-        st.session_state["cv_wizard_job"]={**job,"title":title,"company":company,"location":location,"url":url,"description":description}
-        if st.button("Continue →",key=f"cvwiz_continue_{cv_cycle}",type="primary",width="stretch",disabled=not bool(title.strip())):
-            st.session_state["cv_wizard_step"]=4; st.rerun()
-        st.markdown('</div>',unsafe_allow_html=True); dots(3,2)
-
-    elif not prompt_ready and wizard_step == 4:
-        provider=st.session_state.get("cv_wizard_ai",LOCAL_AI_DEFAULT); doc=st.session_state.get("cv_wizard_doc","CV"); job=st.session_state.get("cv_wizard_job",{}) or {}
-        # Everything for this step — the summary text, the uploader, the
-        # blueprint caption, the Build button, and any error — renders
-        # inside one real st.container() styled as a single panel (see the
-        # cvwiz-step4-marker rule below), instead of the old pattern of an
-        # HTML <div> opened in one st.markdown call and closed in another:
-        # that only ever visually wrapped the first markdown call's own
-        # fragment, so the uploader/button/errors always rendered as
-        # separate, unstyled elements below an oversized, mostly-empty box.
-        with st.container(key="cvwiz_step4_panel"):
-            st.markdown(f'<div class="cvwiz-eyebrow">STEP 3 OF 3</div><div class="cvwiz-question">Ready to build your {html.escape(doc)}?</div><div class="cvwiz-copy">JobSync generates this locally with its built-in AI, validates the result, shows the source here, lets you copy it into Overleaf, and keeps the final PDF in the JobSync folder.</div><div class="cvwiz-ready"><b>{html.escape(job.get("title") or "Untitled role")}</b><span>{html.escape(job.get("company") or "Company not entered")} · {html.escape(job.get("location") or "Location not entered")}</span></div>',unsafe_allow_html=True)
-            refs=st.file_uploader("Optional reference CV / cover letter",type=["pdf","tex","docx"],accept_multiple_files=True,key=f"cvwiz_refs_{cv_cycle}")
-            template=st.session_state.get("cv_wizard_template","")
-            blueprint_file = "cv_base.tex" if doc == "CV" else "cover_letter_base.tex"
-            st.caption(f"CV blueprint: {blueprint_file}")
-            if st.button("Build my document →",key=f"cvwiz_build_{cv_cycle}",type="primary",width="stretch"):
-                try:
-                    from services.cv_engine import load_builtin_template
-                    evidence_refs=[]
-                    latest=""
-                    for uploaded in refs or []:
-                        try:
-                            raw=uploaded.getvalue(); suffix=Path(uploaded.name).suffix.lower()
-                            if suffix in {".txt",".tex"}: text=raw.decode("utf-8",errors="ignore")
-                            elif suffix in {".pdf",".docx"}:
-                                temp=UPLOAD_REFERENCES/f"__prompt_{safe_name(Path(uploaded.name).stem)}_{cv_cycle}{suffix}"; temp.write_bytes(raw); text=extract_text(temp); temp.unlink(missing_ok=True)
-                            else: text=""
-                            if text.strip(): evidence_refs.append({"name":uploaded.name,"text":text.strip()[:14000],"reference_type":"document"})
-                        except Exception as exc: notify_error(f"Could not read {uploaded.name}: {exc}")
-                    evidence=build_reference_context(evidence_refs) if evidence_refs else ""
-                    profile=state.get("profile",{}) or {}
-                    if doc=="CV":
-                        template = load_builtin_template("CV") if not template else template
-                        blueprint_name = "cv_base.tex"
-                    else:
-                        template = load_builtin_template("Cover Letter") if not template else template
-                        blueprint_name = "cover_letter_base.tex"
-                    prompt=build_external_ai_prompt(job=job,references=evidence,profile=profile,template=template,document_type=doc,provider=provider)
-                    st.session_state.update({"external_ai_prompt":prompt,"external_ai_provider":provider,"external_document_type_snapshot":doc,"external_job_snapshot":job,"external_template_snapshot":template,"cv_blueprint_name":blueprint_name,"cv_reference_names":[str(item.get("name")) for item in evidence_refs if item.get("name")],"cv_generation_status":"prompt_generated","cv_generation_running":False,"cv_generation_error":""})
-                    st.rerun()
-                except Exception as exc:
-                    st.error(f"Could not build the document prompt: {exc}")
-        dots(3,3)
-
-    else:
-        saved_job = st.session_state.get("external_job_snapshot", {}) or {}
-        provider = st.session_state.get("external_ai_provider", LOCAL_AI_DEFAULT)
-        doc = st.session_state.get("external_document_type_snapshot", "CV")
-        prompt = st.session_state.get("external_ai_prompt", "")
-        title = saved_job.get("title") or "Untitled role"
-        company = saved_job.get("company") or "Company not entered"
-        location = saved_job.get("location") or "Location not entered"
-        status = st.session_state.get("cv_generation_status", "prompt_generated")
-        generation_running = bool(st.session_state.get("cv_generation_running", False))
-        cv_blueprint_name = st.session_state.get("cv_blueprint_name") or ("cv_base.tex" if doc == "CV" else "cover_letter_base.tex")
-        pdf_path = str(st.session_state.get("cv_saved_pdf") or st.session_state.get("cv_compiled_pdf") or "")
-
-        # Rotating captions shown while content is being written, so the wait
-        # reads as visible progress instead of a stuck percentage — cycles by
-        # how much has been generated so far rather than a wall-clock timer,
-        # since generation speed varies with CPU/GPU.
-        _content_captions = [
-            "Reading your reference CV…",
-            f"Matching your experience to {html.escape(str(title))}…",
-            "Rewriting your Profile summary…",
-            "Selecting the strongest bullet points…",
-            "Tailoring your skills section…",
-            "Checking every claim against your evidence…",
-        ]
-
-        def _progress_markup(percent: int, message: str, detail: str, snippet: str = "") -> str:
-            p = max(0, min(100, int(percent)))
-            safe_msg = html.escape(str(message or "Working…"))
-            safe_detail = html.escape(str(detail or "JobSync is processing your document."))
-            stages = [("AI", 1, 38), ("CONTENT", 39, 72), ("LATEX", 73, 92), ("READY", 93, 100)]
-            stage_html = "".join(
-                '<div class="cvwiz-inline-stage {}">{}</div>'.format(
-                    "done" if p >= end else "active" if start <= p < end else "",
-                    label,
-                )
-                for label, start, end in stages
-            )
-            snippet_html = ""
-            if snippet:
-                snippet_html = f'<div class="cvwiz-inline-snippet">…{html.escape(snippet)}<span class="cvwiz-inline-cursor">▍</span></div>'
-            return (
-                '<div class="cvwiz-inline-progress">'
-                '<div class="cvwiz-inline-progress-head">'
-                '<div class="cvwiz-inline-orbit">J</div>'
-                f'<div><div class="cvwiz-inline-title">Creating your {html.escape(doc)}</div><div class="cvwiz-inline-sub">{safe_detail}</div></div>'
-                f'<div class="cvwiz-inline-percent">{p}%</div>'
-                '</div>'
-                f'<div class="cvwiz-inline-track"><span style="width:{p}%"></span></div>'
-                f'<div class="cvwiz-inline-stages">{stage_html}</div>'
-                f'<div class="cvwiz-inline-now"><span class="cvwiz-inline-spinner"></span><span>{safe_msg}</span></div>'
-                f'{snippet_html}'
-                '</div>'
-            )
-
-        def _run_generation_inline() -> None:
-            gen_started = time.time()
-            slot = st.empty()
-            last_percent = 0
-
-            def _eta(p: int, phase_started: float, floor_pct: int) -> str:
-                # ETA is computed within the CURRENT phase only (download vs.
-                # generation), timed from when that phase actually started —
-                # extrapolating from a single start-of-run timestamp across
-                # both a multi-minute one-time download and a normal ~30s
-                # generation produced wildly wrong estimates on every run
-                # after the first (the exact "3 min remaining" complaint).
-                span = max(1, 100 - floor_pct)
-                progressed = max(1, p - floor_pct)
-                elapsed = max(0.1, time.time() - phase_started)
-                remaining = max(0.0, elapsed * (span - progressed) / progressed)
-                if remaining < 60:
-                    return f"About {max(1, int(remaining))} sec remaining"
-                return f"About {int(remaining // 60)} min {int(remaining % 60):02d} sec remaining"
-
-            def _render_inline(message: str, percent: int, detail: str = "", eta_text: str | None = None) -> None:
-                nonlocal last_percent
-                p = max(last_percent, min(100, int(percent)))
-                last_percent = p
-                downloading_now = bool(st.session_state.get("cv_local_ai_downloading"))
-                if eta_text is None and not downloading_now:
-                    eta_text = "Complete" if p >= 100 else _eta(p, gen_started, 39) if p >= 39 else "Usually just a few seconds"
-                snippet = str(st.session_state.get("cv_local_ai_snippet") or "") if p >= 39 and not downloading_now else ""
-                full_detail = detail if not eta_text else f"{detail} · {eta_text}"
-                slot.markdown(_progress_markup(p, message, full_detail, snippet), unsafe_allow_html=True)
-                time.sleep(0.035)
-
-            def _show_ai_progress(message: str, percent: int | None = None) -> None:
-                nonlocal gen_started
-                text_now = str(message or "Working…")
-                generated = int(st.session_state.get("cv_local_ai_chars", 0))
-                downloading = bool(st.session_state.get("cv_local_ai_downloading"))
-                eta_text = None
-                if percent is None:
-                    if downloading:
-                        percent = int(st.session_state.get("cv_generation_percent", 10))
-                    elif "writing" in text_now.lower() or "content" in text_now.lower():
-                        percent = min(72, max(39, 39 + int(generated / 900)))
-                        # First moment past the download stage: reset the
-                        # generation-phase ETA clock so it isn't poisoned by
-                        # however long the (possibly multi-minute, one-time)
-                        # model download took.
-                        if last_percent < 39:
-                            gen_started = time.time()
-                        text_now = _content_captions[(generated // 350) % len(_content_captions)]
-                    else:
-                        percent = int(st.session_state.get("cv_generation_percent", 10))
-                if downloading:
-                    eta_text = None  # the download message already states its own ETA
-                st.session_state["cv_generation_percent"] = int(percent)
-                _render_inline(text_now, int(percent), "Local AI is tailoring the document" if not downloading else "One-time setup — this only happens once", eta_text)
-
-            st.session_state["cv_ai_progress_callback"] = _show_ai_progress
-            st.session_state["cv_local_ai_chars"] = 0
-            st.session_state["cv_local_ai_snippet"] = ""
-            st.session_state["cv_generation_percent"] = 5
-            try:
-                _render_inline("Preparing the local AI engine…", 8, "Checking the private JobSync AI runtime", "Usually just a few seconds")
-                template_text = st.session_state.get("external_template_snapshot") or ""
-                latex = _generate_latex_with_ai(provider, prompt, document_type=doc, template=template_text)
-                _render_inline("AI content received. Validating the document…", 76, "Checking the locked blueprint structure")
-                clean = extract_latex_code(latex)
-                ok, msg = validate_external_latex(
-                    doc, clean, template_text,
-                    strict_structure=not (_is_local_ai_provider(provider) and doc == "CV"),
-                )
-                if not ok:
-                    raise RuntimeError(msg)
-                _render_inline("LaTeX validated. Finalizing the source…", 92, "The generated source stays in JobSync for review and manual copy to Overleaf")
-                base = safe_name(title or doc) or doc.lower().replace(" ", "_")
-                _render_inline("Complete — your document is ready.", 100, "Copy the source into Overleaf, then return here with the compiled PDF")
-                st.session_state.update({
-                    "cv_generation_status": "complete",
-                    "cv_generation_running": False,
-                    "cv_compiled_pdf": "",
-                    "cv_saved_pdf": "",
-                    "cv_latex_draft": clean,
-                    "cv_latex_path": "",
-                    "cv_generated_base": base,
-                    "cv_generation_error": "",
-                })
-                st.session_state.pop("cv_ai_progress_callback", None)
-                time.sleep(0.45)
-                st.rerun()
-            except Exception as exc:
-                st.session_state.pop("cv_ai_progress_callback", None)
-                st.session_state["cv_generation_running"] = False
-                st.session_state["cv_generation_error"] = str(exc)
-                st.session_state["cv_generation_status"] = "error"
-                st.rerun()
-
-        if status == "prompt_generated":
-            st.markdown(
-                f'''<div class="cvwiz-card" style="justify-content:flex-start;">
-                  <div class="cvwiz-eyebrow">JOBSYNC • DOCUMENT STUDIO</div>
-                  <div class="cvwiz-question">{html.escape(doc)} is ready to create</div>
-                  <div class="cvwiz-copy">Your prompt is prepared. JobSync will generate content against the locked blueprint using your uploaded reference CV, validate the LaTeX, and keep the source here for copying to Overleaf.</div>
-                  <div class="cvwiz-ready"><b>{html.escape(title)}</b><span>{html.escape(company)} · {html.escape(location)}</span></div>
-                  <div class="cvwiz-blueprint">Blueprint in use · {html.escape(cv_blueprint_name)}</div>
-                </div>''', unsafe_allow_html=True)
-            if generation_running:
-                _run_generation_inline()
-            else:
-                key_missing = False
-                if _is_local_ai_provider(provider):
-                    cfg = _local_ai_config(provider)
-                    st.info(f"Local AI: {_local_ai_key(provider)} ({cfg['model']}). No API key is required. JobSync automatically installs Ollama and downloads this model on first use.")
-                else:
-                    key_missing = not _ai_api_key(provider)
-                    if key_missing:
-                        resolved_provider, _ = _resolve_ai_selection(provider)
-                        setup = FREE_AI_KEY_SETUP.get(resolved_provider)
-                        if setup:
-                            st.warning(f"{provider} needs a free {resolved_provider} API key before it can generate — this is a one-time, no-billing step, not a JobSync limitation.")
-                            st.markdown("\n".join(f"{i + 1}. {step}" for i, step in enumerate(setup["steps"])))
-                            link_col, settings_col = st.columns(2, gap="small")
-                            with link_col:
-                                st.link_button(setup["button"], setup["url"], width="stretch")
-                            with settings_col:
-                                if st.button("Open Settings →", key=f"cvwiz_open_settings_{cv_cycle}", width="stretch"):
-                                    go("Settings"); st.rerun()
-                        else:
-                            st.warning(f"{provider} isn't connected yet. Add its API key once in Settings → AI generation, and every CV/cover letter from then on will generate automatically — no more pasting a key here each time.")
-                            if st.button("Open Settings →", key=f"cvwiz_open_settings_{cv_cycle}", width="stretch"):
-                                go("Settings"); st.rerun()
-                if st.button(f"Generate {doc} →", key=f"cvwiz_generate_{cv_cycle}", type="primary", width="stretch", disabled=key_missing):
-                    st.session_state["cv_generation_running"] = True
-                    st.rerun()
-
-        elif status == "complete":
-            latex_source = st.session_state.get("cv_latex_draft", "")
-            base = st.session_state.get("cv_generated_base") or safe_name(title or doc) or doc.lower().replace(" ", "_")
-            pdf_path = str(st.session_state.get("cv_saved_pdf") or st.session_state.get("cv_compiled_pdf") or "")
-            pdf_exists = bool(pdf_path and Path(pdf_path).exists())
-            st.markdown(
-                f'''<div class="cvwiz-card" style="justify-content:flex-start;min-height:0;">
-                  <div class="cvwiz-eyebrow">JOBSYNC • DOCUMENT READY</div>
-                  <div class="cvwiz-question">{html.escape(doc)} is ready</div>
-                  <div class="cvwiz-copy">AI content was tailored using the selected vacancy, your profile, and uploaded reference documents. The locked {html.escape(cv_blueprint_name)} blueprint was used for the final LaTeX source.</div>
-                  <div class="cvwiz-ready"><b>{html.escape(title)}</b><span>{html.escape(company)} · {html.escape(location)}</span></div>
-                  <div class="cvwiz-blueprint">Blueprint used · {html.escape(cv_blueprint_name)} · Reference CVs · {len(st.session_state.get("cv_reference_names", []))}</div>
-                </div>''', unsafe_allow_html=True)
-
-            st.markdown('<div class="cvwiz-source-label">LATEX SNIPPET · COPY TO OVERLEAF</div>', unsafe_allow_html=True)
-            with st.container(key="cvwiz_latex_box"):
-                st.code(latex_source or "% No LaTeX source is available.", language="latex", wrap_lines=True, height=140)
-            st.markdown('<div class="cvwiz-source-help">Use the copy icon on the code frame (top-right on hover) — the full source copies even though the box is small. Then use Continue to Overleaf to sign in.</div>', unsafe_allow_html=True)
-
-            action_col, folder_col = st.columns([1.15, 1.0], gap="small")
-            with action_col:
-                _render_overleaf_login_button(f"overleaf_login_{cv_cycle}")
-            with folder_col:
-                if st.button("📁 JobSync folder", width="stretch", key=f"cvwiz_open_folder_{cv_cycle}"):
-                    if not _open_local_path(str(OUTPUT_CV if doc == "CV" else OUTPUT_CL)):
-                        st.error("Could not open the JobSync folder.")
-
-            if pdf_exists:
-                st.success("PDF is saved automatically in the JobSync folder.")
-                dl_col, preview_col = st.columns([1.0, 1.0], gap="small")
-                with dl_col:
-                    try:
-                        pdf_bytes = Path(pdf_path).read_bytes()
-                        st.download_button(
-                            "⬇ Download PDF",
-                            data=pdf_bytes,
-                            file_name=Path(pdf_path).name,
-                            mime="application/pdf",
-                            width="stretch",
-                            key=f"cvwiz_download_pdf_{cv_cycle}",
-                        )
-                    except Exception as exc:
-                        st.warning(f"PDF download is unavailable: {exc}")
-                with preview_col:
-                    if st.button("👁 Preview PDF", width="stretch", key=f"cvwiz_preview_pdf_{cv_cycle}"):
-                        st.session_state[f"cvwiz_pdf_preview_{cv_cycle}"] = not st.session_state.get(f"cvwiz_pdf_preview_{cv_cycle}", False)
-                if st.session_state.get(f"cvwiz_pdf_preview_{cv_cycle}"):
-                    _render_pdf_preview(pdf_path, f"{doc} PDF preview")
-            else:
-                st.markdown('<div class="cvwiz-source-label">FINAL PDF</div>', unsafe_allow_html=True)
-                st.info("After compiling the copied LaTeX in Overleaf, upload the resulting PDF here. JobSync will save it automatically into the generated-document folder and make it downloadable from this page.")
-                pdf_upload = st.file_uploader("Drop the compiled PDF here", type=["pdf"], key=f"cvwiz_pdf_upload_{cv_cycle}")
-                if pdf_upload is not None:
-                    try:
-                        out_folder = OUTPUT_CV if doc == "CV" else OUTPUT_CL
-                        out_folder.mkdir(parents=True, exist_ok=True)
-                        pdf_target = unique_doc_path(out_folder, f"{base}_{doc}_generated", ".pdf")
-                        pdf_target.write_bytes(pdf_upload.getbuffer())
-                        created = datetime.now().isoformat(timespec="seconds")
-                        kind = "generated_cv" if doc == "CV" else "generated_coverletter"
-                        record = {
-                            "name": pdf_target.name,
-                            "display_name": pdf_target.stem,
-                            "kind": kind,
-                            "path": str(pdf_target),
-                            "pdf_path": str(pdf_target),
-                            "tex_path": "",
-                            "company": company,
-                            "job_title": title,
-                            "job_url": saved_job.get("url", ""),
-                            "created_at": created,
-                            "updated_at": created,
-                            "size_bytes": pdf_target.stat().st_size,
-                        }
-                        state["documents"].append(record)
-                        save_state(state)
-                        st.session_state["cv_saved_pdf"] = str(pdf_target)
-                        notify_success(f"{doc} PDF saved automatically to JobSync: {pdf_target.name}")
-                        st.rerun()
-                    except Exception as exc:
-                        notify_error(f"Could not save PDF: {exc}")
-        else:
-            error_text = str(st.session_state.get("cv_generation_error") or "Unknown error")
-            resolved_provider, _ = _resolve_ai_selection(provider)
-            key_related = (not _is_local_ai_provider(provider)) and (
-                not _ai_api_key(provider)
-                or any(token in error_text for token in ("401", "403", "API key", "api key", "PERMISSION_DENIED", "API_KEY_INVALID"))
-            )
-            st.markdown(
-                f'''<div class="cvwiz-card">
-                  <div class="cvwiz-eyebrow">JOBSYNC • GENERATION ERROR</div>
-                  <div class="cvwiz-question">The document could not be completed</div>
-                  <div class="cvwiz-copy">{html.escape(error_text)}</div>
-                </div>''', unsafe_allow_html=True)
-            if key_related:
-                setup = FREE_AI_KEY_SETUP.get(resolved_provider)
-                if setup:
-                    st.warning(f"{provider} needs a free {resolved_provider} API key before it can generate — this is a one-time, no-billing step, not a JobSync limitation.")
-                    st.markdown("\n".join(f"{i + 1}. {step}" for i, step in enumerate(setup["steps"])))
-                    link_col, settings_col = st.columns(2, gap="small")
-                    with link_col:
-                        st.link_button(setup["button"], setup["url"], width="stretch")
-                    with settings_col:
-                        if st.button("Open Settings →", key=f"cvwiz_error_settings_{cv_cycle}", width="stretch"):
-                            go("Settings"); st.rerun()
-                else:
-                    st.warning(f"{provider} needs a valid API key. Add or fix it once in Settings → AI generation.")
-                    if st.button("Open Settings →", key=f"cvwiz_error_settings_{cv_cycle}", width="stretch"):
-                        go("Settings"); st.rerun()
-            if st.button("Try generation again", key=f"cvwiz_retry_{cv_cycle}", type="primary", width="stretch"):
-                st.session_state["cv_generation_error"] = ""
-                st.session_state["cv_generation_status"] = "prompt_generated"
-                st.session_state["cv_generation_running"] = False
-                st.rerun()
-
-
 elif page == "Folders":
     render_modern_page_header("Folders")
 
@@ -8112,12 +7594,12 @@ elif page == "Folders":
                 st.markdown(
                     f'<div class="jobsync-folder-empty jobsync-folder-empty-large">'
                     f'<div class="jobsync-folder-empty-icon">{icon_label}</div>'
-                    f'<div><b>Your library is empty</b><span>Upload one from the panel on the left, or generate one in CV Studio.</span></div>'
+                    f'<div><b>Your library is empty</b><span>Upload one from the panel on the left, or use Open &amp; Apply on a job in New Search to generate one automatically.</span></div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
-                if st.button("▣ Go to CV Studio →", key=f"folders_empty_cta_{doc_type}"):
-                    go("CV & Cover Letter"); st.rerun()
+                if st.button("⌕ Go to New Search →", key=f"folders_empty_cta_{doc_type}"):
+                    go("New Search"); st.rerun()
             else:
                 for idx, doc in enumerate(current_docs):
                     inferred_position, inferred_date = cv_position_and_date(doc)
