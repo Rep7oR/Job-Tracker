@@ -59,6 +59,12 @@ from services.company_watch import (
     resolve_manual_url as _watch_resolve_manual_url,
     fetch_company_jobs as _watch_fetch_company_jobs,
 )
+from services.apply_session import (
+    start_apply_session as _apply_start_session,
+    get_session as _apply_get_session,
+    pop_closed_sessions as _apply_pop_closed_sessions,
+    discard_session as _apply_discard_session,
+)
 from services.messaging import (
     configured as messaging_configured,
     fetch_conversations,
@@ -6840,6 +6846,35 @@ elif page == "New Search":
                 notify_error(str(exc))
 
 
+    def _check_apply_sessions():
+        # Closing the "Open & Apply" browser window is itself the user's
+        # confirmation that the application is done -- pick up every session
+        # that finished since the last check and record it the same way the
+        # manual "Mark applied" button does.
+        for finished in _apply_pop_closed_sessions():
+            job = finished.get("job") or {}
+            url = job.get("url")
+            if url:
+                st.session_state.get("apply_sessions", {}).pop(url, None)
+            if finished.get("status") != "closed":
+                continue
+            if url and any(r.get("url") == url for r in state["applied"] if r.get("url")):
+                continue
+            applied_record = {**job, "applied_date": datetime.now().strftime("%Y-%m-%d"), "status": "Applied", "cv_path": "", "cover_letter_path": ""}
+            state["applied"].append(applied_record)
+            save_state(state)
+            st.session_state["cv_entry_job"] = dict(applied_record)
+            notify_success(f"Application window closed — {job.get('title', 'this job')} marked as applied.")
+
+    apply_fragment = getattr(st, "fragment", None)
+    if apply_fragment is not None:
+        @apply_fragment(run_every="3s")
+        def _apply_session_watcher():
+            _check_apply_sessions()
+        _apply_session_watcher()
+    else:
+        _check_apply_sessions()
+
     with results_col:
         # Results are deliberately contained in a fixed-height internal pane.
         # This keeps the entire search workspace on one screen while allowing
@@ -6884,14 +6919,24 @@ elif page == "New Search":
                             if job.get("url"): st.link_button("Open job ↗", job["url"], width="stretch")
                             if already_applied:
                                 notify_success("Tracked")
-                            elif st.button("Mark applied", key=f"mark_{idx}", width="stretch"):
-                                applied_record = {**job, "applied_date": datetime.now().strftime("%Y-%m-%d"), "status": "Applied", "cv_path": "", "cover_letter_path": ""}
-                                state["applied"].append(applied_record)
-                                save_state(state)
-                                # The newest applied vacancy becomes the natural CV prefill candidate.
-                                st.session_state["cv_entry_job"] = dict(applied_record)
-                                notify_success("Application recorded. This job is ready to pre-fill in CV Studio.")
-                                st.rerun()
+                            else:
+                                active_session_id = st.session_state.get("apply_sessions", {}).get(job.get("url"))
+                                active_session = _apply_get_session(active_session_id) if active_session_id else None
+                                if active_session and active_session.get("status") in ("opening", "open"):
+                                    st.caption("🌐 Application window open — closing it marks this job applied.")
+                                elif job.get("url") and st.button("🚀 Open & Apply", key=f"open_apply_{idx}", width="stretch"):
+                                    session_id = _apply_start_session(job)
+                                    st.session_state.setdefault("apply_sessions", {})[job.get("url")] = session_id
+                                    notify_success("Application browser opening… close its window when you're done to mark this job applied.")
+                                    st.rerun()
+                                if st.button("Mark applied", key=f"mark_{idx}", width="stretch"):
+                                    applied_record = {**job, "applied_date": datetime.now().strftime("%Y-%m-%d"), "status": "Applied", "cv_path": "", "cover_letter_path": ""}
+                                    state["applied"].append(applied_record)
+                                    save_state(state)
+                                    # The newest applied vacancy becomes the natural CV prefill candidate.
+                                    st.session_state["cv_entry_job"] = dict(applied_record)
+                                    notify_success("Application recorded. This job is ready to pre-fill in CV Studio.")
+                                    st.rerun()
                             bookmark_label = "🔖 Bookmarked" if _is_bookmarked(job) else "🔖 Save bookmark"
                             if st.button(bookmark_label, key=f"bookmark_{idx}", width="stretch"):
                                 added, message = _toggle_bookmark(job)
