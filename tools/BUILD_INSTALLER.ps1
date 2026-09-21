@@ -89,7 +89,7 @@ foreach ($f in @('START_JOB_TRACKER.bat','VERSION.txt','UPDATE_VERSION.json')) {
 foreach ($f in @('cv_base.tex','cover_letter_base.tex','master_cv.tex')) { Copy-Required "blueprint\$f" }
 foreach ($f in @('app.py','requirements.txt','requirements-browser.txt')) { Copy-Required "program\$f" }
 Copy-Required 'program\.streamlit\config.toml'
-foreach ($f in @('app_paths.py','application_status_agent.py','apply_session.py','company_watch.py','cv_engine.py','cv_prompt.py','excel_export.py','free_job_sources.py','gmail.py','jobs.py','job_monitor.py','linkedin_browser.py','messaging.py','notifications.py','presence.py','storage.py','ai_cv_generation_prompt.txt')) {
+foreach ($f in @('app_paths.py','application_status_agent.py','apply_session.py','company_watch.py','cv_engine.py','cv_prompt.py','excel_export.py','free_job_sources.py','gmail.py','jobs.py','job_monitor.py','linkedin_browser.py','messaging.py','notifications.py','pdf_compiler.py','presence.py','storage.py','ai_cv_generation_prompt.txt')) {
     Copy-Required "program\services\$f"
 }
 # GitHub updater is part of the installed application so existing users can
@@ -109,6 +109,22 @@ foreach ($f in @('program\app.py','program\requirements.txt','program\services\p
 Say "  runtime allow-list: OK"
 Say "  development files excluded: .venv, .git, config, data, output, uploads, packaging, releases, old ZIPs, backups"
 Say "Staging complete."
+
+# tectonic.exe is fetched at build time (not committed to git -- it's a ~25-40MB
+# binary and every commit would bloat the repo forever). If the download fails
+# (no network / GitHub unreachable) the build still succeeds; JobSync degrades
+# gracefully at runtime by showing "Tectonic is not installed" instead of a PDF.
+$tectonicScript = Join-Path $Tools 'DOWNLOAD_TECTONIC.ps1'
+if (Test-Path -LiteralPath $tectonicScript) {
+    Say "Fetching tectonic.exe for staging..."
+    $tectonicTarget = Join-Path $Staging 'tools\tectonic.exe'
+    & $tectonicScript -Destination $tectonicTarget
+    if (Test-Path -LiteralPath $tectonicTarget) {
+        Say "  tectonic.exe staged: OK"
+    } else {
+        Say "  tectonic.exe not staged (download unavailable) -- PDF compile will be disabled until installed manually" 'Yellow'
+    }
+}
 
 # ── 4. Patch version into .nsi ─────────────────────────────────────────────────
 Say "Patching version $Version into NSI script..."

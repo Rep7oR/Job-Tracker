@@ -66,6 +66,7 @@ from services.apply_session import (
     pop_closed_sessions as _apply_pop_closed_sessions,
     discard_session as _apply_discard_session,
 )
+from services.pdf_compiler import compile_latex as _compile_latex
 from services.messaging import (
     configured as messaging_configured,
     fetch_conversations,
@@ -6572,6 +6573,119 @@ elif page == "Dashboard":
 elif page == "New Search":
     render_modern_page_header("New Search")
 
+    # ---- Open & Apply review: edit/compile/replace the generated CV and
+    # cover letter before the application browser opens. ----
+    if st.session_state.get("apply_review"):
+        review = st.session_state["apply_review"]
+        review_job = review.get("job") or {}
+        with st.container(key="apply_review_panel", border=True):
+            st.markdown(f"#### Review your application — {html.escape(str(review_job.get('title','')))} at {html.escape(str(review_job.get('company','')))}")
+            st.caption("Edit the LaTeX, recompile, preview the PDF, or swap in your own file. Nothing is sent anywhere until you continue.")
+
+            def _review_slot(slot_key: str, label: str) -> None:
+                doc = review.get(slot_key)
+                col_key = f"apply_review_{slot_key}"
+                if not doc:
+                    st.warning(f"{label} could not be generated. You can continue without it or cancel and try again.")
+                    return
+                st.markdown(f"**{label}** — `{html.escape(str(doc.get('display_name','')))}`")
+
+                name_col, save_col = st.columns([0.8, 0.2], gap="small")
+                with name_col:
+                    new_name = st.text_input("Name", value=str(doc.get("display_name") or ""), key=f"{col_key}_name", label_visibility="collapsed")
+                with save_col:
+                    if st.button("Save name", key=f"{col_key}_name_save", width="stretch"):
+                        doc["display_name"] = new_name.strip()[:120] or doc.get("display_name")
+                        save_state(state)
+                        st.rerun()
+
+                tex_path = Path(str(doc.get("tex_path") or ""))
+                tex_text = tex_path.read_text(encoding="utf-8") if tex_path.exists() else ""
+                edited_tex = st.text_area("LaTeX source", value=tex_text, height=280, key=f"{col_key}_tex")
+
+                action_cols = st.columns(3, gap="small")
+                if action_cols[0].button("🔁 Recompile", key=f"{col_key}_recompile", width="stretch"):
+                    try:
+                        tex_path.write_text(edited_tex, encoding="utf-8")
+                        pdf_path, compile_error = _compile_latex(tex_path)
+                        doc["pdf_path"] = str(pdf_path) if pdf_path else ""
+                        doc["updated_at"] = datetime.now().isoformat(timespec="seconds")
+                        doc["size_bytes"] = tex_path.stat().st_size
+                        save_state(state)
+                        if compile_error:
+                            st.session_state[f"{col_key}_error"] = compile_error
+                        else:
+                            st.session_state.pop(f"{col_key}_error", None)
+                    except Exception as exc:
+                        st.session_state[f"{col_key}_error"] = str(exc)
+                    st.rerun()
+                if doc.get("pdf_path") and action_cols[1].button("💾 Save & reveal PDF", key=f"{col_key}_reveal", width="stretch", help="The PDF is already saved in your managed library — this just opens its folder with the file selected."):
+                    if not _open_local_path(str(doc["pdf_path"]), select_file=True):
+                        st.error("Could not open the folder.")
+                if action_cols[2].button("🗑 Delete", key=f"{col_key}_delete", width="stretch"):
+                    _stage_document_for_deletion(doc)
+                    review[slot_key] = None
+                    st.rerun()
+
+                if st.session_state.get(f"{col_key}_error"):
+                    st.error(f"Compile failed: {st.session_state[f'{col_key}_error']}")
+
+                if doc.get("pdf_path"):
+                    _render_pdf_preview(str(doc["pdf_path"]), f"{label} — PDF preview")
+                else:
+                    st.info("No PDF yet. Recompile, or upload your own PDF/LaTeX file below.")
+
+                uploaded = st.file_uploader("🔁 Replace with your own file", type=["pdf", "tex"], key=f"{col_key}_upload")
+                if uploaded is not None:
+                    out_folder = OUTPUT_CV if slot_key == "cv" else OUTPUT_CL
+                    out_folder.mkdir(parents=True, exist_ok=True)
+                    suffix = Path(uploaded.name).suffix.lower()
+                    base = safe_name(Path(uploaded.name).stem or label)
+                    target = unique_doc_path(out_folder, base, suffix)
+                    target.write_bytes(uploaded.getvalue())
+                    if suffix == ".pdf":
+                        doc["pdf_path"] = str(target)
+                    else:
+                        doc["tex_path"] = str(target)
+                        doc["path"] = str(target)
+                        pdf_path, compile_error = _compile_latex(target)
+                        doc["pdf_path"] = str(pdf_path) if pdf_path else ""
+                        if compile_error:
+                            st.session_state[f"{col_key}_error"] = compile_error
+                    doc["updated_at"] = datetime.now().isoformat(timespec="seconds")
+                    doc["size_bytes"] = target.stat().st_size
+                    save_state(state)
+                    st.rerun()
+
+            review_cv_col, review_cl_col = st.columns(2, gap="medium")
+            with review_cv_col:
+                _review_slot("cv_doc", "CV")
+            with review_cl_col:
+                _review_slot("cover_letter_doc", "Cover Letter")
+
+            st.divider()
+            continue_col, cancel_col = st.columns([0.7, 0.3], gap="small")
+            can_continue = bool((review.get("cv_doc") or {}).get("pdf_path") or (review.get("cv_doc") or {}).get("tex_path")
+                                 or (review.get("cover_letter_doc") or {}).get("pdf_path") or (review.get("cover_letter_doc") or {}).get("tex_path"))
+            with continue_col:
+                if st.button("🚀 Continue — open application browser", key="apply_review_continue", type="primary", width="stretch", disabled=not can_continue):
+                    cv_doc = review.get("cv_doc") or {}
+                    cl_doc = review.get("cover_letter_doc") or {}
+                    job_with_docs = {
+                        **review_job,
+                        "cv_path": cv_doc.get("pdf_path") or cv_doc.get("tex_path") or "",
+                        "cover_letter_path": cl_doc.get("pdf_path") or cl_doc.get("tex_path") or "",
+                    }
+                    session_id = _apply_start_session(job_with_docs)
+                    st.session_state.setdefault("apply_sessions", {})[review_job.get("url")] = session_id
+                    st.session_state.pop("apply_review", None)
+                    notify_success("Application browser opening… close its window when you're done to mark this job applied.")
+                    st.rerun()
+            with cancel_col:
+                if st.button("✕ Cancel", key="apply_review_cancel", width="stretch"):
+                    st.session_state.pop("apply_review", None)
+                    st.rerun()
+
     # ---- Company Watchlist: track specific employers' career pages ----
     st.markdown('''<style>
       .watch-panel{margin:2px 0 12px;}
@@ -6812,15 +6926,18 @@ elif page == "New Search":
                 notify_error(str(exc))
 
 
-    def _auto_generate_application_docs(job: dict) -> tuple[str, str]:
+    def _auto_generate_application_docs(job: dict) -> dict:
         # Reuses the same generation engine the old manual CV Studio wizard
         # called (cv_engine/cv_prompt) but drives it programmatically, with
         # no user-facing prompt-editing step, and writes straight to the
-        # existing output/cv and output/coverletters folders.
+        # existing output/cv and output/coverletters folders. Each doc is
+        # also compiled to a real local PDF (Tectonic) so the new review
+        # step has something to preview; a compile failure is non-fatal --
+        # the LaTeX source is still usable, just without a PDF preview yet.
         provider = LOCAL_AI_DEFAULT
         profile = state.get("profile", {}) or {}
-        cv_path = ""; cl_path = ""
-        for doc, out_folder, kind in (("CV", OUTPUT_CV, "generated_cv"), ("Cover Letter", OUTPUT_CL, "generated_coverletter")):
+        result = {"cv": None, "cover_letter": None}
+        for doc, out_folder, kind, slot in (("CV", OUTPUT_CV, "generated_cv", "cv"), ("Cover Letter", OUTPUT_CL, "generated_coverletter", "cover_letter")):
             try:
                 template = load_builtin_template(doc)
                 prompt = build_external_ai_prompt(job=job, references="", profile=profile, template=template, document_type=doc, provider=provider)
@@ -6833,21 +6950,24 @@ elif page == "New Search":
                 out_folder.mkdir(parents=True, exist_ok=True)
                 target = unique_doc_path(out_folder, f"{base}_{doc}_generated", ".tex")
                 target.write_text(clean, encoding="utf-8")
+                pdf_path, compile_error = _compile_latex(target)
                 created = datetime.now().isoformat(timespec="seconds")
-                state.setdefault("documents", []).append({
+                record = {
                     "name": target.name, "display_name": target.stem, "kind": kind,
-                    "path": str(target), "pdf_path": "", "tex_path": str(target),
+                    "path": str(target), "pdf_path": str(pdf_path) if pdf_path else "", "tex_path": str(target),
                     "company": job.get("company", ""), "job_title": job.get("title", ""),
                     "job_url": job.get("url", ""), "created_at": created, "updated_at": created,
                     "size_bytes": target.stat().st_size,
-                })
-                if doc == "CV": cv_path = str(target)
-                else: cl_path = str(target)
+                }
+                state.setdefault("documents", []).append(record)
+                result[slot] = {"doc": record, "compile_error": compile_error}
+                if compile_error:
+                    notify_error(f"{doc} PDF compile: {compile_error}")
             except Exception as exc:
                 notify_error(f"Could not auto-generate the {doc.lower()}: {exc}")
-        if cv_path or cl_path:
+        if result["cv"] or result["cover_letter"]:
             save_state(state)
-        return cv_path, cl_path
+        return result
 
     def _check_apply_sessions():
         # Closing the "Open & Apply" browser window is itself the user's
@@ -6928,11 +7048,12 @@ elif page == "New Search":
                                     st.caption("🌐 Application window open — closing it marks this job applied.")
                                 elif job.get("url") and st.button("🚀 Open & Apply", key=f"open_apply_{idx}", width="stretch"):
                                     with st.spinner("Generating a tailored CV and cover letter…"):
-                                        cv_path, cl_path = _auto_generate_application_docs(job)
-                                    job_with_docs = {**job, "cv_path": cv_path, "cover_letter_path": cl_path}
-                                    session_id = _apply_start_session(job_with_docs)
-                                    st.session_state.setdefault("apply_sessions", {})[job.get("url")] = session_id
-                                    notify_success("Application browser opening… close its window when you're done to mark this job applied.")
+                                        generated = _auto_generate_application_docs(job)
+                                    st.session_state["apply_review"] = {
+                                        "job": job,
+                                        "cv_doc": (generated.get("cv") or {}).get("doc"),
+                                        "cover_letter_doc": (generated.get("cover_letter") or {}).get("doc"),
+                                    }
                                     st.rerun()
                                 if st.button("Mark applied", key=f"mark_{idx}", width="stretch"):
                                     applied_record = {**job, "applied_date": datetime.now().strftime("%Y-%m-%d"), "status": "Applied", "cv_path": "", "cover_letter_path": ""}
