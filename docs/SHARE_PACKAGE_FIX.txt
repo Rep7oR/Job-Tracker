@@ -1,1 +1,0 @@
-Fixed share-package creation. CREATE_SHAREABLE.ps1 uses single-character TrimEnd arguments and excludes local runtime/personal files.

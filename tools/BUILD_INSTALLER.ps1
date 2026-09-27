@@ -97,13 +97,13 @@ foreach ($f in @('app_paths.py','application_status_agent.py','apply_session.py'
 foreach ($f in @('README.txt','update-config.json','updater.ps1')) {
     Copy-Required "github\$f"
 }
-foreach ($f in @('INSTALL_INTEGRATIONS.ps1','JobSync.ico','RUN_JOBSYNC.ps1','RUN_JOBSYNC_DESKTOP.py','RUN_JOBSYNC_DESKTOP.spec','RUN_JOBSYNC.vbs','SETUP_FIRST.bat','INSTALLER_SETUP.bat','INSTALLER_CLEANUP.ps1','START_JOB_MONITOR.bat','START_JOB_TRACKER_STARTUP.vbs')) {
+foreach ($f in @('INSTALL_INTEGRATIONS.ps1','JobSync.ico','RUN_JOBSYNC.ps1','RUN_JOBSYNC_DESKTOP.py','RUN_JOBSYNC_DESKTOP.spec','RUN_JOBSYNC.vbs','SETUP_FIRST.bat','INSTALLER_SETUP.bat','START_JOB_MONITOR.bat','START_JOB_TRACKER_STARTUP.vbs')) {
     Copy-Required "tools\$f"
 }
 # JobSync.exe is a stable bootstrap generated on the first install (or repair).
 # It is intentionally not shipped in staging because upgrades preserve the existing
 # native launcher instead of replacing its PyInstaller DLL tree.
-foreach ($f in @('program\app.py','program\requirements.txt','program\services\presence.py','program\services\storage.py','github\updater.ps1','github\update-config.json','tools\SETUP_FIRST.bat','tools\INSTALLER_SETUP.bat','tools\INSTALLER_CLEANUP.ps1','tools\RUN_JOBSYNC_DESKTOP.py','tools\RUN_JOBSYNC_DESKTOP.spec','tools\RUN_JOBSYNC.vbs')) {
+foreach ($f in @('program\app.py','program\requirements.txt','program\services\presence.py','program\services\storage.py','github\updater.ps1','github\update-config.json','tools\SETUP_FIRST.bat','tools\INSTALLER_SETUP.bat','tools\RUN_JOBSYNC_DESKTOP.py','tools\RUN_JOBSYNC_DESKTOP.spec','tools\RUN_JOBSYNC.vbs')) {
     if (-not (Test-Path -LiteralPath (Join-Path $Staging $f) -PathType Leaf)) { Die "Staging verification failed: $f" }
 }
 Say "  runtime allow-list: OK"
