@@ -60,3 +60,61 @@ def save_profile(email: str, profile: dict) -> None:
         merged = {**EMPTY_PROFILE, **profiles.get(email, {}), **profile}
         profiles[email] = merged
         _save_all(profiles)
+
+
+# --- Queue (phase 2: agent-staged match candidates) -------------------------
+#
+# Kept in the same per-account profiles.json document, under a "queue" list,
+# rather than a separate file, since it's still small per-account state tied
+# 1:1 to the account like the profile is.
+
+QUEUE_FIELD = "queue"
+
+
+def get_queue(email: str) -> list[dict]:
+    """Return the staged queue entries for an account, newest-first."""
+    profiles = _load_all()
+    profile = profiles.get(email.strip().lower(), {})
+    return list(profile.get(QUEUE_FIELD, []))
+
+
+def add_to_queue(email: str, entries: list[dict]) -> int:
+    """Merge new match entries into the account's queue, deduped by URL.
+
+    Each entry is expected to be a normalized posting plus a "score" key;
+    a "status" of "staged" is added if not already present. Returns the
+    number of genuinely new entries added (existing URLs are left as-is,
+    not overwritten, so a re-run doesn't clobber a dismissed/updated entry).
+    """
+    email = email.strip().lower()
+    added = 0
+    with _lock:
+        profiles = _load_all()
+        profile = {**EMPTY_PROFILE, **profiles.get(email, {})}
+        queue = list(profile.get(QUEUE_FIELD, []))
+        existing_urls = {entry.get("url") for entry in queue if entry.get("url")}
+
+        for entry in entries:
+            url = entry.get("url")
+            if not url or url in existing_urls:
+                continue
+            queue.append({**entry, "status": entry.get("status", "staged")})
+            existing_urls.add(url)
+            added += 1
+
+        profile[QUEUE_FIELD] = queue
+        profiles[email] = profile
+        _save_all(profiles)
+    return added
+
+
+def remove_from_queue(email: str, url: str) -> None:
+    """Remove one queue entry by its posting URL (used by "Dismiss")."""
+    email = email.strip().lower()
+    with _lock:
+        profiles = _load_all()
+        profile = {**EMPTY_PROFILE, **profiles.get(email, {})}
+        queue = [e for e in profile.get(QUEUE_FIELD, []) if e.get("url") != url]
+        profile[QUEUE_FIELD] = queue
+        profiles[email] = profile
+        _save_all(profiles)

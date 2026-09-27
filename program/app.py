@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from services import auth, storage
+from services import agent, auth, storage
 
 st.set_page_config(page_title="JobSync", page_icon="\U0001F9ED", layout="wide")
 
@@ -146,15 +146,53 @@ def render_profile_page(email: str) -> None:
         st.success("Profile saved.")
 
 
-def render_queue_page() -> None:
+def render_queue_page(email: str) -> None:
     st.title("Queue")
     st.markdown(
-        '<div class="jobsync-empty-state">'
-        "No staged applications yet — the agent hasn't found any matches."
-        "</div>",
+        '<p class="jobsync-subtitle">Postings the agent matched against your '
+        "profile. Dismiss only for now — review, tailoring, and applying "
+        "are next.</p>",
         unsafe_allow_html=True,
     )
-    # TODO(phase 2): populate from the search + matching agent loop once it exists.
+
+    if st.button("Run agent now", type="primary"):
+        with st.spinner("Fetching postings and matching against your profile..."):
+            summary = agent.run_agent_once(email)
+        st.success(
+            f"Fetched {summary['fetched']} postings, "
+            f"{summary['matched']} matched your profile, "
+            f"{summary['added']} new added to the queue."
+        )
+
+    queue = storage.get_queue(email)
+    if not queue:
+        st.markdown(
+            '<div class="jobsync-empty-state">'
+            "No staged matches yet — run the agent to search."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    for entry in sorted(queue, key=lambda e: e.get("score", 0), reverse=True):
+        with st.container():
+            st.markdown('<div class="jobsync-card">', unsafe_allow_html=True)
+            col_info, col_action = st.columns([5, 1])
+            with col_info:
+                st.markdown(f"**{entry.get('title', 'Untitled role')}**")
+                st.markdown(
+                    f"{entry.get('company', 'Unknown company')} — "
+                    f"{entry.get('location', 'Location unknown')}"
+                )
+                st.markdown(f"Match score: {entry.get('score', 0)}/100")
+                url = entry.get("url")
+                if url:
+                    st.markdown(f"[View posting]({url})")
+            with col_action:
+                if st.button("Dismiss", key=f"dismiss_{url}"):
+                    storage.remove_from_queue(email, url)
+                    st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_history_page() -> None:
@@ -185,7 +223,7 @@ def main() -> None:
     if page == "Profile":
         render_profile_page(user)
     elif page == "Queue":
-        render_queue_page()
+        render_queue_page(user)
     else:
         render_history_page()
 
