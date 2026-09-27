@@ -118,3 +118,31 @@ def remove_from_queue(email: str, url: str) -> None:
         profile[QUEUE_FIELD] = queue
         profiles[email] = profile
         _save_all(profiles)
+
+
+# --- History (phase 3: recorded applications) --------------------------------
+#
+# Same per-account profiles.json document, under a "history" list, mirroring
+# the queue's storage convention.
+
+HISTORY_FIELD = "history"
+
+
+def get_history(email: str) -> list[dict]:
+    """Return the recorded application history for an account."""
+    profiles = _load_all()
+    profile = profiles.get(email.strip().lower(), {})
+    return list(profile.get(HISTORY_FIELD, []))
+
+
+def add_to_history(email: str, entry: dict) -> None:
+    """Append one recorded application to the account's history."""
+    email = email.strip().lower()
+    with _lock:
+        profiles = _load_all()
+        profile = {**EMPTY_PROFILE, **profiles.get(email, {})}
+        history = list(profile.get(HISTORY_FIELD, []))
+        history.append(entry)
+        profile[HISTORY_FIELD] = history
+        profiles[email] = profile
+        _save_all(profiles)
